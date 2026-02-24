@@ -45,6 +45,18 @@ const userSchema = new mongoose.Schema({
     default: false
   },
 
+  // Privacy Settings
+  isPrivate: {
+    type: Boolean,
+    default: false
+  },
+
+  // Follow Requests (for private accounts)
+  followRequests: [{
+    from: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    requestedAt: { type: Date, default: Date.now }
+  }],
+
   // OAuth Fields
   googleId: {
     type: String,

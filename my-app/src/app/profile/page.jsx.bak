@@ -1,0 +1,606 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { Settings, Trophy, Star, Film, Heart, Award, Flame, Trash2, Pencil, MoreVertical, Lock, BarChart3, MessageSquare, ThumbsUp, Zap } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useUser } from "@/contexts/UserContext"
+import * as movieAPI from "@/lib/movies"
+import { ProfileSkeleton, CardGridSkeleton, ReviewListSkeleton } from "@/components/skeletons"
+import FollowersFollowingModal from "@/components/followers-following-modal"
+
+const LEVEL_THRESHOLDS = [
+  { level: 1, points: 0, title: 'Newcomer' },
+  { level: 2, points: 100, title: 'Movie Buff' },
+  { level: 3, points: 300, title: 'Cinephile' },
+  { level: 4, points: 600, title: 'Film Critic' },
+  { level: 5, points: 1000, title: 'Movie Expert' },
+  { level: 6, points: 1500, title: 'Cinema Scholar' },
+  { level: 7, points: 2100, title: 'Film Virtuoso' },
+  { level: 8, points: 2800, title: 'Movie Legend' },
+  { level: 9, points: 3600, title: 'Cinema Master' },
+  { level: 10, points: 4500, title: 'Film God' },
+]
+
+function getLevelInfo(level) {
+  return LEVEL_THRESHOLDS.find(l => l.level === level) || LEVEL_THRESHOLDS[0]
+}
+
+function getNextLevelThreshold(level) {
+  const next = LEVEL_THRESHOLDS.find(l => l.level === level + 1)
+  return next?.points || null
+}
+
+function CircularProgress({ percentage, size = 140, strokeWidth = 10, children }) {
+  const radius = (size - strokeWidth) / 2
+  const circumference = radius * 2 * Math.PI
+  const offset = circumference - (Math.min(percentage, 100) / 100) * circumference
+  return (
+    <div className="relative inline-flex items-center justify-center">
+      <svg width={size} height={size} className="transform -rotate-90">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="oklch(0.2 0 0)"
+          strokeWidth={strokeWidth}
+          fill="none"
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="oklch(0.77 0.19 90)"
+          strokeWidth={strokeWidth}
+          fill="none"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          className="transition-all duration-1000 ease-out"
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        {children}
+      </div>
+    </div>
+  )
+}
+
+export default function ProfilePage() {
+  const [activeTab, setActiveTab] = useState("overview")
+  const [stats, setStats] = useState(null)
+  const [statsLoading, setStatsLoading] = useState(true)
+  const [watchlist, setWatchlist] = useState([])
+  const [favorites, setFavorites] = useState([])
+  const [reviews, setReviews] = useState([])
+  const [watchlistLoading, setWatchlistLoading] = useState(false)
+  const [favoritesLoading, setFavoritesLoading] = useState(false)
+  const [reviewsLoading, setReviewsLoading] = useState(false)
+  const [showFollowModal, setShowFollowModal] = useState(false)
+  const [followModalTab, setFollowModalTab] = useState("followers")
+  const router = useRouter()
+  const { user, isLoading, logout } = useUser()
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.push('/login')
+      return
+    }
+    if (user) {
+      const token = localStorage.getItem('token')
+      if (token) fetchUserStats(token)
+    }
+  }, [user, isLoading, router])
+
+  useEffect(() => {
+    if (activeTab === 'watchlist' && watchlist.length === 0) fetchWatchlist()
+    else if (activeTab === 'favorites' && favorites.length === 0) fetchFavorites()
+    else if (activeTab === 'reviews' && reviews.length === 0) fetchReviews()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab])
+
+  const fetchUserStats = async (token) => {
+    try {
+      const response = await fetch('/api/users/me/stats', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const data = await response.json()
+      if (data.success) setStats(data.data)
+    } catch (error) {
+      console.error('Error fetching stats:', error)
+    } finally {
+      setStatsLoading(false)
+    }
+  }
+
+  const fetchWatchlist = async () => {
+    setWatchlistLoading(true)
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch('/api/users/me/watchlist', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const data = await response.json()
+      if (data.success && data.data.length > 0) {
+        const movieDetails = await Promise.all(
+          data.data.map(async (item) => {
+            try {
+              const response = await movieAPI.getMovieDetails(item.movieId)
+              const movieData = response.success ? response.data : response
+              return { ...movieData, addedAt: item.addedAt }
+            } catch { return null }
+          })
+        )
+        setWatchlist(movieDetails.filter(m => m !== null))
+      } else {
+        setWatchlist([])
+      }
+    } catch (error) {
+      console.error('Error fetching watchlist:', error)
+    } finally {
+      setWatchlistLoading(false)
+    }
+  }
+
+  const fetchFavorites = async () => {
+    setFavoritesLoading(true)
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch('/api/users/me/favorites', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const data = await response.json()
+      if (data.success && data.data.length > 0) {
+        const movieDetails = await Promise.all(
+          data.data.map(async (item) => {
+            try {
+              const response = await movieAPI.getMovieDetails(item.movieId)
+              const movieData = response.success ? response.data : response
+              return { ...movieData, addedAt: item.addedAt }
+            } catch { return null }
+          })
+        )
+        setFavorites(movieDetails.filter(m => m !== null))
+      } else {
+        setFavorites([])
+      }
+    } catch (error) {
+      console.error('Error fetching favorites:', error)
+    } finally {
+      setFavoritesLoading(false)
+    }
+  }
+
+  const fetchReviews = async () => {
+    setReviewsLoading(true)
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`/api/reviews/user/${user._id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const data = await response.json()
+      if (data.success) setReviews(data.data)
+    } catch (error) {
+      console.error('Error fetching reviews:', error)
+    } finally {
+      setReviewsLoading(false)
+    }
+  }
+
+  const removeFromWatchlist = async (movieId) => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`/api/users/me/watchlist/${movieId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const data = await response.json()
+      if (data.success) setWatchlist(watchlist.filter(m => m.id?.toString() !== movieId))
+    } catch (error) {
+      console.error('Error removing from watchlist:', error)
+    }
+  }
+
+  const removeFromFavorites = async (movieId) => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`/api/users/me/favorites/${movieId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const data = await response.json()
+      if (data.success) setFavorites(favorites.filter(m => m.id?.toString() !== movieId))
+    } catch (error) {
+      console.error('Error removing from favorites:', error)
+    }
+  }
+
+  if (isLoading || statsLoading || !user) {
+    return <ProfileSkeleton />
+  }
+
+  const level = stats?.level || 1
+  const levelInfo = getLevelInfo(level)
+  const nextLevelPoints = getNextLevelThreshold(level)
+  const totalPoints = stats?.points?.total || 0
+  const currentLevelPoints = levelInfo.points
+  const progressToNextLevel = nextLevelPoints
+    ? ((totalPoints - currentLevelPoints) / (nextLevelPoints - currentLevelPoints)) * 100
+    : 100
+
+  return (
+    <main className="min-h-screen bg-background">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12">
+
+        {/* ── Two-column profile header ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 mb-8">
+
+          {/* ─ Left: Identity Card ─ */}
+          <div className="bg-card rounded-2xl border border-border p-6 flex flex-col items-center text-center gap-4 h-fit">
+            {/* Avatar */}
+            <div className="relative">
+              <Avatar className="w-28 h-28 ring-4 ring-primary/20">
+                <AvatarImage src={user.avatar} alt={user.username} />
+                <AvatarFallback className="bg-primary text-primary-foreground text-3xl">
+                  {user.username?.charAt(0).toUpperCase() || 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground rounded-full px-3 py-0.5 text-xs font-bold whitespace-nowrap shadow-lg">
+                Lv. {level}
+              </div>
+            </div>
+
+            {/* Name & Handle */}
+            <div>
+              <h1 className="text-xl font-bold text-foreground">{user.fullName || user.username}</h1>
+              <p className="text-sm text-primary font-medium">@{user.username}</p>
+              {user.isPrivate && (
+                <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 bg-secondary rounded-full text-xs text-muted-foreground">
+                  <Lock className="w-3 h-3" /> Private
+                </span>
+              )}
+            </div>
+
+            {/* Edit Profile */}
+            <Link href="/settings" className="w-full">
+              <Button variant="secondary" className="w-full gap-2" size="sm">
+                <Settings className="w-4 h-4" /> Edit Profile
+              </Button>
+            </Link>
+
+            {/* Stats Row */}
+            <div className="flex justify-around w-full py-3 border-t border-b border-border">
+              <div>
+                <p className="text-lg font-bold text-foreground">{stats?.achievements?.reviewsWritten || 0}</p>
+                <p className="text-xs text-muted-foreground">Posts</p>
+              </div>
+              <button onClick={() => { setFollowModalTab("followers"); setShowFollowModal(true) }} className="hover:opacity-80 transition-opacity">
+                <p className="text-lg font-bold text-foreground">{user.followers?.length || 0}</p>
+                <p className="text-xs text-muted-foreground">Followers</p>
+              </button>
+              <button onClick={() => { setFollowModalTab("following"); setShowFollowModal(true) }} className="hover:opacity-80 transition-opacity">
+                <p className="text-lg font-bold text-foreground">{user.following?.length || 0}</p>
+                <p className="text-xs text-muted-foreground">Following</p>
+              </button>
+            </div>
+
+            {/* Bio */}
+            {user.bio && <p className="text-sm text-muted-foreground leading-relaxed">{user.bio}</p>}
+
+            {/* Level Title */}
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full text-sm">
+              <Trophy className="w-4 h-4 text-primary" />
+              <span className="font-medium text-foreground">{levelInfo.title}</span>
+            </div>
+
+            {/* Genres */}
+            {user.preferences?.favoriteGenres?.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-1.5">
+                {user.preferences.favoriteGenres.map(genre => (
+                  <span key={genre} className="px-2.5 py-1 bg-secondary text-foreground rounded-full text-xs">
+                    {genre}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ─ Right: Gamification Panel ─ */}
+          <div className="space-y-6">
+
+            {/* Row 1: Level Ring + Stats */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Level Progress Ring */}
+              <div className="bg-card rounded-2xl border border-border p-6 flex flex-col items-center justify-center">
+                <CircularProgress percentage={progressToNextLevel} size={140} strokeWidth={10}>
+                  <p className="text-3xl font-bold text-foreground">{level}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Level</p>
+                </CircularProgress>
+                <p className="mt-3 text-sm font-semibold text-foreground">{levelInfo.title}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {totalPoints.toLocaleString()} / {nextLevelPoints?.toLocaleString() || '∞'} XP
+                </p>
+              </div>
+
+              {/* Stats */}
+              <div className="bg-card rounded-2xl border border-border p-6">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <BarChart3 className="w-3.5 h-3.5" /> Stats
+                </h3>
+                <div className="space-y-3.5">
+                  {[
+                    { label: "Reviews", value: stats?.achievements?.reviewsWritten || 0, icon: MessageSquare, color: "text-blue-400" },
+                    { label: "Ratings", value: stats?.achievements?.ratingsGiven || 0, icon: Star, color: "text-yellow-400" },
+                    { label: "Likes Earned", value: stats?.achievements?.totalLikes || 0, icon: ThumbsUp, color: "text-pink-400" },
+                    { label: "Replies", value: stats?.achievements?.totalReplies || 0, icon: MessageSquare, color: "text-emerald-400" },
+                  ].map(item => (
+                    <div key={item.label} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <item.icon className={`w-4 h-4 ${item.color}`} />
+                        <span className="text-sm text-muted-foreground">{item.label}</span>
+                      </div>
+                      <span className="text-base font-bold text-foreground">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Row 2: Quick Stat Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              {[
+                { icon: Trophy, label: "Points", value: totalPoints.toLocaleString(), color: "text-primary", bg: "bg-primary/10" },
+                { icon: Award, label: "Badges", value: stats?.badges || 0, color: "text-amber-400", bg: "bg-amber-400/10" },
+                { icon: Film, label: "Watchlist", value: stats?.watchlistCount || 0, color: "text-blue-400", bg: "bg-blue-400/10" },
+                { icon: Heart, label: "Favorites", value: stats?.favoritesCount || 0, color: "text-pink-400", bg: "bg-pink-400/10" },
+                { icon: Flame, label: "Streak", value: `${stats?.streaks?.current || 0}d`, color: "text-orange-400", bg: "bg-orange-400/10" },
+              ].map(stat => (
+                <div key={stat.label} className="bg-card rounded-xl border border-border p-4 flex flex-col items-center gap-2">
+                  <div className={`w-9 h-9 ${stat.bg} rounded-lg flex items-center justify-center`}>
+                    <stat.icon className={`w-4.5 h-4.5 ${stat.color}`} />
+                  </div>
+                  <p className="text-xl font-bold text-foreground">{stat.value}</p>
+                  <p className="text-xs text-muted-foreground">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Row 3: Achievements */}
+            <div className="bg-card rounded-2xl border border-border p-6">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
+                <Award className="w-3.5 h-3.5 text-primary" /> Achievements
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: "Reviews Written", value: stats?.achievements?.reviewsWritten || 0, icon: "✍️" },
+                  { label: "Ratings Given", value: stats?.achievements?.ratingsGiven || 0, icon: "⭐" },
+                  { label: "Friends Referred", value: stats?.achievements?.friendsReferred || 0, icon: "🤝" },
+                ].map(item => (
+                  <div key={item.label} className="flex items-center gap-3 p-3 bg-secondary/30 rounded-xl">
+                    <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-base">{item.icon}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-lg font-bold text-foreground leading-tight">{item.value}</p>
+                      <p className="text-xs text-muted-foreground truncate">{item.label}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Followers/Following Modal */}
+        <FollowersFollowingModal
+          isOpen={showFollowModal}
+          onClose={() => setShowFollowModal(false)}
+          userId={user._id}
+          initialTab={followModalTab}
+          followersCount={user.followers?.length || 0}
+          followingCount={user.following?.length || 0}
+        />
+
+        {/* ── Tabs Section ── */}
+        <div className="bg-card rounded-2xl border border-border overflow-hidden">
+          <div className="flex border-b border-border">
+            {["overview", "watchlist", "favorites", "reviews"].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`flex-1 px-4 py-3.5 text-sm font-semibold transition-colors ${
+                  activeTab === tab
+                    ? "text-primary border-b-2 border-primary bg-primary/5"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
+                }`}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          <div className="p-6">
+            {/* Overview Tab */}
+            {activeTab === "overview" && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-bold text-foreground">Account Information</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {[
+                    { label: "Email", value: user.email },
+                    { label: "Username", value: `@${user.username}` },
+                    { label: "Referral Code", value: stats?.referralCode || user.referralCode || 'N/A' },
+                  ].map(item => (
+                    <div key={item.label} className="bg-secondary/20 rounded-xl p-4">
+                      <p className="text-xs text-muted-foreground mb-1">{item.label}</p>
+                      <p className="text-foreground font-medium truncate">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+                {user.preferences?.favoriteGenres?.length > 0 && (
+                  <div className="bg-secondary/20 rounded-xl p-4">
+                    <p className="text-xs text-muted-foreground mb-2">Favorite Genres</p>
+                    <div className="flex flex-wrap gap-2">
+                      {user.preferences.favoriteGenres.map((genre) => (
+                        <span key={genre} className="px-3 py-1.5 bg-primary/20 text-primary rounded-full text-sm font-medium">
+                          {genre}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Watchlist Tab */}
+            {activeTab === "watchlist" && (
+              <div>
+                <h3 className="text-lg font-bold text-foreground mb-6">Your Watchlist ({watchlist.length})</h3>
+                {watchlistLoading ? (
+                  <CardGridSkeleton count={5} />
+                ) : watchlist.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Film className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground mb-4">Your watchlist is empty</p>
+                    <Link href="/browse"><Button>Browse Movies</Button></Link>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                    {watchlist.map((movie, index) => {
+                      const title = movie.title || movie.name
+                      const mediaType = movie.media_type || (movie.title ? 'movie' : 'tv')
+                      const detailsUrl = mediaType === 'tv' ? `/tv/${movie.id}` : `/movies/${movie.id}`
+                      return (
+                        <div key={`watchlist-${movie.id}-${index}`} className="group relative">
+                          <Link href={detailsUrl}>
+                            <div className="poster-card cursor-pointer">
+                              <img src={`https://image.tmdb.org/t/p/w500${movie.poster}`} alt={title} className="w-full h-auto rounded-lg" />
+                              <div className="poster-overlay">
+                                <div className="w-full">
+                                  <h3 className="font-bold text-white mb-2 line-clamp-2">{title}</h3>
+                                  <span className="rating-badge"><Star className="w-3 h-3 text-primary" />{movie.rating?.toFixed(1)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </Link>
+                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className="text-white cursor-pointer p-1"><MoreVertical className="w-4 h-4" /></button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => removeFromWatchlist(movie.id?.toString())}>
+                                  <Trash2 className="w-4 h-4" /> Remove from Watchlist
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Favorites Tab */}
+            {activeTab === "favorites" && (
+              <div>
+                <h3 className="text-lg font-bold text-foreground mb-6">Your Favorites ({favorites.length})</h3>
+                {favoritesLoading ? (
+                  <CardGridSkeleton count={5} />
+                ) : favorites.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Heart className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground mb-4">You haven&apos;t added any favorites yet</p>
+                    <Link href="/browse"><Button>Browse Movies</Button></Link>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                    {favorites.map((movie, index) => {
+                      const title = movie.title || movie.name
+                      const mediaType = movie.media_type || (movie.title ? 'movie' : 'tv')
+                      const detailsUrl = mediaType === 'tv' ? `/tv/${movie.id}` : `/movies/${movie.id}`
+                      return (
+                        <div key={`fav-${movie.id}-${index}`} className="group relative">
+                          <Link href={detailsUrl}>
+                            <div className="poster-card cursor-pointer">
+                              <img src={`https://image.tmdb.org/t/p/w500${movie.poster}`} alt={title} className="w-full h-auto rounded-lg" />
+                              <div className="poster-overlay">
+                                <div className="w-full">
+                                  <h3 className="font-bold text-white mb-2 line-clamp-2">{title}</h3>
+                                  <span className="rating-badge"><Star className="w-3 h-3 text-primary" />{movie.rating?.toFixed(1)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </Link>
+                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className="text-white cursor-pointer p-1"><MoreVertical className="w-4 h-4" /></button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => window.location.href = `/movies/${movie.id}`}>
+                                  <Pencil className="w-4 h-4" /> Edit Favorite
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => removeFromFavorites(movie.id?.toString())}>
+                                  <Trash2 className="w-4 h-4" /> Remove from Favorites
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Reviews Tab */}
+            {activeTab === "reviews" && (
+              <div>
+                <h3 className="text-lg font-bold text-foreground mb-6">Your Reviews ({reviews.length})</h3>
+                {reviewsLoading ? (
+                  <ReviewListSkeleton count={3} />
+                ) : reviews.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Star className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground mb-4">You haven&apos;t written any reviews yet</p>
+                    <Link href="/browse"><Button>Browse Movies</Button></Link>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {reviews.map((review, index) => (
+                      <Link key={review._id || `review-${index}`} href={`/reviews/${review.mediaType}/${review.mediaId}`}>
+                        <div className="bg-secondary/20 rounded-xl p-5 border border-border hover:border-primary/50 transition-colors cursor-pointer">
+                          <div className="flex items-start justify-between mb-3">
+                            <div>
+                              <h4 className="font-bold text-foreground text-base">{review.title || 'Review'}</h4>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(review.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                              </p>
+                            </div>
+                            <span className="rating-badge"><Star className="w-3 h-3 text-primary" /> {review.rating}/10</span>
+                          </div>
+                          <p className="text-foreground text-sm line-clamp-3">{review.content}</p>
+                          <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1"><ThumbsUp className="w-3 h-3" /> {review.likeCount || 0}</span>
+                            <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" /> {review.replyCount || 0}</span>
+                            {review.hasSpoilers && <span className="text-red-400">Contains spoilers</span>}
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </main>
+  )
+}

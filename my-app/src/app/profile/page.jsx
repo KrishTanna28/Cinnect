@@ -3,13 +3,14 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Settings, LogOut, Trophy, Star, Users, Film, Heart, Award, Flame, Trash2, Pencil, MoreVertical } from "lucide-react"
+import { Settings, LogOut, Trophy, Star, Users, Film, Heart, Award, Flame, Trash2, Pencil, MoreVertical, Lock, Globe } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useUser } from "@/contexts/UserContext"
 import * as movieAPI from "@/lib/movies"
 import { ProfileSkeleton, CardGridSkeleton, ReviewListSkeleton } from "@/components/skeletons"
+import FollowersFollowingModal from "@/components/followers-following-modal"
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState("overview")
@@ -21,6 +22,8 @@ export default function ProfilePage() {
   const [watchlistLoading, setWatchlistLoading] = useState(false)
   const [favoritesLoading, setFavoritesLoading] = useState(false)
   const [reviewsLoading, setReviewsLoading] = useState(false)
+  const [showFollowModal, setShowFollowModal] = useState(false)
+  const [followModalTab, setFollowModalTab] = useState("followers")
   const router = useRouter()
   const { user, isLoading, logout } = useUser()
 
@@ -234,7 +237,7 @@ export default function ProfilePage() {
   return (
     <main className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-gradient-to-r from-primary/20 to-transparent border-b border-border py-12 px-4 sm:px-6 lg:px-8">
+      <div className="border-b border-border py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-6">
@@ -245,15 +248,66 @@ export default function ProfilePage() {
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h1 className="text-4xl font-bold text-foreground mb-2">{user.fullName || user.username}</h1>
-                <p className="text-lg text-primary font-semibold mb-2">@{user.username}</p>
-                <p className="text-muted-foreground">Level {stats?.level || 1} • {stats?.points?.total || 0} Points</p>
-                {user.bio && <p className="text-muted-foreground mt-2 max-w-2xl">{user.bio}</p>}
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="text-4xl font-bold text-foreground">{user.fullName || user.username}</h1>
+                  {user.isPrivate && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-secondary/50 rounded-full text-xs text-muted-foreground">
+                      <Lock className="w-3 h-3" />
+                      Private
+                    </span>
+                  )}
+                </div>
+                <p className="text-lg text-primary font-semibold mb-3">@{user.username}</p>
+
+                {/* Instagram-style stats row */}
+                <div className="flex items-center gap-6 mb-3">
+                  <div className="text-center">
+                    <p className="text-lg font-bold text-foreground">{stats?.achievements?.reviewsWritten || 0}</p>
+                    <p className="text-xs text-muted-foreground">Posts</p>
+                  </div>
+                  <button
+                    onClick={() => { setFollowModalTab("followers"); setShowFollowModal(true) }}
+                    className="text-center cursor-pointer hover:opacity-80 transition-opacity"
+                  >
+                    <p className="text-lg font-bold text-foreground">{user.followers?.length || 0}</p>
+                    <p className="text-xs text-muted-foreground">Followers</p>
+                  </button>
+                  <button
+                    onClick={() => { setFollowModalTab("following"); setShowFollowModal(true) }}
+                    className="text-center cursor-pointer hover:opacity-80 transition-opacity"
+                  >
+                    <p className="text-lg font-bold text-foreground">{user.following?.length || 0}</p>
+                    <p className="text-xs text-muted-foreground">Following</p>
+                  </button>
+                </div>
+
+                <p className="text-muted-foreground text-sm">Level {stats?.level || 1} • {stats?.points?.total || 0} Points</p>
+                {user.bio && <p className="text-muted-foreground mt-2 max-w-2xl text-sm">{user.bio}</p>}
               </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex items-center gap-2 mt-4 md:mt-0">
+              <Link href="/settings">
+                <Button variant="secondary" size="sm" className="gap-2">
+                  <Settings className="w-4 h-4" />
+                  <span className="hidden sm:inline">Edit Profile</span>
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Followers/Following Modal */}
+      <FollowersFollowingModal
+        isOpen={showFollowModal}
+        onClose={() => setShowFollowModal(false)}
+        userId={user._id}
+        initialTab={followModalTab}
+        followersCount={user.followers?.length || 0}
+        followingCount={user.following?.length || 0}
+      />
 
       {/* Stats */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

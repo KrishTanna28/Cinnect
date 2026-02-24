@@ -26,9 +26,9 @@ const ACHIEVEMENT_DEFINITIONS = [
   {
     id: "social_butterfly",
     name: "Social Butterfly",
-    description: "Join 5 watch parties",
+    description: "Follow 5 other users",
     icon: "🦋",
-    field: "watchPartiesJoined",
+    field: "followingCount",
     threshold: 5,
   },
   {
@@ -42,10 +42,10 @@ const ACHIEVEMENT_DEFINITIONS = [
   {
     id: "marathon_runner",
     name: "Marathon Runner",
-    description: "Host 5 watch parties",
+    description: "Add 20 titles to your watchlist",
     icon: "🏃",
-    field: "watchPartiesHosted",
-    threshold: 5,
+    field: "watchlistCount",
+    threshold: 20,
   },
   {
     id: "legendary",

@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
-import { Search, X, User, LogOut, Settings, Home, Compass, Users, Film, Tv, MessageCircle, Loader2, Bot, Clock, Trash2 } from "lucide-react"
+import { Search, X, User, LogOut, Settings, Home, Compass, Users, Film, Tv, MessageCircle, Loader2, Bot, Clock, Trash2, Bell } from "lucide-react"
+import NotificationBell from "@/components/notification-bell"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -295,8 +296,14 @@ export default function Navigation() {
     <>
       {/* Main Navbar (desktop only) */}
       <nav
-        className={`fixed top-0 left-0 right-0 z-30 transition-all duration-1000 ${isVisible ? 'translate-y-0' : '-translate-y-full'
-          } ${hasBackground ? 'bg-background backdrop-blur border-b border-border' : 'bg-transparent border-none'}`}
+        className={`fixed top-0 left-0 right-0 z-30 transition-all duration-500
+          ${isVisible ? 'translate-y-0' : 'md:-translate-y-full'}
+          ${isAtTop
+            ? 'bg-transparent border-none'
+            : 'bg-black/90 backdrop-blur-md border-b border-white/10'}
+          ${hasBackground
+            ? 'md:bg-background md:backdrop-blur md:border-b md:border-border'
+            : 'md:bg-transparent md:border-none'}`}
       >
         <div className="w-full px-4 sm:px-6">
           <div className="flex items-center justify-between h-16">
@@ -307,6 +314,13 @@ export default function Navigation() {
               </div>
               <span className="hidden sm:inline">Cinnect</span>
             </Link>
+
+            {/* Mobile Notification Bell - right side */}
+            {!isLoading && user && (
+              <div className="md:hidden">
+                <NotificationBell />
+              </div>
+            )}
 
             {/* Center Search - Desktop Only - Always Visible */}
             {user && <div
@@ -603,6 +617,8 @@ export default function Navigation() {
                     <Users className="w-5 h-5" />
                   </Link>
 
+                  <NotificationBell />
+
                   <div />
                 </>
               )}
@@ -661,6 +677,8 @@ export default function Navigation() {
 
         </div>
       </nav>
+
+
 
       {/* Mobile Bottom Navigation Bar - Instagram style */}
       {!isLoading && user && (

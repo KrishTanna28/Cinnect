@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { withOptionalAuth } from '@/lib/middleware/withAuth.js'
 import User from '@/lib/models/User.js'
 import Review from '@/lib/models/Review.js'
 import connectDB from '@/lib/config/database.js'
@@ -6,7 +7,7 @@ import connectDB from '@/lib/config/database.js'
 await connectDB()
 
 // GET /api/users/[id] - Get public user profile by ID
-export async function GET(request, { params }) {
+export const GET = withOptionalAuth(async (request, { params, user: currentUser }) => {
   try {
     const { id } = await params
 
@@ -29,7 +30,78 @@ export async function GET(request, { params }) {
       }, { status: 404 })
     }
 
-    // Get user's review stats
+    // Calculate follow relationships
+    const isOwnProfile = currentUser && currentUser._id.toString() === user._id.toString()
+    const isFollowing = currentUser
+      ? currentUser.following.some(fId => fId.toString() === user._id.toString())
+      : false
+    const isFollowedBy = currentUser
+      ? user.following?.some(fId => fId.toString() === currentUser._id.toString())
+      : false
+    const hasRequestedFollow = currentUser && user.followRequests
+      ? user.followRequests.some(req => req.from.toString() === currentUser._id.toString())
+      : false
+
+    // Determine follow status
+    let followStatus = 'none' // none | following | requested
+    if (isFollowing) followStatus = 'following'
+    else if (hasRequestedFollow) followStatus = 'requested'
+
+    // Social counts (always visible like Instagram)
+    const followersCount = user.followers?.length || 0
+    const followingCount = user.following?.length || 0
+
+    // Calculate member duration
+    const memberSince = user.createdAt
+    const now = new Date()
+    const diffTime = Math.abs(now - new Date(memberSince))
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+    // Basic profile data (always visible)
+    const publicProfile = {
+      _id: user._id,
+      username: user.username,
+      fullName: user.fullName,
+      avatar: user.avatar,
+      bio: user.bio,
+      memberSince: user.createdAt,
+      memberDays: diffDays,
+      isPrivate: user.isPrivate || false,
+      followStatus,
+      isOwnProfile,
+      isFollowedBy,
+      followersCount,
+      followingCount,
+      level: user.level || 1,
+      points: user.points || 0,
+    }
+
+    // Check if this profile's detailed content should be visible
+    const canViewFullProfile = isOwnProfile || !user.isPrivate || isFollowing
+
+    if (!canViewFullProfile) {
+      // Private profile - return limited info
+      return NextResponse.json({
+        success: true,
+        data: {
+          ...publicProfile,
+          isProfileLocked: true,
+          stats: {
+            totalReviews: 0,
+            averageRating: '0.0',
+            totalLikes: 0
+          },
+          recentReviews: [],
+          achievements: [],
+          streak: { current: 0, longest: 0 },
+          favoriteGenres: [],
+          watchlistCount: 0,
+          favoritesCount: 0
+        }
+      })
+    }
+
+    // Full profile - get all data
     const reviewStats = await Review.aggregate([
       { $match: { user: user._id } },
       {
@@ -42,14 +114,12 @@ export async function GET(request, { params }) {
       }
     ])
 
-    // Get recent reviews (public)
     const recentReviews = await Review.find({ user: user._id })
       .sort({ createdAt: -1 })
       .limit(5)
       .select('mediaId mediaType mediaTitle rating content createdAt mediaPoster')
       .lean()
 
-    // Format reviews to have consistent field names
     const formattedReviews = recentReviews.map(review => ({
       _id: review._id,
       movieId: review.mediaId,
@@ -61,42 +131,23 @@ export async function GET(request, { params }) {
       poster: review.mediaPoster
     }))
 
-    // Calculate member duration
-    const memberSince = user.createdAt
-    const now = new Date()
-    const diffTime = Math.abs(now - new Date(memberSince))
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-
-    const publicProfile = {
-      _id: user._id,
-      username: user.username,
-      fullName: user.fullName,
-      avatar: user.avatar,
-      bio: user.bio,
-      memberSince: user.createdAt,
-      memberDays: diffDays,
-      // Gamification stats (public)
-      points: user.points || 0,
-      level: user.level || 1,
-      achievements: user.achievements || [],
-      streak: user.streak || { current: 0, longest: 0 },
-      // Review stats
-      stats: {
-        totalReviews: reviewStats[0]?.totalReviews || 0,
-        averageRating: reviewStats[0]?.averageRating?.toFixed(1) || '0.0',
-        totalLikes: reviewStats[0]?.totalLikes || 0
-      },
-      // Recent reviews
-      recentReviews: formattedReviews,
-      // Community stats
-      favoriteGenres: user.favoriteGenres || [],
-      watchlistCount: user.watchlist?.length || 0,
-      favoritesCount: user.favorites?.length || 0
-    }
-
     return NextResponse.json({
       success: true,
-      data: publicProfile
+      data: {
+        ...publicProfile,
+        isProfileLocked: false,
+        achievements: user.achievements || [],
+        streak: user.streaks || { current: 0, longest: 0 },
+        stats: {
+          totalReviews: reviewStats[0]?.totalReviews || 0,
+          averageRating: reviewStats[0]?.averageRating?.toFixed(1) || '0.0',
+          totalLikes: reviewStats[0]?.totalLikes || 0
+        },
+        recentReviews: formattedReviews,
+        favoriteGenres: user.preferences?.favoriteGenres || [],
+        watchlistCount: user.watchlist?.length || 0,
+        favoritesCount: user.favorites?.length || 0
+      }
     })
   } catch (error) {
     console.error('Get public profile error:', error)
@@ -105,4 +156,4 @@ export async function GET(request, { params }) {
       message: error.message || 'Failed to get user profile'
     }, { status: 500 })
   }
-}
+})
