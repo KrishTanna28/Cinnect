@@ -486,8 +486,10 @@ export default function DetailsPage({ params }) {
               )}
             </div>
 
-            {/* Streaming Providers - desktop */}
-            <StreamingProviders type="movie" id={movie.id} />
+            {/* Streaming Providers - desktop only (mobile version is below) */}
+            <div className="hidden md:block">
+              <StreamingProviders type="movie" id={movie.id} />
+            </div>
 
             {/* Action Buttons - hidden on mobile, visible on desktop */}
             <div className="hidden md:flex flex-wrap gap-2 sm:gap-3 md:gap-4 mb-6 sm:mb-8">

@@ -531,8 +531,10 @@ export default function TVDetailsPage({ params }) {
               )}
             </div>
 
-            {/* Streaming Providers - desktop */}
-            <StreamingProviders type="tv" id={tvShow.id} />
+            {/* Streaming Providers - desktop only */}
+            <div className="hidden md:block">
+              <StreamingProviders type="tv" id={tvShow.id} />
+            </div>
 
             {/* Action Buttons - hidden on mobile, visible on desktop */}
             <div className="hidden md:flex flex-wrap gap-2 sm:gap-3 md:gap-4 mb-6 sm:mb-8">

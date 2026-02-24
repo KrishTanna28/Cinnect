@@ -80,7 +80,7 @@ export default function StreamingProviders({ type, id }) {
           <span className="text-sm">Not available for streaming in your region</span>
         </div>
       ) : (
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex flex-wrap gap-2">
           {providers.map((provider) => (
             <a
               key={provider.id}
@@ -88,23 +88,23 @@ export default function StreamingProviders({ type, id }) {
               target="_blank"
               rel="noopener noreferrer"
               title={`Watch on ${provider.name}`}
-              className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-secondary/60 border border-border rounded-lg hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-all duration-200 group cursor-pointer"
+              className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 bg-secondary/60 border border-border rounded-lg hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-all duration-200 group cursor-pointer"
             >
               {provider.logo ? (
                 <img
                   src={provider.logo}
                   alt={provider.name}
-                  className="w-6 h-6 rounded object-contain"
+                  className="w-5 h-5 sm:w-6 sm:h-6 rounded object-contain"
                 />
               ) : (
-                <div className="w-6 h-6 rounded bg-primary/20 flex items-center justify-center">
-                  <Tv2 className="w-3.5 h-3.5 text-primary" />
+                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded bg-primary/20 flex items-center justify-center">
+                  <Tv2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-primary" />
                 </div>
               )}
-              <span className="text-xs font-medium text-foreground whitespace-nowrap group-hover:text-primary transition-colors">
+              <span className="text-[11px] sm:text-xs font-medium text-foreground whitespace-nowrap group-hover:text-primary transition-colors">
                 {provider.name}
               </span>
-              <ExternalLink className="w-3 h-3 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
+              <ExternalLink className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
             </a>
           ))}
         </div>
