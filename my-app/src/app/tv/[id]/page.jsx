@@ -14,6 +14,7 @@ import NewsCarousel from "@/components/news-carousel"
 import StreamingProviders from "@/components/streaming-providers"
 import ReviewPreview from "@/components/review-preview"
 import VideosGrid from "@/components/videos-grid"
+import MovieCard from "@/components/movie-card"
 import { useUser } from "@/contexts/UserContext"
 import { useRouter } from "next/navigation"
 import { MovieDetailSkeleton } from "@/components/skeletons"
@@ -762,32 +763,12 @@ export default function TVDetailsPage({ params }) {
                   [...(tvShow.recommendations || []), ...(tvShow.similar || [])]
                     .map(item => [item.id, item])
                 ).values()].slice(0, 14).map((item) => (
-                  <Link key={item.id} href={`/tv/${item.id}`} className="group cursor-pointer">
-                    <div className="relative overflow-hidden rounded-lg mb-3 aspect-[2/3] bg-secondary">
-                      {item.poster ? (
-                        <img
-                          src={item.poster}
-                          alt={item.title}
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <TvIcon className="w-12 h-12 text-muted-foreground" />
-                        </div>
-                      )}
-                      {item.rating > 0 && (
-                        <div className="absolute top-2 right-2">
-                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-black/70 text-white rounded text-xs font-medium">
-                            <Star className="w-3 h-3 text-primary" />
-                            {item.rating.toFixed(1)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <h3 className="text-xs sm:text-sm font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors">
-                      {item.title}
-                    </h3>
-                  </Link>
+                  <MovieCard
+                    key={item.id}
+                    movie={{ ...item, mediaType: item.mediaType || "tv" }}
+                    href={`/tv/${item.id}`}
+                    alwaysShowInfo={true}
+                  />
                 ))}
               </div>
             </div>

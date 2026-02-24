@@ -98,7 +98,7 @@ export default function VideosGrid({
                 setVideoLoaded(prev => ({ ...prev, [video.id || video.key]: false }))
               }, 300)
             }}
-            className="flex-shrink-0 w-80 group/video relative overflow-hidden rounded-lg cursor-pointer bg-secondary/50 aspect-video flex items-center justify-center transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-primary/20"
+            className="flex-shrink-0 w-80 group/video relative overflow-hidden rounded-lg cursor-pointer bg-secondary/50 aspect-video flex items-center justify-center transition-all duration-300"
           >
             {/* YouTube Thumbnail */}
             <img

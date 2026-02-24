@@ -300,11 +300,7 @@ export function SearchResultsSkeleton() {
     <div className="min-h-[50vh] py-8">
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 sm:gap-4">
         {[...Array(18)].map((_, i) => (
-          <div key={i} className="animate-pulse">
-            <Bone className="aspect-[2/3] w-full rounded-lg mb-3" />
-            <Bone className="h-4 w-3/4 mb-2" />
-            <Bone className="h-3 w-1/2" />
-          </div>
+          <MovieCardSkeleton key={i} />
         ))}
       </div>
     </div>
@@ -430,6 +426,26 @@ export function AuthSkeleton() {
 
 /* ─── Section-level skeletons (for inline use) ───────────── */
 
+/* Single movie card skeleton matching MovieCard overlay UI */
+function MovieCardSkeleton() {
+  return (
+    <div className="animate-pulse">
+      <div className="relative aspect-[2/3] w-full rounded-lg overflow-hidden bg-secondary/50">
+        {/* Overlay info at bottom */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-secondary/80 to-transparent p-2 sm:p-3 space-y-1.5">
+          <Bone className="h-3 w-12 rounded-sm" />
+          <Bone className="h-3.5 w-full rounded-sm" />
+          <Bone className="h-3 w-3/4 rounded-sm" />
+          <div className="flex gap-1.5">
+            <Bone className="h-4 w-10 rounded-sm" />
+            <Bone className="h-4 w-10 rounded-sm" />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* Horizontal poster carousel row */
 export function CarouselRowSkeleton() {
   return (
@@ -438,9 +454,17 @@ export function CarouselRowSkeleton() {
       <div className="flex gap-3 overflow-hidden">
         {[...Array(8)].map((_, i) => (
           <div key={i} className="flex-shrink-0 w-36 animate-pulse">
-            <Bone className="aspect-[2/3] w-full rounded-lg mb-2" />
-            <Bone className="h-4 w-3/4 mb-1" />
-            <Bone className="h-3 w-1/2" />
+            <div className="relative aspect-[2/3] w-full rounded-lg overflow-hidden bg-secondary/50">
+              {/* Faint gradient hint at bottom */}
+              <div className="absolute bottom-0 left-0 right-0 p-2 space-y-1.5">
+                <Bone className="h-2.5 w-10 rounded-sm bg-secondary/40" />
+                <Bone className="h-3 w-full rounded-sm bg-secondary/40" />
+                <div className="flex gap-1.5">
+                  <Bone className="h-3 w-8 rounded-sm bg-secondary/40" />
+                  <Bone className="h-3 w-8 rounded-sm bg-secondary/40" />
+                </div>
+              </div>
+            </div>
           </div>
         ))}
       </div>
@@ -453,11 +477,7 @@ export function CardGridSkeleton({ count = 10, cols = "grid-cols-2 sm:grid-cols-
   return (
     <div className={`grid ${cols} gap-4`}>
       {[...Array(count)].map((_, i) => (
-        <div key={i} className="animate-pulse">
-          <Bone className="aspect-[2/3] w-full rounded-lg mb-2" />
-          <Bone className="h-4 w-3/4 mb-1" />
-          <Bone className="h-3 w-1/2" />
-        </div>
+        <MovieCardSkeleton key={i} />
       ))}
     </div>
   )
@@ -554,7 +574,16 @@ export function InlineLoadingSkeleton({ count = 3 }) {
     <div className="flex gap-3">
       {[...Array(count)].map((_, i) => (
         <div key={i} className="flex-shrink-0 w-36 animate-pulse">
-          <Bone className="aspect-[2/3] w-full rounded-lg" />
+          <div className="relative aspect-[2/3] w-full rounded-lg overflow-hidden bg-secondary/50">
+            <div className="absolute bottom-0 left-0 right-0 p-2 space-y-1.5">
+              <Bone className="h-2.5 w-10 rounded-sm bg-secondary/40" />
+              <Bone className="h-3 w-full rounded-sm bg-secondary/40" />
+              <div className="flex gap-1.5">
+                <Bone className="h-3 w-8 rounded-sm bg-secondary/40" />
+                <Bone className="h-3 w-8 rounded-sm bg-secondary/40" />
+              </div>
+            </div>
+          </div>
         </div>
       ))}
     </div>

@@ -7,6 +7,7 @@ import { X, Filter, Star, Search, Loader2, Film, Tv } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import * as movieAPI from "@/lib/movies"
 import useInfiniteScroll from "@/hooks/useInfiniteScroll"
+import MovieCard from "@/components/movie-card"
 
 const TYPES = ["All", "Movies", "Shows"]
 const LANGUAGES = [
@@ -608,61 +609,30 @@ export default function BrowsePage() {
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3 sm:gap-4">
             {[...Array(21)].map((_, i) => (
               <div key={i} className="animate-pulse">
-                <div className="bg-secondary/50 rounded-lg aspect-[2/3] w-full mb-3"></div>
-                <div className="bg-secondary/50 rounded h-4 w-3/4 mb-2"></div>
-                <div className="bg-secondary/50 rounded h-3 w-1/2"></div>
+                <div className="relative aspect-[2/3] w-full rounded-lg overflow-hidden bg-secondary/50">
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-secondary/80 to-transparent p-2 sm:p-3 space-y-1.5">
+                    <div className="bg-secondary/50 rounded h-3 w-12 animate-pulse"></div>
+                    <div className="bg-secondary/50 rounded h-3.5 w-full animate-pulse"></div>
+                    <div className="bg-secondary/50 rounded h-3 w-3/4 animate-pulse"></div>
+                    <div className="flex gap-1.5">
+                      <div className="bg-secondary/50 rounded h-4 w-10 animate-pulse"></div>
+                      <div className="bg-secondary/50 rounded h-4 w-10 animate-pulse"></div>
+                    </div>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
         ) : results.length > 0 ? (
           <>
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3 sm:gap-4">
-              {results.map((item) => {
-                const detailsPath = item.mediaType === 'tv' ? `/tv/${item.id}` : `/movies/${item.id}`
-                return (
-                  <Link key={`${item.mediaType}-${item.id}`} href={detailsPath} className="group cursor-pointer">
-                    <div className="relative overflow-hidden rounded-lg mb-3 aspect-[2/3] bg-secondary">
-                      {item.poster ? (
-                        <img
-                          src={item.poster}
-                          alt={item.title}
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <span className="text-4xl text-muted-foreground">🎬</span>
-                        </div>
-                      )}
-
-                      {/* Media Type Badge */}
-                      <div className="absolute top-1 left-1 sm:top-2 sm:left-2">
-                        <span className="px-1.5 py-0.5 sm:px-2 sm:py-1 bg-primary text-primary-foreground rounded text-[10px] sm:text-xs font-semibold uppercase">
-                          {item.mediaType === "tv" ? "TV" : "Movie"}
-                        </span>
-                      </div>
-
-                      {/* Rating Badge */}
-                      {item.rating > 0 && (
-                        <div className="absolute top-1 right-1 sm:top-2 sm:right-2">
-                          <span className="inline-flex items-center gap-0.5 sm:gap-1 px-1.5 py-0.5 sm:px-2 sm:py-1 bg-black/70 text-white rounded text-[10px] sm:text-xs font-medium">
-                            <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-primary" />
-                            {item.rating.toFixed(1)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div>
-                      <h3 className="text-xs sm:text-sm font-semibold text-foreground line-clamp-2 mb-1 group-hover:text-primary transition-colors">
-                        {item.title}
-                      </h3>
-                      <p className="text-xs text-muted-foreground">
-                        {item.releaseDate ? new Date(item.releaseDate).getFullYear() : 'N/A'}
-                      </p>
-                    </div>
-                  </Link>
-                )
-              })}
+              {results.map((item) => (
+                <MovieCard
+                  key={`${item.mediaType}-${item.id}`}
+                  movie={item}
+                  alwaysShowInfo={true}
+                />
+              ))}
             </div>
 
             {/* Infinite Scroll Trigger & Loading Indicator */}

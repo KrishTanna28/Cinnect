@@ -57,7 +57,7 @@ export default function ClipsSection({ isModalOpen, setIsModalOpen, videos, movi
                   setVideoLoaded(prev => ({ ...prev, [video.id]: false }))
                 }, 300)
               }}
-              className="group relative overflow-hidden rounded-lg cursor-pointer bg-secondary/50 aspect-video flex items-center justify-center transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-primary/20"
+              className="group relative overflow-hidden rounded-lg cursor-pointer bg-secondary/50 aspect-video flex items-center justify-center transition-all duration-300"
             >
               {/* YouTube Thumbnail */}
               <img

@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import useInfiniteScroll from "@/hooks/useInfiniteScroll"
+import MovieCard from "@/components/movie-card"
 
 export default function RecommendationCarousel({
   title,
@@ -57,60 +58,15 @@ export default function RecommendationCarousel({
           {uniqueMovies.map((movie, index) => {
             const key = `${movie.mediaType || "movie"}-${movie.id}-${index}`
 
-            const detailHref = movie.mediaType === "tv"
-              ? `/tv/${movie.id}`
-              : `/movies/${movie.id}`
-
-            const card = (
-              <div className="flex-shrink-0 w-36">
-                <div className="poster-card group/card">
-                  <img
-                    src={movie.poster || "/placeholder.svg"}
-                    alt={movie.title}
-                    className="w-full h-54 rounded-lg object-cover"
-                    draggable={false}
-                  />
-                  <div className="poster-overlay">
-                    <div className="w-full">
-                      {movie.mediaType && (
-                        <span className="inline-block px-2 py-0.5 bg-primary text-primary-foreground rounded text-xs font-bold uppercase mb-1">
-                          {movie.mediaType === "tv" ? "TV" : "Movie"}
-                        </span>
-                      )}
-                      <h3 className="font-bold text-white mb-2 line-clamp-2">
-                        {movie.title}
-                      </h3>
-                      <div className="flex items-center gap-2">
-                        <span className="rating-badge">
-                          {movie.rating?.toFixed(1)}
-                        </span>
-                        <span className="text-xs text-white bg-black/50 px-2 py-1 rounded">
-                          {movie.releaseDate?.split("-")[0] || movie.year}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+            return (
+              <div key={key} className="flex-shrink-0 w-36">
+                <MovieCard
+                  movie={movie}
+                  alwaysShowInfo={false}
+                  onClick={requireAuth ? () => router.push("/login") : undefined}
+                  draggable={false}
+                />
               </div>
-            )
-
-            return requireAuth ? (
-              <div
-                key={key}
-                onClick={() => router.push("/login")}
-                className="cursor-pointer touch-manipulation"
-              >
-                {card}
-              </div>
-            ) : (
-              <Link
-                key={key}
-                href={detailHref}
-                className="cursor-pointer touch-manipulation block"
-                draggable={false}
-              >
-                {card}
-              </Link>
             )
           })}
 
