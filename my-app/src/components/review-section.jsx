@@ -100,16 +100,16 @@ export default function ReviewSection({ reviews, movieTitle }) {
             <div className="flex items-center gap-4">
               <button
                 onClick={() => toggleLike(review.id)}
-                className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-all active:scale-95 cursor-pointer"
               >
                 <Heart className={`w-4 h-4 ${likedReviews.has(review.id) ? "fill-current text-primary" : ""}`} />
                 <span className="text-sm">{review.likes}</span>
               </button>
-              <button className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors cursor-pointer">
+              <button className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-all active:scale-95 cursor-pointer">
                 <MessageCircle className="w-4 h-4" />
                 <span className="text-sm">Reply</span>
               </button>
-              <button className="flex items-center gap-2 text-muted-foreground hover:text-destructive transition-colors ml-auto cursor-pointer">
+              <button className="flex items-center gap-2 text-muted-foreground hover:text-destructive transition-all active:scale-95 ml-auto cursor-pointer">
                 <Flag className="w-4 h-4" />
               </button>
             </div>

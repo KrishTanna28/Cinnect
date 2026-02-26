@@ -263,7 +263,7 @@ export default function NewPostPage() {
                     <button
                       type="button"
                       onClick={() => removeImage(idx)}
-                      className="absolute top-2 right-2 z-20 p-1.5 transition-opacity cursor-pointer"
+                      className="absolute top-2 right-2 z-20 p-1.5 transition-all active:scale-90 cursor-pointer"
                     >
                       <X className="w-4 h-4 text-muted-foreground hover:text-primary" />
                     </button>
@@ -312,7 +312,7 @@ export default function NewPostPage() {
                     <button
                       type="button"
                       onClick={() => removeVideo(idx)}
-                      className="absolute top-2 right-2 z-20 p-1.5 transition-opacity cursor-pointer"
+                      className="absolute top-2 right-2 z-20 p-1.5 transition-all active:scale-90 cursor-pointer"
                     >
                       <X className="w-4 h-4 text-muted-foreground hover:text-primary" />
                     </button>

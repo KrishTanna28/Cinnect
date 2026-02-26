@@ -254,7 +254,7 @@ export default function BrowsePage() {
             <h2 className="text-xl font-bold text-foreground">Filters</h2>
             <button
               onClick={() => setShowFilters(false)}
-              className="p-2 hover:bg-secondary/50 rounded-lg transition-colors"
+              className="p-2 hover:bg-secondary/50 rounded-lg transition-all active:scale-90 cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -354,7 +354,7 @@ export default function BrowsePage() {
                   clearFilters()
                   setShowFilters(false)
                 }}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-all active:scale-95 cursor-pointer"
               >
                 <X className="w-4 h-4" />
                 Clear Filters
@@ -371,7 +371,7 @@ export default function BrowsePage() {
             {/* Filters button — mobile only */}
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="lg:hidden flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-secondary/50 border border-border rounded-lg text-foreground hover:bg-secondary/70 transition-all"
+              className="lg:hidden flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-secondary/50 border border-border rounded-lg text-foreground hover:bg-secondary/70 transition-all active:scale-95 cursor-pointer"
             >
               <Filter className="w-4 h-4" />
               <span className="text-sm hidden sm:block font-medium">Filters</span>
@@ -393,7 +393,7 @@ export default function BrowsePage() {
                   <button
                     type="button"
                     onClick={() => { setMobileSearchQuery(''); setShowMobileSearchDropdown(false) }}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-all active:scale-90 cursor-pointer"
                   >
                     {isMobileSearching
                       ? <Loader2 className="w-3.5 h-3.5 animate-spin" />

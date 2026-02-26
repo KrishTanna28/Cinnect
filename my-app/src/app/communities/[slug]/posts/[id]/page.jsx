@@ -660,7 +660,7 @@ export default function PostDetailPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <button
           onClick={() => router.back()}
-          className="flex items-center text-sm gap-2 hover:text-primary mb-5"
+          className="flex items-center text-sm gap-2 hover:text-primary transition-all active:scale-95 cursor-pointer mb-5"
         >
           <ArrowLeft className="w-7 h-7" />
         </button>
@@ -706,7 +706,7 @@ export default function PostDetailPage() {
             {canDelete && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="cursor-pointer p-1">
+                  <button className="cursor-pointer p-1 transition-all active:scale-90 hover:text-primary">
                     <MoreVertical className="w-4 h-4 hover:text-primary" />
                   </button>
                 </DropdownMenuTrigger>
@@ -748,7 +748,7 @@ export default function PostDetailPage() {
           <div className="flex items-center gap-4 pt-4 border-t border-border">
             <button
               onClick={handleLikePost}
-              className={`flex items-center gap-2 text-sm transition-colors ${post.likes?.some(id => id?.toString() === user?._id)
+              className={`flex items-center gap-2 text-sm transition-all active:scale-95 cursor-pointer ${post.likes?.some(id => id?.toString() === user?._id)
                 ? "text-primary font-bold"
                 : "text-muted-foreground hover:text-primary"
                 }`}
@@ -764,7 +764,7 @@ export default function PostDetailPage() {
 
             <button
               onClick={handleDislikePost}
-              className={`flex items-center gap-2 text-sm transition-colors ${post.dislikes?.some(id => id?.toString() === user?._id)
+              className={`flex items-center gap-2 text-sm transition-all active:scale-95 cursor-pointer ${post.dislikes?.some(id => id?.toString() === user?._id)
                 ? "text-destructive"
                 : "text-muted-foreground hover:text-destructive"
                 }`}
@@ -866,7 +866,7 @@ export default function PostDetailPage() {
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => handleLikeComment(comment._id)}
-                        className={`flex items-center gap-1 text-xs transition-colors ${comment.likes?.some(id => id?.toString() === user?._id)
+                        className={`flex items-center gap-1 text-xs transition-all active:scale-95 cursor-pointer ${comment.likes?.some(id => id?.toString() === user?._id)
                           ? 'text-primary'
                           : 'text-muted-foreground hover:text-primary'
                           }`}
@@ -882,7 +882,7 @@ export default function PostDetailPage() {
 
                       <button
                         onClick={() => handleDislikeComment(comment._id)}
-                        className={`flex items-center gap-1 text-xs transition-colors ${comment.dislikes?.some(id => id?.toString() === user?._id)
+                        className={`flex items-center gap-1 text-xs transition-all active:scale-95 cursor-pointer ${comment.dislikes?.some(id => id?.toString() === user?._id)
                           ? 'text-destructive'
                           : 'text-muted-foreground hover:text-destructive'
                           }`}
@@ -906,7 +906,7 @@ export default function PostDetailPage() {
                           }
                           setShowReplies(newShowReplies)
                         }}
-                        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+                        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-all active:scale-95 cursor-pointer"
                       >
                         <MessageCircle className="w-3 h-3" />
                         {comment.replies?.length || 0} {comment.replies?.length === 1 ? 'Reply' : 'Replies'}
@@ -915,7 +915,7 @@ export default function PostDetailPage() {
                       {user && !post.isLocked && (
                         <button
                           onClick={() => setReplyingTo(replyingTo === comment._id ? null : comment._id)}
-                          className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                          className="text-xs text-muted-foreground hover:text-primary transition-all active:scale-95 cursor-pointer"
                         >
                           Reply
                         </button>
@@ -948,7 +948,7 @@ export default function PostDetailPage() {
                               <Send className="w-4 h-4" />
                             )}
                           </Button>
-                            <X className="w-6 h-6 text-muted-foreground hover:text-destructive cursor-pointer" onClick={() => setReplyingTo(null)} />
+                            <X className="w-6 h-6 text-muted-foreground hover:text-destructive cursor-pointer transition-all active:scale-90" onClick={() => setReplyingTo(null)} />
                           </div>
                         </div>
                       </div>
@@ -982,7 +982,7 @@ export default function PostDetailPage() {
                               <div className="flex items-center gap-3">
                                 <button
                                   onClick={() => handleLikeReply(comment._id, reply._id)}
-                                  className={`flex items-center gap-1 text-xs transition-colors ${reply.likes?.some(id => id?.toString() === user?._id)
+                                  className={`flex items-center gap-1 text-xs transition-all active:scale-95 cursor-pointer ${reply.likes?.some(id => id?.toString() === user?._id)
                                     ? 'text-primary'
                                     : 'text-muted-foreground hover:text-primary'
                                     }`}
@@ -998,7 +998,7 @@ export default function PostDetailPage() {
 
                                 <button
                                   onClick={() => handleDislikeReply(comment._id, reply._id)}
-                                  className={`flex items-center gap-1 text-xs transition-colors ${reply.dislikes?.some(id => id?.toString() === user?._id)
+                                  className={`flex items-center gap-1 text-xs transition-all active:scale-95 cursor-pointer ${reply.dislikes?.some(id => id?.toString() === user?._id)
                                     ? 'text-destructive'
                                     : 'text-muted-foreground hover:text-destructive'
                                     }`}

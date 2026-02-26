@@ -593,7 +593,7 @@ export default function CommunityPage() {
                   )}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button className="cursor-pointer p-1.5">
+                      <button className="cursor-pointer p-1.5 transition-all active:scale-90">
                         <MoreVertical className="w-5 h-5 hover:text-primary"/>
                       </button>
                     </DropdownMenuTrigger>
@@ -718,7 +718,7 @@ export default function CommunityPage() {
                   {isCreator && !editingAbout && (
                     <button 
                       onClick={() => setEditingAbout(true)}
-                      className="p-1 cursor-pointer"
+                      className="p-1 cursor-pointer transition-all active:scale-90 hover:text-primary"
                     >
                       <Pencil className="w-4 h-4 text-muted-foreground hover:text-primary" />
                     </button>
@@ -738,14 +738,14 @@ export default function CommunityPage() {
                       <div className="flex gap-2">
                         <button
                           onClick={() => { setEditingAbout(false); setAboutText(community.description || '') }}
-                          className="p-1.5 hover:transition-colors cursor-pointer"
+                          className="p-1.5 transition-all active:scale-90 cursor-pointer"
                         >
                           <X className="w-4 h-4 text-muted-foreground hover:text-primary" />
                         </button>
                         <button
                           onClick={handleSaveAbout}
                           disabled={savingAbout}
-                          className="p-1.5 hover: transition-colors cursor-pointer"
+                          className="p-1.5 transition-all active:scale-90 cursor-pointer"
                         >
                           {savingAbout ? (
                             <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -771,7 +771,7 @@ export default function CommunityPage() {
                   {isCreator && !editingRules && (
                     <button 
                       onClick={() => setEditingRules(true)}
-                      className="p-1 cursor-pointer"
+                      className="p-1 cursor-pointer transition-all active:scale-90 hover:text-primary"
                     >
                       <Pencil className="w-4 h-4 text-muted-foreground hover:text-primary" />
                     </button>
@@ -791,7 +791,7 @@ export default function CommunityPage() {
                         />
                         <button
                           onClick={() => removeRule(index)}
-                          className="p-1.5 hover:transition-colors cursor-pointer"
+                          className="p-1.5 transition-all active:scale-90 cursor-pointer"
                         >
                           <X className="w-4 h-4 text-muted-foreground hover:text-primary" />
                         </button>
@@ -799,7 +799,7 @@ export default function CommunityPage() {
                     ))}
                     <button
                       onClick={addRule}
-                      className="w-full p-2 border border-dashed border-border rounded-lg text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors cursor-pointer"
+                      className="w-full p-2 border border-dashed border-border rounded-lg text-sm text-muted-foreground hover:border-primary hover:text-primary transition-all active:scale-95 cursor-pointer"
                     >
                       <Plus className="w-4 h-4 inline mr-1" />
                       Add Rule
@@ -807,14 +807,14 @@ export default function CommunityPage() {
                     <div className="flex justify-end gap-2">
                       <button
                         onClick={() => { setEditingRules(false); setRulesText(community.rules || []) }}
-                        className="p-1.5 hover:transition-colors cursor-pointer"
+                        className="p-1.5 transition-all active:scale-90 cursor-pointer"
                         >
                           <X className="w-4 h-4 text-muted-foreground hover:text-primary" />
                       </button>
                       <button
                         onClick={handleSaveRules}
                         disabled={savingRules}
-                        className="p-1.5"
+                        className="p-1.5 transition-all active:scale-90 cursor-pointer"
                       >
                         {savingRules ? (
                           <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />

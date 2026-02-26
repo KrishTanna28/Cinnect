@@ -246,7 +246,7 @@ export default function EditPostPage() {
                     <button
                       type="button"
                       onClick={() => removeImage(idx)}
-                      className="absolute top-2 right-2 p-1.5 cursor-pointer"
+                      className="absolute top-2 right-2 p-1.5 transition-all active:scale-90 cursor-pointer"
                     >
                       <X className="w-4 h-4 text-muted-foreground hover:text-primary" />
                     </button>

@@ -378,7 +378,7 @@ export default function Navigation() {
                             </button>
                             <button
                               onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); deleteSearchEntry(entry._id); }}
-                              className="flex-shrink-0 p-1 rounded-full text-muted-foreground hover:transition-colors hover:text-primary group-hover:opacity-100 cursor-pointer"
+                              className="flex-shrink-0 p-1 rounded-full text-muted-foreground hover:text-primary group-hover:opacity-100 cursor-pointer transition-all active:scale-90"
                               aria-label="Remove from history"
                             >
                               <X className="w-4 h-4" />
@@ -389,7 +389,7 @@ export default function Navigation() {
                         <div className="border-t border-border mt-1 pt-1 px-3 pb-1">
                           <button
                             onMouseDown={(e) => { e.preventDefault(); clearSearchHistory(); }}
-                            className="w-full text-xs text-muted-foreground hover:text-destructive transition-colors flex items-center justify-center gap-1.5 py-2 cursor-pointer"
+                            className="w-full text-xs text-muted-foreground hover:text-destructive transition-all active:scale-95 flex items-center justify-center gap-1.5 py-2 cursor-pointer"
                           >
                             <Trash2 className="w-3 h-3" />
                             Clear all search history
@@ -614,13 +614,13 @@ export default function Navigation() {
               {!isLoading && user && (
                 <>
                   {/* Navigation Icons */}
-                  <Link href="/" className="p-2 text-foreground hover:text-primary transition-colors cursor-pointer" title="Home">
+                  <Link href="/" className="p-2 text-foreground hover:text-primary transition-all active:scale-90 cursor-pointer" title="Home">
                     <Home className="w-5 h-5" />
                   </Link>
-                  <Link href="/browse" className="p-2 text-foreground hover:text-primary transition-colors cursor-pointer" title="Browse">
+                  <Link href="/browse" className="p-2 text-foreground hover:text-primary transition-all active:scale-90 cursor-pointer" title="Browse">
                     <Compass className="w-5 h-5" />
                   </Link>
-                  <Link href="/communities" className="p-2 text-foreground hover:text-primary transition-colors cursor-pointer" title="Communities">
+                  <Link href="/communities" className="p-2 text-foreground hover:text-primary transition-all active:scale-90 cursor-pointer" title="Communities">
                     <Users className="w-5 h-5" />
                   </Link>
 
@@ -694,7 +694,7 @@ export default function Navigation() {
             {/* Home */}
             <Link
               href="/"
-              className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${pathname === '/' ? 'text-primary' : 'text-muted-foreground'
+              className={`flex flex-col items-center justify-center flex-1 h-full transition-all active:scale-90 ${pathname === '/' ? 'text-primary' : 'text-muted-foreground'
                 }`}
             >
               <Home className="w-6 h-6" strokeWidth={pathname === '/' ? 2.5 : 1.5} />
@@ -703,7 +703,7 @@ export default function Navigation() {
             {/* Browse */}
             <Link
               href="/browse"
-              className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${pathname === '/browse' ? 'text-primary' : 'text-muted-foreground'
+              className={`flex flex-col items-center justify-center flex-1 h-full transition-all active:scale-90 ${pathname === '/browse' ? 'text-primary' : 'text-muted-foreground'
                 }`}
             >
               <Compass className="w-6 h-6" strokeWidth={pathname === '/browse' ? 2.5 : 1.5} />
@@ -712,7 +712,7 @@ export default function Navigation() {
             {/* Communities */}
             <Link
               href="/communities"
-              className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${pathname?.startsWith('/communities') ? 'text-primary' : 'text-muted-foreground'
+              className={`flex flex-col items-center justify-center flex-1 h-full transition-all active:scale-90 ${pathname?.startsWith('/communities') ? 'text-primary' : 'text-muted-foreground'
                 }`}
             >
               <Users className="w-6 h-6" strokeWidth={pathname?.startsWith('/communities') ? 2.5 : 1.5} />
@@ -721,7 +721,7 @@ export default function Navigation() {
             {/* AI Chatbot */}
             <button
               onClick={toggleAIAssistant}
-              className="flex flex-col items-center justify-center flex-1 h-full text-muted-foreground transition-colors cursor-pointer"
+              className="flex flex-col items-center justify-center flex-1 h-full text-muted-foreground transition-all active:scale-90 cursor-pointer"
             >
               <Bot className="w-6 h-6" strokeWidth={1.5} />
             </button>
@@ -771,7 +771,7 @@ export default function Navigation() {
                         setShowProfilePopup(false)
                         handleLogout()
                       }}
-                      className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-destructive hover:bg-secondary transition-colors cursor-pointer"
+                      className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-destructive hover:bg-secondary transition-all active:scale-95 cursor-pointer"
                     >
                       <LogOut className="w-4 h-4" />
                       Logout

@@ -60,7 +60,7 @@ export default function VideosGrid({
       {/* Left Arrow */}
       <button
         onClick={() => scroll("left")}
-        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 md:-translate-x-4 bg-primary text-primary-foreground p-2 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10 cursor-pointer shadow-lg"
+        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 md:-translate-x-4 bg-primary text-primary-foreground p-2 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all active:scale-90 z-10 cursor-pointer shadow-lg"
         aria-label="Scroll left"
       >
         <ChevronLeft className="w-6 h-6" />
@@ -69,7 +69,7 @@ export default function VideosGrid({
       {/* Right Arrow */}
       <button
         onClick={() => scroll("right")}
-        className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 md:translate-x-4 bg-primary text-primary-foreground p-2 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10 cursor-pointer shadow-lg"
+        className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 md:translate-x-4 bg-primary text-primary-foreground p-2 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all active:scale-90 z-10 cursor-pointer shadow-lg"
         aria-label="Scroll right"
       >
         <ChevronRight className="w-6 h-6" />

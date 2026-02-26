@@ -223,7 +223,7 @@ export default function FollowersFollowingModal({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-secondary/50 transition-colors cursor-pointer ml-2"
+            className="p-1.5 rounded-full hover:text-primary transition-all active:scale-90 cursor-pointer ml-2"
           >
             <X className="w-5 h-5" />
           </button>

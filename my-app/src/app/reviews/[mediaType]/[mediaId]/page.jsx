@@ -484,7 +484,7 @@ export default function ReviewsPage({ params }) {
         <div className="mb-8">
           <button
             onClick={() => router.back()}
-            className="flex items-center text-sm gap-2 hover:text-primary mb-5"
+            className="flex items-center text-sm gap-2 hover:text-primary transition-all active:scale-95 cursor-pointer mb-5"
           >
             <ArrowLeft className="w-7 h-7" />
           </button>
@@ -493,7 +493,7 @@ export default function ReviewsPage({ params }) {
             {!showWriteReview && (
               <button
                 onClick={() => setShowWriteReview(!showWriteReview)}
-                className="flex items-center text-sm gap-2 hover:text-primary mb-5"
+                className="flex items-center text-sm gap-2 hover:text-primary transition-all active:scale-95 cursor-pointer mb-5"
               >
                 <Plus className="w-5 h-5" />
                 Write a Review
@@ -758,7 +758,7 @@ export default function ReviewsPage({ params }) {
                   {isOwnReview && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button className="cursor-pointer p-1">
+                        <button className="cursor-pointer p-1 transition-all active:scale-90 hover:text-primary">
                           <MoreVertical className="w-4 h-4" />
                         </button>
                       </DropdownMenuTrigger>
@@ -782,7 +782,7 @@ export default function ReviewsPage({ params }) {
                 <div className="flex items-center gap-4 pt-4 border-t border-border">
                   <button
                     onClick={() => handleLikeReview(review._id)}
-                    className={`flex items-center gap-2 text-sm transition-colors ${review.likes?.some(id => id && user?._id && id?.toString() === user._id?.toString())
+                    className={`flex items-center gap-2 text-sm transition-all active:scale-95 cursor-pointer ${review.likes?.some(id => id && user?._id && id?.toString() === user._id?.toString())
                       ? "text-primary font-bold"
                       : "text-muted-foreground hover:text-primary"
                       }`}
@@ -797,7 +797,7 @@ export default function ReviewsPage({ params }) {
                   </button>
                   <button
                     onClick={() => handleDislikeReview(review._id)}
-                    className={`flex items-center gap-2 text-sm transition-colors ${review.dislikes?.some(id => id && user?._id && id?.toString() === user._id?.toString())
+                    className={`flex items-center gap-2 text-sm transition-all active:scale-95 cursor-pointer ${review.dislikes?.some(id => id && user?._id && id?.toString() === user._id?.toString())
                       ? "text-destructive"
                       : "text-muted-foreground hover:text-destructive"
                       }`}
@@ -822,7 +822,7 @@ export default function ReviewsPage({ params }) {
                         }
                         setShowReplies(newShowReplies)
                       }}
-                      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
+                      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-all active:scale-95 cursor-pointer"
                     >
                       <MessageCircle className="w-4 h-4" />
                       <span>{review.replyCount == 1 ? review.replyCount + ' Reply' : review.replyCount + ' Replies'}</span>
@@ -831,7 +831,7 @@ export default function ReviewsPage({ params }) {
                     {user && (
                       <button
                         onClick={() => setReplyingTo(replyingTo === review._id ? null : review._id)}
-                        className="w-5 h-5 rounded-full border border-muted-foreground flex items-center justify-center text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                        className="w-5 h-5 rounded-full border border-muted-foreground flex items-center justify-center text-muted-foreground hover:border-primary hover:text-primary transition-all active:scale-90 cursor-pointer"
                         title={replyingTo === review._id ? 'Cancel Reply' : 'Write Reply'}
                       >
                         {replyingTo === review._id ? (
@@ -909,7 +909,7 @@ export default function ReviewsPage({ params }) {
                           <div className="flex items-center gap-3 mt-2">
                             <button
                               onClick={() => handleLikeReply(review._id, reply._id)}
-                              className={`flex items-center gap-1 text-xs transition-colors ${reply.likes?.some(id => id && user?._id && id?.toString() === user._id?.toString())
+                              className={`flex items-center gap-1 text-xs transition-all active:scale-95 cursor-pointer ${reply.likes?.some(id => id && user?._id && id?.toString() === user._id?.toString())
                                 ? 'text-primary'
                                 : 'text-muted-foreground hover:text-primary'
                                 }`}
@@ -924,7 +924,7 @@ export default function ReviewsPage({ params }) {
                             </button>
                             <button
                               onClick={() => handleDislikeReply(review._id, reply._id)}
-                              className={`flex items-center gap-1 text-xs transition-colors ${reply.dislikes?.some(id => id && user?._id && id?.toString() === user._id?.toString())
+                              className={`flex items-center gap-1 text-xs transition-all active:scale-95 cursor-pointer ${reply.dislikes?.some(id => id && user?._id && id?.toString() === user._id?.toString())
                                 ? 'text-destructive'
                                 : 'text-muted-foreground hover:text-destructive'
                                 }`}
@@ -943,7 +943,7 @@ export default function ReviewsPage({ params }) {
                                 setMentionUser(reply.user?.username)
                                 setReplyContent(`@${reply.user?.username} `)
                               }}
-                              className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                              className="text-xs text-muted-foreground hover:text-primary transition-all active:scale-95 cursor-pointer"
                             >
                               Reply
                             </button>
@@ -954,7 +954,7 @@ export default function ReviewsPage({ params }) {
                         {user && reply.user?._id === user._id && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <button className="cursor-pointer p-1">
+                              <button className="cursor-pointer p-1 transition-all active:scale-90 hover:text-primary">
                                 <MoreVertical className="w-3.5 h-3.5" />
                               </button>
                             </DropdownMenuTrigger>

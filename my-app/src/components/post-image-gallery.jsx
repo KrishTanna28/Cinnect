@@ -166,7 +166,7 @@ function ImageLightbox({ images, currentIndex, onClose, onPrevious, onNext, onKe
       {/* Close button */}
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 p-2 transition-colors z-10 cursor-pointer"
+        className="absolute top-4 right-4 p-2 transition-all active:scale-90 z-10 cursor-pointer"
         aria-label="Close"
       >
         <X className="w-6 h-6 text-muted-foreground hover:text-primary" />
@@ -176,7 +176,7 @@ function ImageLightbox({ images, currentIndex, onClose, onPrevious, onNext, onKe
       {images.length > 1 && (
         <button
           onClick={onPrevious}
-          className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors z-10"
+          className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all active:scale-90 z-10"
           aria-label="Previous image"
         >
           <ChevronLeft className="w-8 h-8" />
@@ -207,7 +207,7 @@ function ImageLightbox({ images, currentIndex, onClose, onPrevious, onNext, onKe
       {images.length > 1 && (
         <button
           onClick={onNext}
-          className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors z-10"
+          className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all active:scale-90 z-10"
           aria-label="Next image"
         >
           <ChevronRight className="w-8 h-8" />

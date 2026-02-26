@@ -146,7 +146,7 @@ export default function Top10Carousel({
         {/* LEFT BUTTON */}
         <button
           onClick={() => scroll("left")}
-          className="absolute left-2 top-1/2 -translate-y-1/2 bg-primary text-primary-foreground p-2 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-20 shadow-lg"
+          className="absolute left-2 top-1/2 -translate-y-1/2 bg-primary text-primary-foreground p-2 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all active:scale-90 z-20 shadow-lg"
           aria-label="Scroll left"
         >
           <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
@@ -155,7 +155,7 @@ export default function Top10Carousel({
         {/* RIGHT BUTTON */}
         <button
           onClick={() => scroll("right")}
-          className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary text-primary-foreground p-2 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-20 shadow-lg"
+          className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary text-primary-foreground p-2 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all active:scale-90 z-20 shadow-lg"
           aria-label="Scroll right"
         >
           <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />

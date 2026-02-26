@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Settings, LogOut, Trophy, Star, Users, Film, Heart, Award, Flame, Trash2, Pencil, MoreVertical, Lock, Globe } from "lucide-react"
+import { Settings, LogOut, Trophy, Star, Users, Film, Heart, Award, Flame, Trash2, Pencil, MoreVertical, Lock, Globe, X } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -24,6 +24,7 @@ export default function ProfilePage() {
   const [reviewsLoading, setReviewsLoading] = useState(false)
   const [showFollowModal, setShowFollowModal] = useState(false)
   const [followModalTab, setFollowModalTab] = useState("followers")
+  const [showAvatarLightbox, setShowAvatarLightbox] = useState(false)
   const router = useRouter()
   const { user, isLoading, logout } = useUser()
 
@@ -237,19 +238,21 @@ export default function ProfilePage() {
   return (
     <main className="min-h-screen bg-background">
       {/* Header */}
-      <div className="border-b border-border py-12 px-4 sm:px-6 lg:px-8">
+      <div className="border-b border-border py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-6">
-              <Avatar className="w-24 h-24 border-4 border-primary">
-                <AvatarImage src={user.avatar} alt={user.username} />
-                <AvatarFallback className="bg-primary text-primary-foreground text-4xl">
-                  {user.username?.charAt(0).toUpperCase() || 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-4xl font-bold text-foreground">{user.fullName || user.username}</h1>
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-0">
+            <div className="flex flex-col items-center sm:flex-row sm:items-center gap-4 sm:gap-6">
+              <button onClick={() => setShowAvatarLightbox(true)} className="cursor-pointer transition-all active:scale-95 flex-shrink-0">
+                <Avatar className="w-20 h-20 sm:w-24 sm:h-24 border-4 border-primary">
+                  <AvatarImage src={user.avatar} alt={user.username} />
+                  <AvatarFallback className="bg-primary text-primary-foreground text-3xl sm:text-4xl">
+                    {user.username?.charAt(0).toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+              <div className="text-center sm:text-left">
+                <div className="flex items-center gap-3 mb-2 justify-center sm:justify-start">
+                  <h1 className="text-2xl sm:text-4xl font-bold text-foreground">{user.fullName || user.username}</h1>
                   {user.isPrivate && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-secondary/50 rounded-full text-xs text-muted-foreground">
                       <Lock className="w-3 h-3" />
@@ -260,7 +263,7 @@ export default function ProfilePage() {
                 <p className="text-lg text-primary font-semibold mb-3">@{user.username}</p>
 
                 {/* Instagram-style stats row */}
-                <div className="flex items-center gap-6 mb-3">
+                <div className="flex items-center gap-6 mb-3 justify-center sm:justify-start">
                   <div className="text-center">
                     <p className="text-lg font-bold text-foreground">{stats?.achievements?.reviewsWritten || 0}</p>
                     <p className="text-xs text-muted-foreground">Posts</p>
@@ -287,7 +290,7 @@ export default function ProfilePage() {
             </div>
 
             {/* Action buttons */}
-            <div className="flex items-center gap-2 mt-4 md:mt-0">
+            <div className="flex items-center gap-2 justify-center sm:justify-end">
               <Link href="/settings">
                 <Button variant="secondary" size="sm" className="gap-2">
                   <Settings className="w-4 h-4" />
@@ -298,6 +301,29 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Avatar Lightbox */}
+      {showAvatarLightbox && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setShowAvatarLightbox(false)}
+        >
+          <button
+            onClick={() => setShowAvatarLightbox(false)}
+            className="absolute top-4 right-4 p-2 transition-all active:scale-90 cursor-pointer z-10"
+          >
+            <X className="w-6 h-6 text-white/70 hover:text-white" />
+          </button>
+          <div onClick={(e) => e.stopPropagation()} className="animate-in zoom-in-75 duration-300">
+            <Avatar className="w-64 h-64 sm:w-80 sm:h-80 border-4 border-primary shadow-2xl">
+              <AvatarImage src={user.avatar} alt={user.username} className="object-cover" />
+              <AvatarFallback className="bg-primary text-primary-foreground text-8xl">
+                {user.username?.charAt(0).toUpperCase() || 'U'}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+        </div>
+      )}
 
       {/* Followers/Following Modal */}
       <FollowersFollowingModal
@@ -482,7 +508,7 @@ export default function ProfilePage() {
                       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <button className="text-white cursor-pointer p-1">
+                            <button className="text-white cursor-pointer p-1 transition-all active:scale-90 hover:text-primary">
                               <MoreVertical className="w-4 h-4" />
                             </button>
                           </DropdownMenuTrigger>
@@ -544,7 +570,7 @@ export default function ProfilePage() {
                       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <button className="text-white cursor-pointer p-1">
+                            <button className="text-white cursor-pointer p-1 transition-all active:scale-90 hover:text-primary">
                               <MoreVertical className="w-4 h-4" />
                             </button>
                           </DropdownMenuTrigger>

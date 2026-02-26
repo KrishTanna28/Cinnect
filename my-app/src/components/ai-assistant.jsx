@@ -156,7 +156,7 @@ export default function AIAssistant() {
         onClick={() => setIsOpen(true)}
         data-ai-toggle
         className={cn(
-          "fixed bottom-6 right-6 z-50 hidden md:flex items-center justify-center w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all duration-300 hover:scale-110 group",
+          "fixed bottom-6 right-6 z-50 hidden md:flex items-center justify-center w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all duration-300 hover:scale-110 active:scale-95 group",
           isOpen && "!hidden"
         )}
         aria-label="AI Assistant"
@@ -198,7 +198,7 @@ export default function AIAssistant() {
               {/* Hide minimize button on mobile */}
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-2 rounded-lg transition-colors"
+                className="p-2 rounded-lg transition-all active:scale-90 cursor-pointer"
                 aria-label="Close"
               >
                 <X className="w-4 h-4 text-muted-foreground hover:text-primary" />

@@ -81,8 +81,8 @@ export default function PostMediaPreview({ images = [], videos = [] }) {
               preload="metadata"
             />
             {/* Play/Pause icon overlay */}
-            <div className={`absolute inset-0 flex items-center justify-center bg-black/30 transition-opacity ${isPlaying ? 'opacity-0 hover:opacity-100' : 'opacity-100'}`}>
-              <div className="p-3 bg-black/60 rounded-full">
+            <div className={`absolute inset-0 flex items-center justify-center bg-black/30 transition-all ${isPlaying ? 'opacity-0 hover:opacity-100' : 'opacity-100'}`}>
+              <div className="p-3 bg-black/60 rounded-full active:scale-90 transition-transform">
                 {isPlaying ? (
                   <Pause className="w-6 h-6 text-white" />
                 ) : (

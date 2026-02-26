@@ -75,13 +75,13 @@ export default function PostMediaGallery({ images = [], videos = [] }) {
           <>
             <button
               onClick={(e) => { e.stopPropagation(); goToPrevious(); }}
-              className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/60 hover:bg-black/80 rounded-full text-white hover:text-primary opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+              className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/60 hover:bg-black/80 rounded-full text-white hover:text-primary opacity-0 group-hover:opacity-100 transition-all active:scale-90 cursor-pointer"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); goToNext(); }}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/60 hover:bg-black/80 rounded-full text-white hover:text-primary opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/60 hover:bg-black/80 rounded-full text-white hover:text-primary opacity-0 group-hover:opacity-100 transition-all active:scale-90 cursor-pointer"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
@@ -303,7 +303,7 @@ function MediaItem({ media, className = "", showControls = true, inLightbox = fa
                 {/* Play/Pause */}
                 <button
                   onClick={handlePlayPause}
-                  className="p-1.5 text-white hover:text-primary transition-colors cursor-pointer"
+                  className="p-1.5 text-white hover:text-primary transition-all active:scale-90 cursor-pointer"
                   title={isPlaying ? "Pause" : "Play"}
                 >
                   {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 fill-white" />}
@@ -314,14 +314,14 @@ function MediaItem({ media, className = "", showControls = true, inLightbox = fa
                   <>
                     <button
                       onClick={(e) => { e.stopPropagation(); onPrevious?.(); }}
-                      className="p-1.5 text-white hover:text-primary transition-colors cursor-pointer"
+                      className="p-1.5 text-white hover:text-primary transition-all active:scale-90 cursor-pointer"
                       title="Previous"
                     >
                       <SkipBack className="w-4 h-4" />
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); onNext?.(); }}
-                      className="p-1.5 text-white hover:text-primary transition-colors cursor-pointer"
+                      className="p-1.5 text-white hover:text-primary transition-all active:scale-90 cursor-pointer"
                       title="Next"
                     >
                       <SkipForward className="w-4 h-4" />
@@ -332,7 +332,7 @@ function MediaItem({ media, className = "", showControls = true, inLightbox = fa
                 {/* Mute */}
                 <button
                   onClick={handleMuteToggle}
-                  className="p-1.5 text-white hover:text-primary transition-colors cursor-pointer"
+                  className="p-1.5 text-white hover:text-primary transition-all active:scale-90 cursor-pointer"
                   title={isMuted ? "Unmute" : "Mute"}
                 >
                   {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
@@ -349,7 +349,7 @@ function MediaItem({ media, className = "", showControls = true, inLightbox = fa
                 {/* Restart */}
                 <button
                   onClick={handleRestart}
-                  className="p-1.5 text-white hover:text-primary transition-colors cursor-pointer"
+                  className="p-1.5 text-white hover:text-primary transition-all active:scale-90 cursor-pointer"
                   title="Restart"
                 >
                   <RotateCcw className="w-4 h-4" />
@@ -393,7 +393,7 @@ function MediaLightbox({ media, currentIndex, onClose, onPrevious, onNext, onKey
       {/* Close Button */}
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 p-2 transition-colors cursor-pointer z-10"
+        className="absolute top-4 right-4 p-2 transition-all active:scale-90 cursor-pointer z-10"
       >
         <X className="w-6 h-6 text-muted-foreground hover:text-primary" />
       </button>
@@ -403,13 +403,13 @@ function MediaLightbox({ media, currentIndex, onClose, onPrevious, onNext, onKey
         <>
           <button
             onClick={(e) => { e.stopPropagation(); onPrevious(); }}
-            className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white hover:text-primary transition-all cursor-pointer"
+            className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white hover:text-primary transition-all active:scale-90 cursor-pointer"
           >
             <ChevronLeft className="w-8 h-8" />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onNext(); }}
-            className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white hover:text-primary transition-all cursor-pointer"
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white hover:text-primary transition-all active:scale-90 cursor-pointer"
           >
             <ChevronRight className="w-8 h-8" />
           </button>

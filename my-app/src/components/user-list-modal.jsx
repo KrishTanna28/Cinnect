@@ -152,7 +152,7 @@ export default function UserListModal({
           <h2 className="font-semibold text-sm text-foreground">{title}</h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-secondary/50 transition-colors cursor-pointer"
+            className="p-1.5 rounded-full hover:text-primary transition-all active:scale-90 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>

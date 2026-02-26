@@ -405,7 +405,7 @@ export default function SettingsPage() {
             <h2 className="text-lg font-bold text-foreground">Settings</h2>
             <button
               onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
-              className="p-2 rounded-lg hover:bg-secondary/50 transition-colors cursor-pointer"
+              className="p-2 rounded-lg hover:bg-secondary/50 transition-all active:scale-90 cursor-pointer"
             >
               <ChevronRight className={`w-5 h-5 transition-transform ${mobileSidebarOpen ? "rotate-90" : ""}`} />
             </button>
@@ -451,7 +451,7 @@ export default function SettingsPage() {
                       </Avatar>
                       <button
                         onClick={() => fileInputRef.current?.click()}
-                        className="absolute -bottom-1 -right-1 w-7 h-7 bg-primary text-primary-foreground rounded-full flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity"
+                        className="absolute -bottom-1 -right-1 w-7 h-7 bg-primary text-primary-foreground rounded-full flex items-center justify-center cursor-pointer hover:opacity-90 transition-all active:scale-90"
                       >
                         <Camera className="w-3.5 h-3.5" />
                       </button>

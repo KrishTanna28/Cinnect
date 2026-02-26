@@ -305,7 +305,7 @@ export default function NewCommunityPage() {
                   <button
                     type="button"
                     onClick={() => setSelectedEntity(null)}
-                    className="p-1 cursor-pointer"
+                    className="p-1 cursor-pointer transition-all active:scale-90"
                   >
                     <X className="w-5 h-5 text-muted-foreground hover:text-primary" />
                   </button>
@@ -324,7 +324,7 @@ export default function NewCommunityPage() {
                   <button
                     type="button"
                     onClick={() => setBannerPreview("")}
-                    className="absolute top-2 right-2 p-2 cursor-pointer"
+                    className="absolute top-2 right-2 p-2 cursor-pointer transition-all active:scale-90"
                   >
                     <X className="w-4 h-4 text-muted-foreground hover:text-primary" />
                   </button>
@@ -355,7 +355,7 @@ export default function NewCommunityPage() {
                     <button
                       type="button"
                       onClick={() => setIconPreview("")}
-                    className="absolute top-2 right-2 p-2 cursor-pointer"
+                    className="absolute top-2 right-2 p-2 cursor-pointer transition-all active:scale-90"
                     >
                       <X className="w-3 h-3 hover:text-primary" />
                     </button>

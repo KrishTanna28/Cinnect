@@ -186,7 +186,7 @@ export default function NotificationBell() {
       {/* Bell button */}
       <button
         onClick={toggleDropdown}
-        className="relative p-2 text-foreground hover:text-primary transition-colors cursor-pointer"
+        className="relative p-2 text-foreground hover:text-primary transition-all active:scale-90 cursor-pointer"
         title="Notifications"
       >
         <Bell className="w-5 h-5" />
@@ -262,7 +262,7 @@ export default function NotificationBell() {
                         <button
                           onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAction(notif._id, "accept") }}
                           disabled={actionLoading === notif._id}
-                          className="flex items-center gap-1 px-3 py-1 text-xs font-medium bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50"
+                          className="flex items-center gap-1 px-3 py-1 text-xs font-medium bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
                         >
                           {actionLoading === notif._id ? (
                             <Loader2 className="w-3 h-3 animate-spin" />
@@ -274,7 +274,7 @@ export default function NotificationBell() {
                         <button
                           onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAction(notif._id, "reject") }}
                           disabled={actionLoading === notif._id}
-                          className="flex items-center gap-1 px-3 py-1 text-xs font-medium bg-secondary text-foreground rounded-full hover:bg-secondary/80 transition-colors cursor-pointer disabled:opacity-50"
+                          className="flex items-center gap-1 px-3 py-1 text-xs font-medium bg-secondary text-foreground rounded-full hover:bg-secondary/80 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
                         >
                           <X className="w-3 h-3" />
                           Decline

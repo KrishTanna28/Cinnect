@@ -97,7 +97,7 @@ export default function SeasonDetailsPage({ params }) {
         {/* Back Button */}
         <button
       onClick={() => router.back()}
-      className="flex items-center text-sm gap-2 hover:text-primary mb-5"
+      className="flex items-center text-sm gap-2 hover:text-primary transition-all active:scale-95 cursor-pointer mb-5"
     >
       <ArrowLeft className="w-7 h-7" />
     </button>

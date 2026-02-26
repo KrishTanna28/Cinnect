@@ -20,7 +20,8 @@ import {
   Users,
   Trash2,
   Pencil,
-  MoreVertical
+  MoreVertical,
+  X
 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -45,6 +46,7 @@ export default function PublicProfilePage({ params }) {
   const [followingCount, setFollowingCount] = useState(0)
   const [showFollowModal, setShowFollowModal] = useState(false)
   const [followModalTab, setFollowModalTab] = useState('followers')
+  const [showAvatarLightbox, setShowAvatarLightbox] = useState(false)
 
   const [activeTab, setActiveTab] = useState("overview")
   const [reviews, setReviews] = useState([])
@@ -243,19 +245,21 @@ export default function PublicProfilePage({ params }) {
   return (
     <main className="min-h-screen bg-background">
       {/* Header */}
-      <div className="border-b border-border py-12 px-4 sm:px-6 lg:px-8">
+      <div className="border-b border-border py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-6">
-              <Avatar className="w-24 h-24 border-4 border-primary">
-                <AvatarImage src={profile.avatar} alt={profile.username} />
-                <AvatarFallback className="bg-primary text-primary-foreground text-4xl">
-                  {profile.username?.charAt(0).toUpperCase() || 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-4xl font-bold text-foreground">{profile.fullName || profile.username}</h1>
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-0">
+            <div className="flex flex-col items-center sm:flex-row sm:items-center gap-4 sm:gap-6">
+              <button onClick={() => setShowAvatarLightbox(true)} className="cursor-pointer transition-all active:scale-95 flex-shrink-0">
+                <Avatar className="w-20 h-20 sm:w-24 sm:h-24 border-4 border-primary">
+                  <AvatarImage src={profile.avatar} alt={profile.username} />
+                  <AvatarFallback className="bg-primary text-primary-foreground text-3xl sm:text-4xl">
+                    {profile.username?.charAt(0).toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+              <div className="text-center sm:text-left">
+                <div className="flex items-center gap-3 mb-2 justify-center sm:justify-start">
+                  <h1 className="text-2xl sm:text-4xl font-bold text-foreground">{profile.fullName || profile.username}</h1>
                   {profile.isPrivate && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-secondary/50 rounded-full text-xs text-muted-foreground">
                       <Lock className="w-3 h-3" />
@@ -266,7 +270,7 @@ export default function PublicProfilePage({ params }) {
                 <p className="text-lg text-primary font-semibold mb-3">@{profile.username}</p>
 
                 {/* Instagram-style stats row */}
-                <div className="flex items-center gap-6 mb-3">
+                <div className="flex items-center gap-6 mb-3 justify-center sm:justify-start">
                   <div className="text-center">
                     <p className="text-lg font-bold text-foreground">{profile.stats?.totalReviews || 0}</p>
                     <p className="text-xs text-muted-foreground">Posts</p>
@@ -293,17 +297,36 @@ export default function PublicProfilePage({ params }) {
             </div>
 
             {/* Action buttons */}
-            <div className="flex items-center gap-2 mt-4 md:mt-0">
+            <div className="flex items-center gap-2 justify-center sm:justify-end">
               {getFollowButton()}
-              {followStatus === 'following' && profile.isFollowedBy && (
-                <span className="text-xs px-2 py-1 bg-secondary/50 text-muted-foreground rounded-full">
-                  Follows you
-                </span>
-              )}
+              {followStatus === 'following' && profile.isFollowedBy}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Avatar Lightbox */}
+      {showAvatarLightbox && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setShowAvatarLightbox(false)}
+        >
+          <button
+            onClick={() => setShowAvatarLightbox(false)}
+            className="absolute top-4 right-4 p-2 transition-all active:scale-90 cursor-pointer z-10"
+          >
+            <X className="w-6 h-6 text-white/70 hover:text-white" />
+          </button>
+          <div onClick={(e) => e.stopPropagation()} className="animate-in zoom-in-75 duration-300">
+            <Avatar className="w-64 h-64 sm:w-80 sm:h-80 border-4 border-primary shadow-2xl">
+              <AvatarImage src={profile.avatar} alt={profile.username} className="object-cover" />
+              <AvatarFallback className="bg-primary text-primary-foreground text-8xl">
+                {profile.username?.charAt(0).toUpperCase() || 'U'}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+        </div>
+      )}
 
       {/* Followers/Following Modal */}
       <FollowersFollowingModal
