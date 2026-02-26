@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
 import { Search, X, User, LogOut, Settings, Home, Compass, Users, Film, Tv, MessageCircle, Loader2, Bot, Clock, Trash2, Bell } from "lucide-react"
+import { Comfortaa } from "next/font/google"
 import NotificationBell from "@/components/notification-bell"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -16,6 +17,11 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { useUser } from "@/contexts/UserContext"
+
+const comfortaa = Comfortaa({
+  subsets: ["latin"],
+  weight: ["700"],
+})
 
 const searchCategories = [
   { id: 'all', label: 'All' },
@@ -306,13 +312,14 @@ export default function Navigation() {
             : 'md:bg-transparent md:border-none'}`}
       >
         <div className="w-full px-4 sm:px-6">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <Link href="/" className="flex items-center gap-2 font-bold text-2xl text-primary cursor-pointer" style={{ textShadow: hasBackground ? 'none' : '0 2px 4px rgba(0,0,0,0.8)' }}>
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground">
-                C
-              </div>
-              <span className="hidden sm:inline">Cinnect</span>
+          <div className="relative flex items-center justify-between h-16">
+            {/* Logo - Mobile centered */}
+            <Link href="/" className={`sm:hidden absolute left-1/2 -translate-x-1/2 ${comfortaa.className} font-bold text-2xl text-primary`} style={{ textShadow: hasBackground ? 'none' : '0 2px 4px rgba(0,0,0,0.8)' }}>
+              cinnect
+            </Link>
+            {/* Logo - Desktop */}
+            <Link href="/" className={`hidden sm:flex items-center gap-2 ${comfortaa.className} font-bold text-2xl text-primary cursor-pointer`} style={{ textShadow: hasBackground ? 'none' : '0 2px 4px rgba(0,0,0,0.8)' }}>
+              cinnect
             </Link>
 
             {/* Mobile Notification Bell - right side */}

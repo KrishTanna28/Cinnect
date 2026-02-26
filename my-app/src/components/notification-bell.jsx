@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { Bell, Check, X, UserPlus, UserMinus, UserCheck as UserCheckIcon, Users, Sparkles, Loader2 } from "lucide-react"
+import { Bell, Check, X, UserPlus, UserMinus, UserCheck as UserCheckIcon, Users, Sparkles, Loader2, Heart, MessageCircle } from "lucide-react"
 import { useUser } from "@/contexts/UserContext"
 import Link from "next/link"
 
@@ -157,6 +157,10 @@ export default function NotificationBell() {
         return <UserCheckIcon className="w-4 h-4 text-green-400" />
       case "lost_follower":
         return <UserMinus className="w-4 h-4 text-red-400" />
+      case "review_like":
+        return <Heart className="w-4 h-4 text-pink-400" />
+      case "review_reply":
+        return <MessageCircle className="w-4 h-4 text-blue-400" />
       default:
         return <Bell className="w-4 h-4 text-muted-foreground" />
     }
@@ -221,13 +225,20 @@ export default function NotificationBell() {
                 <p className="text-sm text-muted-foreground">No notifications yet</p>
               </div>
             ) : (
-              notifications.map((notif) => (
-                <div
-                  key={notif._id}
-                  className={`flex gap-3 px-4 py-3 border-b border-border/50 transition-colors ${
-                    notif.read ? "bg-transparent" : "bg-primary/5"
-                  }`}
-                >
+              notifications.map((notif) => {
+                const hasLink = !!notif.link
+                const RowTag = hasLink ? Link : "div"
+                const rowProps = hasLink
+                  ? { href: notif.link, onClick: () => setOpen(false) }
+                  : {}
+                return (
+                  <RowTag
+                    key={notif._id}
+                    {...rowProps}
+                    className={`flex gap-3 px-4 py-3 border-b border-border/50 transition-colors ${
+                      hasLink ? "cursor-pointer hover:bg-secondary/40" : ""
+                    } ${notif.read ? "bg-transparent" : "bg-primary/5"}`}
+                  >
                   {/* Icon / avatar */}
                   <div className="flex-shrink-0 mt-0.5">
                     {notif.image ? (
@@ -249,7 +260,7 @@ export default function NotificationBell() {
                     {(notif.type === "follow_request" || notif.type === "community_join_request") && !notif.actionTaken && (
                       <div className="flex items-center gap-2 mt-2">
                         <button
-                          onClick={() => handleAction(notif._id, "accept")}
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAction(notif._id, "accept") }}
                           disabled={actionLoading === notif._id}
                           className="flex items-center gap-1 px-3 py-1 text-xs font-medium bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50"
                         >
@@ -261,7 +272,7 @@ export default function NotificationBell() {
                           Accept
                         </button>
                         <button
-                          onClick={() => handleAction(notif._id, "reject")}
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAction(notif._id, "reject") }}
                           disabled={actionLoading === notif._id}
                           className="flex items-center gap-1 px-3 py-1 text-xs font-medium bg-secondary text-foreground rounded-full hover:bg-secondary/80 transition-colors cursor-pointer disabled:opacity-50"
                         >
@@ -282,27 +293,6 @@ export default function NotificationBell() {
                       </span>
                     )}
 
-                    {/* Clickable link for follow/unfollow */}
-                    {(notif.type === "new_follower" || notif.type === "lost_follower") && notif.link && (
-                      <Link
-                        href={notif.link}
-                        onClick={() => setOpen(false)}
-                        className="inline-block mt-1.5 text-xs text-primary hover:underline"
-                      >
-                        View profile →
-                      </Link>
-                    )}
-
-                    {/* Clickable link for AI-generated */}
-                    {notif.type === "ai_generated" && notif.link && (
-                      <Link
-                        href={notif.link}
-                        onClick={() => setOpen(false)}
-                        className="inline-block mt-1.5 text-xs text-primary hover:underline"
-                      >
-                        Check it out →
-                      </Link>
-                    )}
                   </div>
 
                   {/* Unread dot */}
@@ -311,8 +301,9 @@ export default function NotificationBell() {
                       <div className="w-2 h-2 rounded-full bg-primary" />
                     </div>
                   )}
-                </div>
-              ))
+                  </RowTag>
+                )
+              })
             )}
           </div>
         </div>

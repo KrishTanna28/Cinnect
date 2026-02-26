@@ -24,7 +24,7 @@ export async function GET() {
       console.error("Error fetching trending for suggestions:", error);
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const prompt = `You are C.A.S.T (Cinematic Assistant for Smart Tastes), an AI assistant for Cinnect - a movie and TV show discovery platform. 
     

@@ -68,6 +68,7 @@ export default function SettingsPage() {
   })
   const [avatarPreview, setAvatarPreview] = useState(null)
   const [avatarFile, setAvatarFile] = useState(null)
+  const [removeAvatar, setRemoveAvatar] = useState(false)
   const [profileSaving, setProfileSaving] = useState(false)
 
   // Follow requests state
@@ -171,7 +172,12 @@ export default function SettingsPage() {
       const formData = new FormData()
       formData.append("fullName", profileForm.fullName)
       formData.append("bio", profileForm.bio)
-      if (avatarFile) formData.append("avatar", avatarFile)
+      formData.append("favoriteGenres", JSON.stringify(profileForm.favoriteGenres))
+      if (removeAvatar) {
+        formData.append("removeAvatar", "true")
+      } else if (avatarFile) {
+        formData.append("avatar", avatarFile)
+      }
 
       const response = await fetch("/api/users/me", {
         method: "PUT",
@@ -183,6 +189,8 @@ export default function SettingsPage() {
       if (data.success) {
         updateUser(data.data)
         setAvatarFile(null)
+        setAvatarPreview(null)
+        setRemoveAvatar(false)
         toast({ title: "Profile updated", description: "Your profile has been saved." })
       } else {
         toast({ title: "Error", description: data.message || "Failed to update profile.", variant: "destructive" })
@@ -263,6 +271,13 @@ export default function SettingsPage() {
     }
     setAvatarFile(file)
     setAvatarPreview(URL.createObjectURL(file))
+    setRemoveAvatar(false)
+  }
+
+  const handleRemoveAvatar = () => {
+    setRemoveAvatar(true)
+    setAvatarFile(null)
+    setAvatarPreview(null)
   }
 
   const toggleGenre = (genre) => {
@@ -306,10 +321,6 @@ export default function SettingsPage() {
     <div className="flex flex-col h-full">
       {/* Groups */}
       <div className="flex-1 overflow-y-auto">
-        {/* Account heading */}
-        <p className="px-4 pt-4 pb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          How you use Cinnect
-        </p>
         {SIDEBAR_SECTIONS.filter(s => s.group === "account").map(section => (
           <button
             key={section.id}
@@ -386,9 +397,8 @@ export default function SettingsPage() {
   )
 
   return (
-    <main className="min-h-screen bg-background pt-20 pb-24 md:pb-8">
-      <div className="max-w-6xl mx-auto px-4">
-        <div className="flex flex-col md:flex-row gap-0 md:gap-0 min-h-[calc(100vh-120px)] border border-border rounded-xl overflow-hidden bg-background">
+    <main className="min-h-screen bg-background pb-24 md:pb-0">
+        <div className="flex flex-col md:flex-row min-h-[calc(100vh-64px)]">
 
           {/* Mobile header: current section + hamburger */}
           <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-border">
@@ -409,13 +419,13 @@ export default function SettingsPage() {
           )}
 
           {/* Desktop Sidebar */}
-          <aside className="hidden md:block w-72 border-r border-border flex-shrink-0">
+          <aside className="hidden md:flex md:flex-col w-72 border-r border-border flex-shrink-0 sticky top-16 h-[calc(100vh-64px)] overflow-hidden">
             {sidebarContent}
           </aside>
 
           {/* Main Content */}
           <div className="flex-1 overflow-y-auto">
-            <div className="max-w-2xl mx-auto px-6 py-8">
+            <div className="max-w-3xl mx-auto px-6 py-6">
 
               {/* ─── EDIT PROFILE ─── */}
               {activeSection === "edit-profile" && (
@@ -426,10 +436,18 @@ export default function SettingsPage() {
                   <div className="bg-secondary/20 rounded-2xl p-5 border border-border flex items-center gap-5 mb-6">
                     <div className="relative">
                       <Avatar className="w-20 h-20 border-2 border-primary">
-                        <AvatarImage src={avatarPreview || user.avatar} alt={user.username} />
-                        <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
-                          {user.username?.charAt(0).toUpperCase() || "U"}
-                        </AvatarFallback>
+                        {removeAvatar ? (
+                          <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
+                            {user.username?.charAt(0).toUpperCase() || "U"}
+                          </AvatarFallback>
+                        ) : (
+                          <>
+                            <AvatarImage src={avatarPreview || user.avatar} alt={user.username} />
+                            <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
+                              {user.username?.charAt(0).toUpperCase() || "U"}
+                            </AvatarFallback>
+                          </>
+                        )}
                       </Avatar>
                       <button
                         onClick={() => fileInputRef.current?.click()}
@@ -449,14 +467,25 @@ export default function SettingsPage() {
                       <p className="font-semibold text-foreground">{user.username}</p>
                       <p className="text-sm text-muted-foreground truncate">{user.fullName || user.username}</p>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="default"
-                      className="flex-shrink-0"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      Change photo
-                    </Button>
+                    <div className="flex flex-col gap-2 flex-shrink-0">
+                      <Button
+                        size="sm"
+                        variant="default"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        Change photo
+                      </Button>
+                      {(user.avatar && user.avatar !== 'https://via.placeholder.com/150') || avatarPreview || avatarFile ? (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={handleRemoveAvatar}
+                          disabled={removeAvatar}
+                        >
+                          {removeAvatar ? "Will be removed" : "Remove photo"}
+                        </Button>
+                      ) : null}
+                    </div>
                   </div>
 
                   {/* Full name */}
@@ -755,7 +784,6 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
-      </div>
     </main>
   )
 }

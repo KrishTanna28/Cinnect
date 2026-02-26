@@ -18,6 +18,7 @@ import MovieCard from "@/components/movie-card"
 import { useUser } from "@/contexts/UserContext"
 import { useRouter } from "next/navigation"
 import { MovieDetailSkeleton } from "@/components/skeletons"
+import FriendsLikedBy from "@/components/friends-liked-by"
 
 export default function TVDetailsPage({ params }) {
   const unwrappedParams = use(params)
@@ -562,6 +563,11 @@ export default function TVDetailsPage({ params }) {
                 Share
               </Button>
             </div>
+
+            {/* Friends who liked - desktop */}
+            <div className="hidden md:block">
+              <FriendsLikedBy contentId={unwrappedParams.id} mediaType="tv" />
+            </div>
           </div>
         </div>
 
@@ -627,6 +633,11 @@ export default function TVDetailsPage({ params }) {
               <Share2 className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" />
               Share
             </Button>
+          </div>
+
+          {/* Friends who liked - mobile */}
+          <div className="mt-4">
+            <FriendsLikedBy contentId={unwrappedParams.id} mediaType="tv" />
           </div>
         </div>
 

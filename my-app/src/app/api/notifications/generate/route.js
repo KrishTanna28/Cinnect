@@ -44,7 +44,7 @@ export const POST = withAuth(async (request, { user }) => {
 
     const howMany = Math.min(3, 5 - recentAiCount);
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
     const prompt = `You are generating push-notification style alerts for "Cinnect", a social movie & TV discovery platform.
 

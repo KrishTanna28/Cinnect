@@ -39,6 +39,7 @@ export const PUT = withAuth(async (request, { user }) => {
     // Update privacy
     if (typeof isPrivate === 'boolean') {
       user.isPrivate = isPrivate
+      user.markModified('isPrivate')
 
       // If switching from private to public, approve all pending follow requests
       if (!isPrivate && user.followRequests && user.followRequests.length > 0) {
@@ -55,28 +56,33 @@ export const PUT = withAuth(async (request, { user }) => {
           })
         }
         user.followRequests = []
+        user.markModified('followRequests')
       }
     }
 
     // Update notifications
     if (notifications) {
       if (!user.preferences) user.preferences = {}
+      if (!user.preferences.notifications) user.preferences.notifications = {}
       user.preferences.notifications = {
         ...user.preferences.notifications,
         ...notifications
       }
+      user.markModified('preferences.notifications')
     }
 
     // Update theme
     if (theme && ['dark', 'light'].includes(theme)) {
       if (!user.preferences) user.preferences = {}
       user.preferences.theme = theme
+      user.markModified('preferences.theme')
     }
 
     // Update language
     if (language) {
       if (!user.preferences) user.preferences = {}
       user.preferences.language = language
+      user.markModified('preferences.language')
     }
 
     await user.save()

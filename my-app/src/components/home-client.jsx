@@ -481,8 +481,8 @@ export default function HomeClient({ initialData }) {
                 key={index}
                 onClick={() => setCurrentFeaturedIndex(index)}
                 className={`h-1 rounded-full transition-all ${index === currentFeaturedIndex
-                    ? 'w-8 bg-primary'
-                    : 'w-1 bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                  ? 'w-8 bg-primary'
+                  : 'w-1 bg-muted-foreground/30 hover:bg-muted-foreground/50'
                   }`}
                 aria-label={`Go to featured item ${index + 1}`}
               />
@@ -859,10 +859,10 @@ export default function HomeClient({ initialData }) {
         {!isAuthenticated && (
           <div className="mt-16 text-center py-12 bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 rounded-2xl">
             <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-4">
-              Unlock Personalized Recommendations
+              Explore More Movies & Shows
             </h2>
             <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-              Sign in to discover 20+ categories of movies and TV shows tailored just for you!
+              Sign in to access the full collection of movies and TV shows.
             </p>
             <Link
               href="/login"

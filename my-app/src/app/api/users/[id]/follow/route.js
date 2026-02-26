@@ -93,15 +93,18 @@ export const POST = withAuth(async (request, { params, user }) => {
 
     // Create "new follower" notification for the target user
     try {
-      await Notification.create({
-        recipient: targetUserId,
-        type: 'new_follower',
-        fromUser: user._id,
-        title: 'New Follower',
-        message: `${user.fullName || user.username} started following you.`,
-        image: user.avatar || '',
-        link: `/profile/${user._id}`
-      })
+      const pushEnabled = targetUser.preferences?.notifications?.push !== false
+      if (pushEnabled) {
+        await Notification.create({
+          recipient: targetUserId,
+          type: 'new_follower',
+          fromUser: user._id,
+          title: 'New Follower',
+          message: `${user.fullName || user.username} started following you.`,
+          image: user.avatar || '',
+          link: `/profile/${user._id}`
+        })
+      }
     } catch (notifErr) {
       console.error('Failed to create follow notification:', notifErr)
     }
@@ -191,15 +194,18 @@ export const DELETE = withAuth(async (request, { params, user }) => {
 
     // Create "lost follower" notification for the target user
     try {
-      await Notification.create({
-        recipient: targetUserId,
-        type: 'lost_follower',
-        fromUser: user._id,
-        title: 'Lost a Follower',
-        message: `${user.fullName || user.username} unfollowed you.`,
-        image: user.avatar || '',
-        link: `/profile/${user._id}`
-      })
+      const pushEnabled = targetUser.preferences?.notifications?.push !== false
+      if (pushEnabled) {
+        await Notification.create({
+          recipient: targetUserId,
+          type: 'lost_follower',
+          fromUser: user._id,
+          title: 'Lost a Follower',
+          message: `${user.fullName || user.username} unfollowed you.`,
+          image: user.avatar || '',
+          link: `/profile/${user._id}`
+        })
+      }
     } catch (notifErr) {
       console.error('Failed to create unfollow notification:', notifErr)
     }

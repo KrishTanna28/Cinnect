@@ -27,17 +27,47 @@ export const PUT = withAuth(async (request, { user }) => {
     const fullName = formData.get('fullName')
     const bio = formData.get('bio')
     const avatarFile = formData.get('avatar')
+    const favoriteGenresRaw = formData.get('favoriteGenres')
 
-    // Update allowed fields
-    if (fullName) user.fullName = fullName
-    if (bio !== null) user.bio = bio
+    // Update allowed fields (use !== null so empty strings can clear fields)
+    if (fullName !== null && fullName !== undefined) user.fullName = fullName
+    if (bio !== null && bio !== undefined) user.bio = bio
+
+    // Handle favorite genres
+    if (favoriteGenresRaw !== null && favoriteGenresRaw !== undefined) {
+      try {
+        const genres = JSON.parse(favoriteGenresRaw)
+        if (Array.isArray(genres)) {
+          if (!user.preferences) user.preferences = {}
+          user.preferences.favoriteGenres = genres
+          user.markModified('preferences.favoriteGenres')
+        }
+      } catch {
+        // Ignore invalid JSON for genres
+      }
+    }
+
+    // Handle avatar removal
+    const removeAvatar = formData.get('removeAvatar')
+    if (removeAvatar === 'true') {
+      user.avatar = null
+      user.markModified('avatar')
+    }
 
     // Handle avatar upload if provided
-    if (avatarFile) {
-      const { uploadAvatarToCloudinary } = await import('@/lib/utils/cloudinaryHelper.js')
-      const avatarBuffer = Buffer.from(await avatarFile.arrayBuffer())
-      const avatarUrl = await uploadAvatarToCloudinary(avatarBuffer, avatarFile.name)
-      user.avatar = avatarUrl
+    if (!removeAvatar && avatarFile && typeof avatarFile !== 'string' && avatarFile.size > 0) {
+      try {
+        const { uploadAvatarToCloudinary } = await import('@/lib/utils/cloudinaryHelper.js')
+        const avatarBuffer = Buffer.from(await avatarFile.arrayBuffer())
+        const avatarUrl = await uploadAvatarToCloudinary(avatarBuffer, avatarFile.name, user._id.toString())
+        user.avatar = avatarUrl
+      } catch (uploadError) {
+        console.error('Avatar upload failed:', uploadError)
+        return NextResponse.json(
+          { success: false, message: 'Failed to upload avatar image' },
+          { status: 500 }
+        )
+      }
     }
 
     await user.save()
