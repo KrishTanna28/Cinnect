@@ -150,7 +150,7 @@ export const POST = withAuth(async (request, { user, params }) => {
   try {
     const { slug } = await params
     const body = await request.json()
-    const { title, content, images, videos } = body
+    const { title, content, images, videos, spoiler } = body
 
     if (!title) {
       return NextResponse.json(
@@ -180,6 +180,7 @@ export const POST = withAuth(async (request, { user, params }) => {
       community: community._id,
       title,
       content,
+      spoiler: spoiler || false,
       images: [],
       videos: [],
       user: user._id

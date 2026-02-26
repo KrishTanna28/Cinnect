@@ -39,6 +39,7 @@ export default function ReviewsPage({ params }) {
   // Reply state
   const [replyingTo, setReplyingTo] = useState(null)
   const [replyContent, setReplyContent] = useState('')
+  const [replySpoiler, setReplySpoiler] = useState(false)
   const [showReplies, setShowReplies] = useState(new Set())
   const [mentionUser, setMentionUser] = useState(null)
   const [revealedSpoilers, setRevealedSpoilers] = useState(new Set())
@@ -109,11 +110,35 @@ export default function ReviewsPage({ params }) {
     }
 
     try {
+      // Auto-detect spoiler if checkbox is not checked
+      let finalSpoiler = reviewForm.spoiler
+      if (!finalSpoiler && reviewForm.content.trim().length > 0) {
+        try {
+          const detectRes = await fetch('/api/spoiler-detect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: `${reviewForm.title}. ${reviewForm.content}` })
+          })
+          const detectData = await detectRes.json()
+          if (detectData.success) {
+            const pct = ((detectData.data?.scores?.spoiler ?? detectData.data?.confidence ?? 0) * 100).toFixed(1)
+            console.log(`[Spoiler Detection] Review: ${pct}% spoiler probability (threshold: 60%)`)
+          }
+          if (detectData.success && detectData.data?.isSpoiler) {
+            finalSpoiler = true
+          }
+        } catch (detectErr) {
+          console.error('Spoiler detection failed, proceeding without:', detectErr)
+        }
+      }
+
+      const formWithSpoiler = { ...reviewForm, spoiler: finalSpoiler }
+
       if (editingReview) {
         // Optimistic update for editing
         const optimisticReview = {
           ...editingReview,
-          ...reviewForm,
+          ...formWithSpoiler,
           updatedAt: new Date().toISOString()
         }
         setReviews(prev => prev.map(r => r._id === editingReview._id ? optimisticReview : r))
@@ -125,7 +150,7 @@ export default function ReviewsPage({ params }) {
         // Update existing review
         const data = await updateReview(
           editingReview._id,
-          reviewForm
+          formWithSpoiler
         )
 
         if (data.success) {
@@ -141,7 +166,7 @@ export default function ReviewsPage({ params }) {
             avatar: user.avatar,
             fullName: user.fullName
           },
-          ...reviewForm,
+          ...formWithSpoiler,
           mediaId: unwrappedParams.mediaId,
           mediaType: unwrappedParams.mediaType,
           likes: [],
@@ -156,7 +181,7 @@ export default function ReviewsPage({ params }) {
         setReviews(prev => [tempReview, ...prev])
         setSuccess('Review posted successfully!')
         setShowWriteReview(false)
-        const formData = { ...reviewForm }
+        const formData = { ...formWithSpoiler }
         setReviewForm({ rating: 5, title: '', content: '', spoiler: false })
 
         // Create new review
@@ -255,6 +280,28 @@ export default function ReviewsPage({ params }) {
 
     if (!replyContent.trim()) return
 
+    // Auto-detect spoiler if checkbox is not checked
+    let finalSpoiler = replySpoiler
+    if (!finalSpoiler && replyContent.trim().length > 0) {
+      try {
+        const detectRes = await fetch('/api/spoiler-detect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: replyContent })
+        })
+        const detectData = await detectRes.json()
+        if (detectData.success) {
+          const pct = ((detectData.data?.scores?.spoiler ?? detectData.data?.confidence ?? 0) * 100).toFixed(1)
+          console.log(`[Spoiler Detection] Review reply: ${pct}% spoiler probability (threshold: 60%)`)
+        }
+        if (detectData.success && detectData.data?.isSpoiler) {
+          finalSpoiler = true
+        }
+      } catch (detectErr) {
+        console.error('Spoiler detection failed, proceeding without:', detectErr)
+      }
+    }
+
     const tempReply = {
       _id: 'temp-' + Date.now(),
       user: {
@@ -264,6 +311,7 @@ export default function ReviewsPage({ params }) {
         fullName: user.fullName
       },
       content: replyContent,
+      spoiler: finalSpoiler,
       likes: [],
       dislikes: [],
       createdAt: new Date().toISOString()
@@ -283,15 +331,17 @@ export default function ReviewsPage({ params }) {
 
     // Clear form and show replies
     const contentToSend = replyContent
+    const spoilerToSend = finalSpoiler
     setReplyingTo(null)
     setReplyContent('')
+    setReplySpoiler(false)
     setMentionUser(null)
     const newShowReplies = new Set(showReplies)
     newShowReplies.add(reviewId)
     setShowReplies(newShowReplies)
 
     try {
-      const data = await addReply(reviewId, contentToSend)
+      const data = await addReply(reviewId, contentToSend, spoilerToSend)
 
       if (data.success) {
         // Replace temp reply with actual data from server
@@ -632,6 +682,9 @@ export default function ReviewsPage({ params }) {
                 <label htmlFor="spoiler" className="text-sm text-foreground cursor-pointer">
                   Contains Spoilers
                 </label>
+                <span className="text-xs text-muted-foreground">
+                  (If unchecked, AI will auto-detect spoilers)
+                </span>
               </div>
 
               <div className="flex gap-2">
@@ -880,13 +933,30 @@ export default function ReviewsPage({ params }) {
                         <Send className="w-4 h-4" />
                       </Button>
                     </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <input
+                        type="checkbox"
+                        id={`reply-spoiler-${review._id}`}
+                        checked={replySpoiler}
+                        onChange={(e) => setReplySpoiler(e.target.checked)}
+                        className="w-3.5 h-3.5"
+                      />
+                      <label htmlFor={`reply-spoiler-${review._id}`} className="text-xs text-muted-foreground cursor-pointer">
+                        Contains Spoilers
+                      </label>
+                    </div>
                   </div>
                 )}
 
                 {/* Replies */}
                 {review.replies && review.replies.length > 0 && showReplies.has(review._id) && (
                   <div className="mt-4 pl-16 space-y-4">
-                    {review.replies.map((reply) => (
+                    {review.replies.map((reply) => {
+                      const isOwnReply = user && reply.user?._id === user._id
+                      const replySpoilerRevealed = revealedSpoilers.has(reply._id)
+                      const shouldBlurReply = reply.spoiler && !replySpoilerRevealed && !isOwnReply
+
+                      return (
                       <div key={reply._id} className="flex gap-3">
                         <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
                           {reply.user?.avatar ? (
@@ -904,8 +974,30 @@ export default function ReviewsPage({ params }) {
                             <span className="text-xs text-muted-foreground">
                               {new Date(reply.createdAt).toLocaleDateString()}
                             </span>
+                            {reply.spoiler && (
+                              <span className="px-1.5 py-0.5 bg-destructive/20 text-destructive rounded text-xs font-semibold flex items-center gap-1">
+                                <AlertTriangle className="w-2.5 h-2.5" />
+                                SPOILER
+                              </span>
+                            )}
                           </div>
-                          <p className="text-sm text-foreground">{reply.content}</p>
+                          <div className="relative">
+                            <p className={`text-sm text-foreground transition-all ${shouldBlurReply ? 'blur-md select-none' : ''}`}>{reply.content}</p>
+                            {shouldBlurReply && (
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <button
+                                  onClick={() => {
+                                    const newRevealed = new Set(revealedSpoilers)
+                                    newRevealed.add(reply._id)
+                                    setRevealedSpoilers(newRevealed)
+                                  }}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive/90 hover:bg-destructive text-white rounded-lg text-xs font-semibold transition-colors shadow-lg cursor-pointer"
+                                >
+                                  Reveal Spoiler
+                                </button>
+                              </div>
+                            )}
+                          </div>
                           <div className="flex items-center gap-3 mt-2">
                             <button
                               onClick={() => handleLikeReply(review._id, reply._id)}
@@ -978,7 +1070,7 @@ export default function ReviewsPage({ params }) {
                           </DropdownMenu>
                         )}
                       </div>
-                    ))}
+                    )})}
                   </div>
                 )}
               </div>

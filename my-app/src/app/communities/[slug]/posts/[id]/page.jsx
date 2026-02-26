@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft, ThumbsUp, ThumbsDown, MessageCircle, Eye, Pin, Lock, Trash2, Send, Pencil, MoreVertical, Cross2, X } from "lucide-react"
+import { ArrowLeft, ThumbsUp, ThumbsDown, MessageCircle, Eye, Pin, Lock, Trash2, Send, Pencil, MoreVertical, Cross2, X, AlertTriangle } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -22,6 +22,9 @@ export default function PostDetailPage() {
   const [showReplies, setShowReplies] = useState(new Set())
   const [submitting, setSubmitting] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [commentSpoiler, setCommentSpoiler] = useState(false)
+  const [replySpoiler, setReplySpoiler] = useState(false)
+  const [revealedSpoilers, setRevealedSpoilers] = useState(new Set())
   const [loadingMoreComments, setLoadingMoreComments] = useState(false)
   const [commentsPage, setCommentsPage] = useState(1)
   const [hasMoreComments, setHasMoreComments] = useState(true)
@@ -350,6 +353,28 @@ export default function PostDetailPage() {
 
     setSubmitting(true)
     try {
+      // Auto-detect spoiler if checkbox is not checked
+      let finalSpoiler = commentSpoiler
+      if (!finalSpoiler && commentText.trim().length > 0) {
+        try {
+          const detectRes = await fetch('/api/spoiler-detect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: commentText })
+          })
+          const detectData = await detectRes.json()
+          if (detectData.success) {
+            const pct = ((detectData.data?.scores?.spoiler ?? detectData.data?.confidence ?? 0) * 100).toFixed(1)
+            console.log(`[Spoiler Detection] Comment: ${pct}% spoiler probability (threshold: 60%)`)
+          }
+          if (detectData.success && detectData.data?.isSpoiler) {
+            finalSpoiler = true
+          }
+        } catch (detectErr) {
+          console.error('Spoiler detection failed, proceeding without:', detectErr)
+        }
+      }
+
       const token = localStorage.getItem('token')
       const response = await fetch(`/api/posts/${params.id}/comment`, {
         method: 'POST',
@@ -357,13 +382,14 @@ export default function PostDetailPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ content: commentText })
+        body: JSON.stringify({ content: commentText, spoiler: finalSpoiler })
       })
 
       const data = await response.json()
 
       if (data.success) {
         setCommentText("")
+        setCommentSpoiler(false)
         setPost(data.data) // Update with the new comment
         toast({
           title: "Success",
@@ -398,6 +424,28 @@ export default function PostDetailPage() {
 
     setSubmitting(true)
     try {
+      // Auto-detect spoiler if checkbox is not checked
+      let finalSpoiler = replySpoiler
+      if (!finalSpoiler && replyContent.trim().length > 0) {
+        try {
+          const detectRes = await fetch('/api/spoiler-detect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: replyContent })
+          })
+          const detectData = await detectRes.json()
+          if (detectData.success) {
+            const pct = ((detectData.data?.scores?.spoiler ?? detectData.data?.confidence ?? 0) * 100).toFixed(1)
+            console.log(`[Spoiler Detection] Reply: ${pct}% spoiler probability (threshold: 60%)`)
+          }
+          if (detectData.success && detectData.data?.isSpoiler) {
+            finalSpoiler = true
+          }
+        } catch (detectErr) {
+          console.error('Spoiler detection failed, proceeding without:', detectErr)
+        }
+      }
+
       const token = localStorage.getItem('token')
       const response = await fetch(`/api/posts/${params.id}/comment/${commentId}/reply`, {
         method: 'POST',
@@ -405,13 +453,14 @@ export default function PostDetailPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ content: replyContent })
+        body: JSON.stringify({ content: replyContent, spoiler: finalSpoiler })
       })
 
       const data = await response.json()
 
       if (data.success) {
         setReplyContent('')
+        setReplySpoiler(false)
         setReplyingTo(null)
         setPost(data.data)
         const newShowReplies = new Set(showReplies)
@@ -654,6 +703,13 @@ export default function PostDetailPage() {
   }
 
   const canDelete = user && (user._id === post.user?._id || post.community?.moderators?.includes(user._id))
+  const isOwnPost = user && user._id === post.user?._id
+  const postSpoilerRevealed = revealedSpoilers.has(post._id)
+  const shouldBlurPost = post.spoiler && !postSpoilerRevealed && !isOwnPost
+
+  const revealSpoiler = (id) => {
+    setRevealedSpoilers(prev => new Set([...prev, id]))
+  }
 
   return (
     <main className="min-h-screen bg-background">
@@ -732,15 +788,38 @@ export default function PostDetailPage() {
           </div>
 
           {/* Title */}
-          <h1 className="text-xl font-bold text-foreground mb-4">{post.title}</h1>
+          <div className="relative">
+            {post.spoiler && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 mb-2 bg-destructive/20 text-destructive rounded text-xs font-semibold">
+                <AlertTriangle className="w-3 h-3" />
+                SPOILER
+              </span>
+            )}
+            <h1 className={`text-xl font-bold text-foreground mb-4 transition-all ${shouldBlurPost ? 'blur-md select-none' : ''}`}>{post.title}</h1>
+          </div>
 
           {/* Media Gallery (Images + Videos) */}
-          <PostMediaGallery images={post.images} videos={post.videos} />
+          <div className={`transition-all ${shouldBlurPost ? 'blur-md select-none pointer-events-none' : ''}`}>
+            <PostMediaGallery images={post.images} videos={post.videos} />
+          </div>
 
           {/* Content */}
           {post.content && (
-            <div className="text-muted-foreground whitespace-pre-wrap mb-4">
+            <div className={`text-muted-foreground whitespace-pre-wrap mb-4 transition-all ${shouldBlurPost ? 'blur-md select-none' : ''}`}>
               {post.content}
+            </div>
+          )}
+
+          {/* Spoiler Reveal Button for Post */}
+          {shouldBlurPost && (
+            <div className="flex justify-center mb-4">
+              <button
+                onClick={() => revealSpoiler(post._id)}
+                className="flex items-center gap-2 px-4 py-2 bg-destructive/90 hover:bg-destructive text-white rounded-lg text-sm font-semibold transition-colors shadow-lg cursor-pointer"
+              >
+                <Eye className="w-4 h-4" />
+                Click to Reveal Spoiler
+              </button>
             </div>
           )}
 
@@ -823,6 +902,18 @@ export default function PostDetailPage() {
                   )}
                 </Button>
               </div>
+              <div className="flex items-center gap-2 mt-2">
+                <input
+                  type="checkbox"
+                  id="comment-spoiler"
+                  checked={commentSpoiler}
+                  onChange={(e) => setCommentSpoiler(e.target.checked)}
+                  className="w-3.5 h-3.5"
+                />
+                <label htmlFor="comment-spoiler" className="text-xs text-muted-foreground cursor-pointer">
+                  Contains Spoilers
+                </label>
+              </div>
             </form>
           )}
 
@@ -841,7 +932,12 @@ export default function PostDetailPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {allComments.map((comment) => (
+              {allComments.map((comment) => {
+                const isOwnComment = user && comment.user?._id === user._id
+                const commentSpoilerRevealed = revealedSpoilers.has(comment._id)
+                const shouldBlurComment = comment.spoiler && !commentSpoilerRevealed && !isOwnComment
+
+                return (
                 <div key={comment._id} className="flex gap-3">
                   <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
                     {comment.user?.avatar ? (
@@ -859,9 +955,28 @@ export default function PostDetailPage() {
                       <span className="text-xs text-muted-foreground">
                         {new Date(comment.createdAt).toLocaleDateString()}
                       </span>
+                      {comment.spoiler && (
+                        <span className="px-1.5 py-0.5 bg-destructive/20 text-destructive rounded text-xs font-semibold flex items-center gap-1">
+                          <AlertTriangle className="w-2.5 h-2.5" />
+                          SPOILER
+                        </span>
+                      )}
                     </div>
 
-                    <p className="text-sm text-foreground mb-2">{comment.content}</p>
+                    <div className="relative">
+                      <p className={`text-sm text-foreground mb-2 transition-all ${shouldBlurComment ? 'blur-md select-none' : ''}`}>{comment.content}</p>
+                      {shouldBlurComment && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <button
+                            onClick={() => revealSpoiler(comment._id)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive/90 hover:bg-destructive text-white rounded-lg text-xs font-semibold transition-colors shadow-lg cursor-pointer"
+                          >
+                            <Eye className="w-3 h-3" />
+                            Reveal Spoiler
+                          </button>
+                        </div>
+                      )}
+                    </div>
 
                     <div className="flex items-center gap-3">
                       <button
@@ -951,13 +1066,30 @@ export default function PostDetailPage() {
                             <X className="w-6 h-6 text-muted-foreground hover:text-destructive cursor-pointer transition-all active:scale-90" onClick={() => setReplyingTo(null)} />
                           </div>
                         </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          <input
+                            type="checkbox"
+                            id={`reply-spoiler-${comment._id}`}
+                            checked={replySpoiler}
+                            onChange={(e) => setReplySpoiler(e.target.checked)}
+                            className="w-3.5 h-3.5"
+                          />
+                          <label htmlFor={`reply-spoiler-${comment._id}`} className="text-xs text-muted-foreground cursor-pointer">
+                            Contains Spoilers
+                          </label>
+                        </div>
                       </div>
                     )}
 
                     {/* Replies */}
                     {comment.replies && comment.replies.length > 0 && showReplies.has(comment._id) && (
                       <div className="mt-4 space-y-3 pl-4 border-l-2 border-border">
-                        {comment.replies.slice(0, showReplyPagination[comment._id] || 3).map((reply) => (
+                        {comment.replies.slice(0, showReplyPagination[comment._id] || 3).map((reply) => {
+                          const isOwnReply = user && reply.user?._id === user._id
+                          const replySpoilerRevealed = revealedSpoilers.has(reply._id)
+                          const shouldBlurReply = reply.spoiler && !replySpoilerRevealed && !isOwnReply
+
+                          return (
                           <div key={reply._id} className="flex gap-3">
                             <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
                               {reply.user?.avatar ? (
@@ -975,9 +1107,28 @@ export default function PostDetailPage() {
                                 <span className="text-xs text-muted-foreground">
                                   {new Date(reply.createdAt).toLocaleDateString()}
                                 </span>
+                                {reply.spoiler && (
+                                  <span className="px-1.5 py-0.5 bg-destructive/20 text-destructive rounded text-xs font-semibold flex items-center gap-1">
+                                    <AlertTriangle className="w-2.5 h-2.5" />
+                                    SPOILER
+                                  </span>
+                                )}
                               </div>
 
-                              <p className="text-xs text-foreground mb-2">{reply.content}</p>
+                              <div className="relative">
+                                <p className={`text-xs text-foreground mb-2 transition-all ${shouldBlurReply ? 'blur-md select-none' : ''}`}>{reply.content}</p>
+                                {shouldBlurReply && (
+                                  <div className="absolute inset-0 flex items-center justify-center">
+                                    <button
+                                      onClick={() => revealSpoiler(reply._id)}
+                                      className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive/90 hover:bg-destructive text-white rounded-lg text-xs font-semibold transition-colors shadow-lg cursor-pointer"
+                                    >
+                                      <Eye className="w-3 h-3" />
+                                      Reveal
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
 
                               <div className="flex items-center gap-3">
                                 <button
@@ -1014,7 +1165,7 @@ export default function PostDetailPage() {
                               </div>
                             </div>
                           </div>
-                        ))}
+                        )})}
                         {/* Load More Replies Button */}
                         {comment.replies.length > (showReplyPagination[comment._id] || 3) && (
                           <button
@@ -1028,7 +1179,7 @@ export default function PostDetailPage() {
                     )}
                   </div>
                 </div>
-              ))}
+              )})}
 
               {/* Load More Comments */}
               <div ref={loadMoreCommentsRef} className="mt-6 flex justify-center">

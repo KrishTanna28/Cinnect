@@ -18,7 +18,8 @@ import {
   Sun,
   Moon,
   Save,
-  X
+  X,
+  Menu
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -407,16 +408,35 @@ export default function SettingsPage() {
               onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
               className="p-2 rounded-lg hover:bg-secondary/50 transition-all active:scale-90 cursor-pointer"
             >
-              <ChevronRight className={`w-5 h-5 transition-transform ${mobileSidebarOpen ? "rotate-90" : ""}`} />
+              <Menu className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Mobile sidebar drawer */}
+          {/* Mobile sidebar overlay */}
           {mobileSidebarOpen && (
-            <div className="md:hidden border-b border-border bg-secondary/10">
-              {sidebarContent}
+            <div className="md:hidden fixed inset-0 z-40" onClick={() => setMobileSidebarOpen(false)}>
+              {/* Backdrop */}
+              <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
             </div>
           )}
+
+          {/* Mobile slide-in sidebar */}
+          <aside
+            className={`md:hidden fixed top-0 left-0 z-50 h-full w-72 bg-background border-r border-border shadow-xl transition-transform duration-300 ease-in-out ${
+              mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+            }`}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <h2 className="text-lg font-bold text-foreground">Settings</h2>
+              <button
+                onClick={() => setMobileSidebarOpen(false)}
+                className="p-2 rounded-lg hover:bg-secondary/50 transition-all active:scale-90 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {sidebarContent}
+          </aside>
 
           {/* Desktop Sidebar */}
           <aside className="hidden md:flex md:flex-col w-72 border-r border-border flex-shrink-0 sticky top-16 h-[calc(100vh-64px)] overflow-hidden">

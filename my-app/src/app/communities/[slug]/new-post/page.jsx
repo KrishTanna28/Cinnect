@@ -14,6 +14,7 @@ import { PostFormSkeleton } from "@/components/skeletons"
 export default function NewPostPage() {
   const [title, setTitle] = useState("")
   const [content, setContent] = useState("")
+  const [spoiler, setSpoiler] = useState(false)
   const [imagePreviews, setImagePreviews] = useState([])
   const [videoPreviews, setVideoPreviews] = useState([])
   const [submitting, setSubmitting] = useState(false)
@@ -159,6 +160,28 @@ export default function NewPostPage() {
 
     setSubmitting(true)
     try {
+      // Auto-detect spoiler if checkbox is not checked
+      let finalSpoiler = spoiler
+      if (!finalSpoiler && content.trim().length > 0) {
+        try {
+          const detectRes = await fetch('/api/spoiler-detect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: `${title}. ${content}` })
+          })
+          const detectData = await detectRes.json()
+          if (detectData.success) {
+            const pct = ((detectData.data?.scores?.spoiler ?? detectData.data?.confidence ?? 0) * 100).toFixed(1)
+            console.log(`[Spoiler Detection] Post: ${pct}% spoiler probability (threshold: 60%)`)
+          }
+          if (detectData.success && detectData.data?.isSpoiler) {
+            finalSpoiler = true
+          }
+        } catch (detectErr) {
+          console.error('Spoiler detection failed, proceeding without:', detectErr)
+        }
+      }
+
       const token = localStorage.getItem('token')
       const response = await fetch(`/api/communities/${params.slug}/posts`, {
         method: 'POST',
@@ -169,6 +192,7 @@ export default function NewPostPage() {
         body: JSON.stringify({
           title,
           content,
+          spoiler: finalSpoiler,
           images: imagePreviews,
           videos: videoPreviews.map(v => v.data)
         })
@@ -343,6 +367,23 @@ export default function NewPostPage() {
             <p className="text-xs text-muted-foreground mt-2">
               Supported formats: MP4, MOV, WebM. Max 3 videos, 100MB each.
             </p>
+          </div>
+
+          {/* Spoiler Checkbox */}
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="spoiler"
+              checked={spoiler}
+              onChange={(e) => setSpoiler(e.target.checked)}
+              className="w-4 h-4"
+            />
+            <label htmlFor="spoiler" className="text-sm text-foreground cursor-pointer">
+              Contains Spoilers
+            </label>
+            <span className="text-xs text-muted-foreground">
+              (If unchecked, AI will auto-detect spoilers)
+            </span>
           </div>
 
           {/* Guidelines */}

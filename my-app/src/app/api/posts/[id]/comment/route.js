@@ -10,7 +10,7 @@ export const POST = withAuth(async (request, { user, params }) => {
   try {
     const { id } = await params
     const body = await request.json()
-    const { content } = body
+    const { content, spoiler } = body
 
     if (!content || content.trim().length < 1) {
       return NextResponse.json(
@@ -34,7 +34,7 @@ export const POST = withAuth(async (request, { user, params }) => {
       )
     }
 
-    await post.addComment(user._id, content)
+    await post.addComment(user._id, content, spoiler || false)
     await post.populate('user', 'username avatar fullName')
     await post.populate('comments.user', 'username avatar fullName')
 

@@ -9,7 +9,7 @@ await connectDB()
 export const POST = withAuth(async (request, { user, params }) => {
   try {
     const { id, commentId } = await params
-    const { content } = await request.json()
+    const { content, spoiler } = await request.json()
 
     if (!content || content.trim().length < 1) {
       return NextResponse.json(
@@ -33,7 +33,7 @@ export const POST = withAuth(async (request, { user, params }) => {
       )
     }
 
-    await post.addReply(commentId, user._id, content)
+    await post.addReply(commentId, user._id, content, spoiler || false)
     await post.populate('comments.user', 'username avatar fullName')
     await post.populate('comments.replies.user', 'username avatar fullName')
 

@@ -313,21 +313,20 @@ export default function Navigation() {
       >
         <div className="w-full px-4 sm:px-6">
           <div className="relative flex items-center justify-between h-16">
-            {/* Logo - Mobile centered */}
+            {/* Mobile: invisible spacer left | centered logo | bell right */}
+            <div className="sm:hidden w-8 flex-shrink-0" />
             <Link href="/" className={`sm:hidden absolute left-1/2 -translate-x-1/2 ${comfortaa.className} font-bold text-2xl text-primary`} style={{ textShadow: hasBackground ? 'none' : '0 2px 4px rgba(0,0,0,0.8)' }}>
               cinnect
             </Link>
+            {!isLoading && user && (
+              <div className="sm:hidden ml-auto">
+                <NotificationBell />
+              </div>
+            )}
             {/* Logo - Desktop */}
             <Link href="/" className={`hidden sm:flex items-center gap-2 ${comfortaa.className} font-bold text-2xl text-primary cursor-pointer`} style={{ textShadow: hasBackground ? 'none' : '0 2px 4px rgba(0,0,0,0.8)' }}>
               cinnect
             </Link>
-
-            {/* Mobile Notification Bell - right side */}
-            {!isLoading && user && (
-              <div className="md:hidden">
-                <NotificationBell />
-              </div>
-            )}
 
             {/* Center Search - Desktop Only - Always Visible */}
             {user && <div

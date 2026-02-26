@@ -66,7 +66,7 @@ export default function ReviewPreview({ mediaId, mediaType, mediaTitle }) {
   return (
     <div>
       {/* Stats Header */}
-      <div className="flex items-center justify-between mb-6 p-4 bg-secondary/30 rounded-lg">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 p-4 bg-secondary/30 rounded-lg">
         <div className="flex items-center gap-4">
           <div className="text-center">
             <div className="text-4xl font-bold text-primary">{stats.averageRating}</div>

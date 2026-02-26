@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Settings, LogOut, Trophy, Star, Users, Film, Heart, Award, Flame, Trash2, Pencil, MoreVertical, Lock, Globe, X } from "lucide-react"
+import { Settings, LogOut, Trophy, Star, Users, Film, Heart, Award, Flame, Trash2, Pencil, MoreVertical, Lock, Globe, X, LayoutGrid, Bookmark, MessageSquare } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -236,7 +236,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen bg-background overflow-x-hidden">
       {/* Header */}
       <div className="border-b border-border py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
@@ -420,19 +420,28 @@ export default function ProfilePage() {
 
       {/* Tabs */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex gap-4 mb-8 border-b border-border">
-          {["overview", "watchlist", "favorites", "reviews"].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 font-semibold transition-colors border-b-2 cursor-pointer ${activeTab === tab
-                ? "text-primary border-primary"
-                : "text-muted-foreground border-transparent hover:text-foreground"
-                }`}
-            >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </button>
-          ))}
+        <div className="flex mb-8 border-b border-border">
+          {[
+            { id: "overview", label: "Overview", icon: LayoutGrid },
+            { id: "watchlist", label: "Watchlist", icon: Bookmark },
+            { id: "favorites", label: "Favorites", icon: Heart },
+            { id: "reviews", label: "Reviews", icon: MessageSquare },
+          ].map((tab) => {
+            const Icon = tab.icon
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-1 flex items-center justify-center gap-2 px-2 sm:px-4 py-2.5 font-semibold transition-colors border-b-2 cursor-pointer ${activeTab === tab.id
+                  ? "text-primary border-primary"
+                  : "text-muted-foreground border-transparent hover:text-foreground"
+                  }`}
+              >
+                <Icon className="w-4 h-4" />
+                <span className="hidden sm:inline">{tab.label}</span>
+              </button>
+            )
+          })}
         </div>
 
         {/* Tab Content */}
@@ -575,10 +584,6 @@ export default function ProfilePage() {
                             </button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => window.location.href = `/movies/${movie.id}`}>
-                              <Pencil className="w-4 h-4" />
-                              Edit Favorite
-                            </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => removeFromFavorites(movie.id?.toString())}
                             >

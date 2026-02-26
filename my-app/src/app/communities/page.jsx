@@ -421,6 +421,12 @@ export default function CommunitiesPage() {
 
                               {/* Post Title */}
                               <h3 className="text-lg font-semibold text-foreground mb-2 line-clamp-2 hover:text-primary transition-colors">
+                                {post.spoiler && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 mr-2 bg-destructive/20 text-destructive rounded text-xs font-semibold align-middle">
+                                    <AlertTriangle className="w-3 h-3" />
+                                    SPOILER
+                                  </span>
+                                )}
                                 {post.title}
                               </h3>
 
@@ -528,7 +534,7 @@ export default function CommunitiesPage() {
                               </div>
 
                               {/* Spoiler Tag */}
-                              {post.isSpoiler && (
+                              {post.spoiler && (
                                 <div className="flex items-center gap-1 mb-1">
                                   <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400">
                                     <AlertTriangle className="w-3 h-3" />

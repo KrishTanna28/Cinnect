@@ -1,10 +1,9 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const embeddingModel = genAI.getGenerativeModel({ model: "embedding-001" });
 
-const EMBEDDING_MODEL = "text-embedding-004";
+const EMBEDDING_MODEL = "embedding-001";
 
 /**
  * Generate an embedding vector for a given text using Gemini embedding API.
@@ -19,12 +18,9 @@ export async function generateEmbedding(text) {
   // Truncate to ~8000 chars to stay within model limits
   const truncated = text.slice(0, 8000);
 
-  const response = await ai.models.embedContent({
-    model: EMBEDDING_MODEL,
-    contents: truncated,
-  });
+  const result = await embeddingModel.embedContent(truncated);
 
-  return response.embeddings[0].values;
+  return result.embedding.values;
 }
 
 /**

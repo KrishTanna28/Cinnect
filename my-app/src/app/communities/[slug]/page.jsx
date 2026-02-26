@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Users, FileText, Plus, Clock, ThumbsUp, MessageCircle, Pin, Lock, Film, Tv, User as UserIcon, Sparkles, Trash2, UserCheck, UserX, Bell, Pencil, MoreVertical, ThumbsDown, Newspaper, X, Check, ExternalLink } from "lucide-react"
+import { Users, FileText, Plus, Clock, ThumbsUp, MessageCircle, Pin, Lock, Film, Tv, User as UserIcon, Sparkles, Trash2, UserCheck, UserX, Bell, Pencil, MoreVertical, ThumbsDown, Newspaper, X, Check, ExternalLink, AlertTriangle } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { useUser } from "@/contexts/UserContext"
@@ -940,9 +940,9 @@ export default function CommunityPage() {
                 )}
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {posts.map((post) => (
-                  <Link key={post._id} href={`/communities/${params.slug}/posts/${post._id}`}>
+                  <Link key={post._id} href={`/communities/${params.slug}/posts/${post._id}`} className="block">
                     <div className="bg-secondary/20 hover:bg-secondary/30 rounded-lg border border-border p-4 transition-colors cursor-pointer">
                       <div className="flex gap-4">
                         {/* Content */}
@@ -971,6 +971,12 @@ export default function CommunityPage() {
                           </div>
 
                           <h3 className="text-lg font-semibold text-foreground mb-2 line-clamp-2">
+                            {post.spoiler && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 mr-2 bg-destructive/20 text-destructive rounded text-xs font-semibold align-middle">
+                                <AlertTriangle className="w-3 h-3" />
+                                SPOILER
+                              </span>
+                            )}
                             {post.title}
                           </h3>
 

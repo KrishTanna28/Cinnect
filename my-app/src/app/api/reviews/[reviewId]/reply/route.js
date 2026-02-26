@@ -9,7 +9,7 @@ export const POST = withAuth(async (request, { user, params }) => {
   try {
     const { reviewId } = await params
     const body = await request.json()
-    const { content } = body
+    const { content, spoiler } = body
 
     if (!content || content.trim().length === 0) {
       return NextResponse.json(
@@ -28,7 +28,7 @@ export const POST = withAuth(async (request, { user, params }) => {
     }
 
     // Add reply using model method
-    await review.addReply(user._id, content)
+    await review.addReply(user._id, content, spoiler || false)
 
     // Update user achievements
     user.achievements.commentsPosted += 1

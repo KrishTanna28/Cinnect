@@ -11,6 +11,10 @@ const replySchema = new mongoose.Schema({
     required: [true, 'Reply content is required'],
     maxlength: [1000, 'Reply cannot exceed 1000 characters']
   },
+  spoiler: {
+    type: Boolean,
+    default: false
+  },
   likes: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
@@ -154,10 +158,11 @@ reviewSchema.virtual('replyCount').get(function() {
 });
 
 // Method to add a reply
-reviewSchema.methods.addReply = function(userId, content) {
+reviewSchema.methods.addReply = function(userId, content, spoiler = false) {
   this.replies.push({
     user: userId,
-    content: content
+    content: content,
+    spoiler: spoiler
   });
   return this.save();
 };

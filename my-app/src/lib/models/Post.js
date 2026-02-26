@@ -12,6 +12,10 @@ const replySchema = new mongoose.Schema({
     minlength: [1, 'Reply must be at least 1 character'],
     maxlength: [1000, 'Reply cannot exceed 1000 characters']
   },
+  spoiler: {
+    type: Boolean,
+    default: false
+  },
   likes: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
@@ -41,6 +45,10 @@ const commentSchema = new mongoose.Schema({
     required: [true, 'Comment content is required'],
     minlength: [1, 'Comment must be at least 1 character'],
     maxlength: [2000, 'Comment cannot exceed 2000 characters']
+  },
+  spoiler: {
+    type: Boolean,
+    default: false
   },
   likes: [{
     type: mongoose.Schema.Types.ObjectId,
@@ -124,6 +132,12 @@ const postSchema = new mongoose.Schema({
     select: false
   },
 
+  // Spoiler flag
+  spoiler: {
+    type: Boolean,
+    default: false
+  },
+
   // Metadata
   isPinned: {
     type: Boolean,
@@ -178,8 +192,8 @@ postSchema.virtual('score').get(function() {
 });
 
 // Methods
-postSchema.methods.addComment = function(userId, content) {
-  this.comments.push({ user: userId, content });
+postSchema.methods.addComment = function(userId, content, spoiler = false) {
+  this.comments.push({ user: userId, content, spoiler });
   return this.save();
 };
 
@@ -234,11 +248,11 @@ postSchema.methods.incrementViews = function() {
   return this.save();
 };
 
-postSchema.methods.addReply = function(commentId, userId, content) {
+postSchema.methods.addReply = function(commentId, userId, content, spoiler = false) {
   const comment = this.comments.id(commentId);
   if (!comment) throw new Error('Comment not found');
   
-  comment.replies.push({ user: userId, content });
+  comment.replies.push({ user: userId, content, spoiler });
   return this.save();
 };
 
