@@ -618,7 +618,7 @@ export default function ProfilePage() {
               <div className="space-y-4">
                 {reviews.map((review, index) => (
                   <Link key={review._id || `review-${index}`} href={`/reviews/${review.mediaType}/${review.mediaId}`}>
-                    <div className="bg-secondary/20 rounded-lg p-6 border border-border hover:border-primary transition-colors cursor-pointer">
+                    <div className="bg-secondary/20 rounded-lg p-6 border border-border hover:border-primary transition-colors cursor-pointer mb-4">
                       <div className="flex items-start justify-between mb-3">
                         <div>
                           <h4 className="font-bold text-foreground text-lg">{review.title || 'Review'}</h4>
@@ -634,8 +634,8 @@ export default function ProfilePage() {
                       </div>
                       <p className="text-foreground line-clamp-3">{review.content}</p>
                       <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
-                        <span><ThumbsUp className="w-3.5 h-3.5 inline mr-1" />{review.likeCount || 0} likes</span>
-                        <span><MessageCircle className="w-3.5 h-3.5 inline mr-1" />{review.replyCount || 0} replies</span>
+                        <span><ThumbsUp className="w-3.5 h-3.5 inline mr-1" />{review.likeCount == 1 ? '1 like' : `${review.likeCount} likes`}</span>
+                        <span><MessageCircle className="w-3.5 h-3.5 inline mr-1" />{review.replyCount == 1 ? '1 reply' : `${review.replyCount} replies`}</span>
                         {review.hasSpoilers && <span className="text-red-500"><AlertTriangle className="w-3.5 h-3.5 inline mr-1" />Contains spoilers</span>}
                       </div>
                     </div>
