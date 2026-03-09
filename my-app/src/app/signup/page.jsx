@@ -329,7 +329,7 @@ export default function SignupPage() {
               {fieldErrors.referralCode ? (
                 <p className="text-xs text-destructive">{fieldErrors.referralCode}</p>
               ) : (
-                <p className="text-xs text-primary font-medium">🎁 Both you and your friend get 200 points!</p>
+                <p className="text-xs text-primary font-medium">🎁 Both you and your friend get 50 points!</p>
               )}
             </div>
 
@@ -344,7 +344,7 @@ export default function SignupPage() {
               {/* OTP Verification Step */}
               <div className="text-center mb-6">
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Phone className="w-8 h-8 text-primary" />
+                  <Mail className="w-8 h-8 text-primary" />
                 </div>
                 <h2 className="text-2xl font-bold text-foreground mb-2">Verify Your Email</h2>
                 <p className="text-muted-foreground">

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
-import { X, Search, UserPlus, UserCheck, Loader2 } from "lucide-react"
+import { X, Search, UserPlus, UserCheck } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -54,10 +54,22 @@ export default function UserListModal({
   showFollowBtn = true,
 }) {
   const [searchQuery, setSearchQuery] = useState("")
-  const [followLoadingIds, setFollowLoadingIds] = useState(new Set())
+  const [optimisticFollowOverrides, setOptimisticFollowOverrides] = useState({})
   const listRef = useRef(null)
   const searchTimeoutRef = useRef(null)
   const { user: currentUser } = useUser()
+
+  // Merge optimistic overrides with prop-based users
+  const derivedUsers = users.map((u) =>
+    optimisticFollowOverrides.hasOwnProperty(u._id)
+      ? { ...u, isFollowedByMe: optimisticFollowOverrides[u._id] }
+      : u
+  )
+
+  // Clear overrides when users prop changes (fresh data from parent)
+  useEffect(() => {
+    setOptimisticFollowOverrides({})
+  }, [users])
 
   // Reset search when modal opens/closes
   useEffect(() => {
@@ -88,12 +100,18 @@ export default function UserListModal({
     }
   }, [loadingMore, hasMore, onLoadMore])
 
-  // Follow / Unfollow
+  // Follow / Unfollow — optimistic update
   const handleFollowToggle = async (targetId, isCurrentlyFollowing) => {
     const token = localStorage.getItem("token")
     if (!token || !currentUser) return
 
-    setFollowLoadingIds((prev) => new Set(prev).add(targetId))
+    // Optimistic: immediately toggle in UI
+    // We need to update via a parent callback or local derived state.
+    // Since users come from props, we'll track optimistic overrides locally.
+    setOptimisticFollowOverrides((prev) => ({
+      ...prev,
+      [targetId]: !isCurrentlyFollowing
+    }))
 
     try {
       const response = await fetch(`/api/users/${targetId}/follow`, {
@@ -107,14 +125,19 @@ export default function UserListModal({
       const data = await response.json()
       if (!data.success) {
         console.error("Follow toggle failed:", data.message)
+        // Revert on failure
+        setOptimisticFollowOverrides((prev) => {
+          const next = { ...prev }
+          delete next[targetId]
+          return next
+        })
       }
-      // Note: parent should refetch or locally update users list
     } catch (error) {
       console.error("Error toggling follow:", error)
-    } finally {
-      setFollowLoadingIds((prev) => {
-        const next = new Set(prev)
-        next.delete(targetId)
+      // Revert on network error
+      setOptimisticFollowOverrides((prev) => {
+        const next = { ...prev }
+        delete next[targetId]
         return next
       })
     }
@@ -193,7 +216,7 @@ export default function UserListModal({
             </div>
           ) : (
             <div className="divide-y divide-border/50">
-              {users.map((u) => (
+              {derivedUsers.map((u) => (
                 <div
                   key={u._id}
                   className="flex items-center gap-3 p-3 hover:bg-secondary/20 transition-colors"
@@ -226,19 +249,16 @@ export default function UserListModal({
                     <Button
                       variant={u.isFollowedByMe ? "secondary" : "default"}
                       size="sm"
-                      className={`text-xs px-4 h-8 min-w-[90px] cursor-pointer ${
+                      className={`text-xs px-4 h-8 min-w-[90px] cursor-pointer transition-none ${
                         u.isFollowedByMe
                           ? "bg-secondary/50 hover:bg-secondary text-foreground"
                           : ""
                       }`}
-                      disabled={followLoadingIds.has(u._id)}
                       onClick={() =>
                         handleFollowToggle(u._id, u.isFollowedByMe)
                       }
                     >
-                      {followLoadingIds.has(u._id) ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : u.isFollowedByMe ? (
+                      {u.isFollowedByMe ? (
                         <>
                           <UserCheck className="w-3.5 h-3.5 mr-1" />
                           Following

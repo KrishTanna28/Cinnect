@@ -170,14 +170,15 @@ export const GET = withAuth(async (request, { user }) => {
           ? await getTVRecommendations(anchor.id).catch(() => [])
           : await getMovieRecommendations(anchor.id).catch(() => []);
 
-      // If anchor title is just an ID (from favorites), try to resolve the real title
+      // Resolve anchor title if it's just an ID, empty, or a placeholder
       let anchorTitle = anchor.title;
-      if (/^\d+$/.test(anchorTitle)) {
+      if (!anchorTitle || /^\d+$/.test(anchorTitle) || anchorTitle === 'Movie Title') {
         try {
-          const detailRes = await tmdb.get(`/movie/${anchor.id}`);
+          const endpoint = anchor.type === 'tv' ? `/tv/${anchor.id}` : `/movie/${anchor.id}`;
+          const detailRes = await tmdb.get(endpoint);
           anchorTitle = detailRes.data.title || detailRes.data.name || anchorTitle;
         } catch {
-          // keep the ID
+          // keep whatever we had
         }
       }
 

@@ -37,8 +37,8 @@ export default function Top10Carousel({
 
   return (
     <section className="py-8">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-foreground mb-2">
+      <div className="mb-0">
+        <h2 className="text-2xl font-bold text-foreground">
           {title}
         </h2>
         {description && (

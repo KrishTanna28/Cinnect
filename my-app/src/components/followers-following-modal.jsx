@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
-import { X, Search, UserPlus, UserCheck, Loader2 } from "lucide-react"
+import { X, Search, UserPlus, UserCheck } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -40,7 +40,6 @@ export default function FollowersFollowingModal({
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [followLoadingIds, setFollowLoadingIds] = useState(new Set())
   const listRef = useRef(null)
   const searchTimeoutRef = useRef(null)
   const { user: currentUser } = useUser()
@@ -126,12 +125,19 @@ export default function FollowersFollowingModal({
     }
   }, [loadingMore, hasMore, page, searchQuery, fetchUsers])
 
-  // Follow/Unfollow handler
+  // Follow/Unfollow handler — optimistic update
   const handleFollowToggle = async (targetId, isCurrentlyFollowing) => {
     const token = localStorage.getItem("token")
     if (!token || !currentUser) return
 
-    setFollowLoadingIds((prev) => new Set(prev).add(targetId))
+    // Optimistic: immediately toggle in UI
+    setUsers((prev) =>
+      prev.map((u) =>
+        u._id === targetId
+          ? { ...u, isFollowedByMe: !isCurrentlyFollowing }
+          : u
+      )
+    )
 
     try {
       const response = await fetch(`/api/users/${targetId}/follow`, {
@@ -143,24 +149,26 @@ export default function FollowersFollowingModal({
       })
 
       const data = await response.json()
-      if (data.success) {
-        // Update the user in the list
+      if (!data.success) {
+        // Revert on failure
         setUsers((prev) =>
           prev.map((u) =>
             u._id === targetId
-              ? { ...u, isFollowedByMe: !isCurrentlyFollowing }
+              ? { ...u, isFollowedByMe: isCurrentlyFollowing }
               : u
           )
         )
       }
     } catch (error) {
       console.error("Error toggling follow:", error)
-    } finally {
-      setFollowLoadingIds((prev) => {
-        const next = new Set(prev)
-        next.delete(targetId)
-        return next
-      })
+      // Revert on network error
+      setUsers((prev) =>
+        prev.map((u) =>
+          u._id === targetId
+            ? { ...u, isFollowedByMe: isCurrentlyFollowing }
+            : u
+        )
+      )
     }
   }
 
@@ -298,17 +306,14 @@ export default function FollowersFollowingModal({
                     <Button
                       variant={u.isFollowedByMe ? "secondary" : "default"}
                       size="sm"
-                      className={`text-xs px-4 h-8 min-w-[90px] cursor-pointer ${
+                      className={`text-xs px-4 h-8 min-w-[90px] cursor-pointer transition-none ${
                         u.isFollowedByMe
                           ? "bg-secondary/50 hover:bg-secondary text-foreground"
                           : ""
                       }`}
-                      disabled={followLoadingIds.has(u._id)}
                       onClick={() => handleFollowToggle(u._id, u.isFollowedByMe)}
                     >
-                      {followLoadingIds.has(u._id) ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : u.isFollowedByMe ? (
+                      {u.isFollowedByMe ? (
                         <>
                           <UserCheck className="w-3.5 h-3.5 mr-1" />
                           Following

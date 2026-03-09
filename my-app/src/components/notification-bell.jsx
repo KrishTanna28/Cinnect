@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { Bell, Check, X, UserPlus, UserMinus, UserCheck as UserCheckIcon, Users, Sparkles, Loader2, Heart, MessageCircle } from "lucide-react"
+import { Bell, Check, X, UserPlus, UserMinus, UserCheck as UserCheckIcon, Users, Sparkles, Loader2, Heart, MessageCircle, Gift } from "lucide-react"
 import { useUser } from "@/contexts/UserContext"
 import Link from "next/link"
 
@@ -11,7 +11,7 @@ export default function NotificationBell() {
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(false)
-  const [actionLoading, setActionLoading] = useState(null) // notificationId currently being acted on
+  // No loading state — we use optimistic updates for instant UI
   const dropdownRef = useRef(null)
   const hasFetchedAi = useRef(false)
 
@@ -111,11 +111,25 @@ export default function NotificationBell() {
     }
   }
 
-  // Handle accept / reject actions
+  // Handle accept / reject actions — optimistic update
   const handleAction = async (notificationId, action) => {
     const token = localStorage.getItem("token")
     if (!token) return
-    setActionLoading(notificationId)
+
+    // Snapshot for rollback
+    const prevNotifications = notifications
+    const prevUnreadCount = unreadCount
+
+    // Optimistic: immediately reflect the action in UI
+    setNotifications(prev =>
+      prev.map(n =>
+        n._id === notificationId
+          ? { ...n, actionTaken: true, actionType: action === "accept" ? "accepted" : "rejected", read: true }
+          : n
+      )
+    )
+    setUnreadCount(prev => Math.max(0, prev - 1))
+
     try {
       const res = await fetch("/api/notifications/action", {
         method: "POST",
@@ -127,20 +141,20 @@ export default function NotificationBell() {
       })
       if (res.ok) {
         const json = await res.json()
-        // Update local state
-        setNotifications(prev =>
-          prev.map(n =>
-            n._id === notificationId
-              ? { ...n, actionTaken: true, actionType: action === "accept" ? "accepted" : "rejected", read: true }
-              : n
-          )
-        )
-        setUnreadCount(json.data?.unreadCount ?? Math.max(0, unreadCount - 1))
+        // Reconcile unread count with server truth
+        if (json.data?.unreadCount !== undefined) {
+          setUnreadCount(json.data.unreadCount)
+        }
+      } else {
+        // Revert on failure
+        setNotifications(prevNotifications)
+        setUnreadCount(prevUnreadCount)
       }
     } catch (err) {
       console.error("Notification action failed:", err)
-    } finally {
-      setActionLoading(null)
+      // Revert on network error
+      setNotifications(prevNotifications)
+      setUnreadCount(prevUnreadCount)
     }
   }
 
@@ -161,6 +175,8 @@ export default function NotificationBell() {
         return <Heart className="w-4 h-4 text-pink-400" />
       case "review_reply":
         return <MessageCircle className="w-4 h-4 text-blue-400" />
+      case "referral":
+        return <Gift className="w-4 h-4 text-emerald-400" />
       default:
         return <Bell className="w-4 h-4 text-muted-foreground" />
     }
@@ -261,20 +277,14 @@ export default function NotificationBell() {
                       <div className="flex items-center gap-2 mt-2">
                         <button
                           onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAction(notif._id, "accept") }}
-                          disabled={actionLoading === notif._id}
-                          className="flex items-center gap-1 px-3 py-1 text-xs font-medium bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                          className="flex items-center gap-1 px-3 py-1 text-xs font-medium bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-all active:scale-95 cursor-pointer"
                         >
-                          {actionLoading === notif._id ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <Check className="w-3 h-3" />
-                          )}
+                          <Check className="w-3 h-3" />
                           Accept
                         </button>
                         <button
                           onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAction(notif._id, "reject") }}
-                          disabled={actionLoading === notif._id}
-                          className="flex items-center gap-1 px-3 py-1 text-xs font-medium bg-secondary text-foreground rounded-full hover:bg-secondary/80 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                          className="flex items-center gap-1 px-3 py-1 text-xs font-medium bg-secondary text-foreground rounded-full hover:bg-secondary/80 transition-all active:scale-95 cursor-pointer"
                         >
                           <X className="w-3 h-3" />
                           Decline

@@ -323,6 +323,13 @@ export default function Navigation() {
                 <NotificationBell />
               </div>
             )}
+            {!isLoading && !user && (
+              <div className="sm:hidden ml-auto">
+                <Button size="sm" onClick={() => router.push('/login')}>
+                  Login
+                </Button>
+              </div>
+            )}
             {/* Logo - Desktop */}
             <Link href="/" className={`hidden sm:flex items-center gap-2 ${comfortaa.className} font-bold text-2xl text-primary cursor-pointer`} style={{ textShadow: hasBackground ? 'none' : '0 2px 4px rgba(0,0,0,0.8)' }}>
               cinnect
@@ -783,26 +790,7 @@ export default function Navigation() {
         </div>
       )}
 
-      {/* Mobile bottom nav: show login/signup if not authenticated */}
-      {!isLoading && !user && (
-        <div className="fixed bottom-0 left-0 right-0 z-30 md:hidden bg-background/95 backdrop-blur border-t border-border">
-          <div className="flex items-center gap-2 p-3">
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={() => router.push('/login')}
-            >
-              Login
-            </Button>
-            <Button
-              className="flex-1"
-              onClick={() => router.push('/signup')}
-            >
-              Sign Up
-            </Button>
-          </div>
-        </div>
-      )}
+
     </>
   )
 }

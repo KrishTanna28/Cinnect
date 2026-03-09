@@ -582,7 +582,6 @@ export default function SettingsPage() {
                     {[
                       { key: "push", label: "Push Notifications", desc: "Get notified about new activity in real-time" },
                       { key: "email", label: "Email Notifications", desc: "Receive updates and activity summaries via email" },
-                      { key: "watchPartyInvites", label: "Watch Party Invites", desc: "Get notified when you're invited to watch parties" },
                       { key: "newReviews", label: "New Reviews", desc: "Get notified when someone reviews content you've rated" }
                     ].map(item => (
                       <div key={item.key} className="bg-secondary/20 rounded-xl p-5 border border-border flex items-center justify-between gap-4">

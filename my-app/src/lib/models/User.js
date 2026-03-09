@@ -594,14 +594,14 @@ userSchema.methods.processReferral = async function(referrerCode) {
     return { success: false, message: 'Already used a referral code' };
   }
   
-  // Award points to both users
-  const referralPoints = 200;
+  // Award points to both users (50 each)
+  const referralPoints = 50;
   
-  // Update current user
+  // Update current user (new user who used the code)
   this.referredBy = referrer._id;
   this.points.total += referralPoints;
   this.points.available += referralPoints;
-  await this.save();
+  // Note: caller is responsible for saving this user
   
   // Update referrer
   referrer.points.total += referralPoints;
@@ -612,16 +612,16 @@ userSchema.methods.processReferral = async function(referrerCode) {
     joinedAt: new Date(),
     rewardClaimed: true
   });
-  
-  // Update referrer's level
   referrer.level = Math.floor(referrer.points.total / 1000) + 1;
   await referrer.save();
   
   return {
     success: true,
-    message: 'Referral successful! Both users received 200 points',
+    message: `Referral successful! Both users received ${referralPoints} points`,
     pointsAwarded: referralPoints,
-    referrerName: referrer.username
+    referrerName: referrer.username,
+    referrerId: referrer._id,
+    referrerAvatar: referrer.avatar || ''
   };
 };
 

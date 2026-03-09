@@ -1,19 +1,34 @@
 import { NextResponse } from 'next/server'
+import connectDB from '@/lib/config/database.js'
 import User from '@/lib/models/User.js'
 import { sendOTPEmail } from '@/lib/utils/emailService.js'
-
-// Temporary storage for pending registrations (in production, use Redis)
-const pendingRegistrations = new Map()
+import pendingRegistrations from '@/lib/pendingRegistrations.js'
 
 export async function POST(request) {
   try {
-    const formData = await request.formData()
-    const username = formData.get('username')
-    const email = formData.get('email')
-    const password = formData.get('password')
-    const fullName = formData.get('fullName')
-    const referralCode = formData.get('referralCode')
-    const avatarFile = formData.get('avatar')
+    await connectDB()
+
+    const contentType = request.headers.get('content-type') || ''
+    let username, email, password, fullName, referralCode, avatarFile
+
+    if (contentType.includes('multipart/form-data') || contentType.includes('application/x-www-form-urlencoded')) {
+      const formData = await request.formData()
+      username = formData.get('username')
+      email = formData.get('email')
+      password = formData.get('password')
+      fullName = formData.get('fullName')
+      referralCode = formData.get('referralCode')
+      avatarFile = formData.get('avatar')
+    } else {
+      // JSON body (standard signup form)
+      const body = await request.json()
+      username = body.username
+      email = body.email
+      password = body.password
+      fullName = body.fullName
+      referralCode = body.referralCode
+      avatarFile = null
+    }
 
     // Check if user already exists
     const existingUser = await User.findOne({
@@ -109,6 +124,3 @@ export async function POST(request) {
     )
   }
 }
-
-// Export the pending registrations map for use in complete-registration
-export { pendingRegistrations }

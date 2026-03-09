@@ -41,7 +41,8 @@ export default function PublicProfilePage({ params }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [followStatus, setFollowStatus] = useState('none')
-  const [followLoading, setFollowLoading] = useState(false)
+  // No followLoading state — we use optimistic updates for instant UI
+  const followLoading = false // kept for button compat, always false
   const [followersCount, setFollowersCount] = useState(0)
   const [followingCount, setFollowingCount] = useState(0)
   const [showFollowModal, setShowFollowModal] = useState(false)
@@ -125,9 +126,29 @@ export default function PublicProfilePage({ params }) {
       return
     }
 
-    setFollowLoading(true)
+    const isUnfollow = followStatus === 'following' || followStatus === 'requested'
+
+    // Snapshot for rollback
+    const prevStatus = followStatus
+    const prevCount = followersCount
+
+    // Optimistic update — immediately reflect in UI
+    if (isUnfollow) {
+      setFollowStatus('none')
+      if (prevStatus === 'following') {
+        setFollowersCount(prev => Math.max(0, prev - 1))
+      }
+    } else {
+      // If target is private, go to 'requested'; otherwise 'following'
+      if (profile?.isPrivate) {
+        setFollowStatus('requested')
+      } else {
+        setFollowStatus('following')
+        setFollowersCount(prev => prev + 1)
+      }
+    }
+
     try {
-      const isUnfollow = followStatus === 'following' || followStatus === 'requested'
       const response = await fetch(`/api/users/${userId}/follow`, {
         method: isUnfollow ? 'DELETE' : 'POST',
         headers: {
@@ -138,18 +159,26 @@ export default function PublicProfilePage({ params }) {
 
       const data = await response.json()
       if (data.success) {
-        const newStatus = data.data.status || 'none'
-        setFollowStatus(newStatus)
-        setFollowersCount(data.data.targetFollowersCount ?? followersCount)
+        // Reconcile with server truth
+        const serverStatus = data.data.status || 'none'
+        setFollowStatus(serverStatus)
+        if (data.data.targetFollowersCount !== undefined) {
+          setFollowersCount(data.data.targetFollowersCount)
+        }
 
         if (profile?.isPrivate) {
           fetchUserProfile()
         }
+      } else {
+        // Revert on failure
+        setFollowStatus(prevStatus)
+        setFollowersCount(prevCount)
       }
     } catch (error) {
       console.error('Error toggling follow:', error)
-    } finally {
-      setFollowLoading(false)
+      // Revert on network error
+      setFollowStatus(prevStatus)
+      setFollowersCount(prevCount)
     }
   }
 

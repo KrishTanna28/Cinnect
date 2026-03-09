@@ -272,14 +272,14 @@ export default function ProfilePage() {
                     onClick={() => { setFollowModalTab("followers"); setShowFollowModal(true) }}
                     className="text-center cursor-pointer hover:opacity-80 transition-opacity"
                   >
-                    <p className="text-lg font-bold text-foreground">{user.followers?.length || 0}</p>
+                    <p className="text-lg font-bold text-foreground">{stats?.followersCount ?? 0}</p>
                     <p className="text-xs text-muted-foreground">Followers</p>
                   </button>
                   <button
                     onClick={() => { setFollowModalTab("following"); setShowFollowModal(true) }}
                     className="text-center cursor-pointer hover:opacity-80 transition-opacity"
                   >
-                    <p className="text-lg font-bold text-foreground">{user.following?.length || 0}</p>
+                    <p className="text-lg font-bold text-foreground">{stats?.followingCount ?? 0}</p>
                     <p className="text-xs text-muted-foreground">Following</p>
                   </button>
                 </div>
@@ -331,8 +331,8 @@ export default function ProfilePage() {
         onClose={() => setShowFollowModal(false)}
         userId={user._id}
         initialTab={followModalTab}
-        followersCount={user.followers?.length || 0}
-        followingCount={user.following?.length || 0}
+        followersCount={stats?.followersCount ?? 0}
+        followingCount={stats?.followingCount ?? 0}
       />
 
       {/* Stats */}

@@ -12,7 +12,7 @@ const notificationSchema = new mongoose.Schema({
   // Notification type
   type: {
     type: String,
-    enum: ['follow_request', 'community_join_request', 'ai_generated', 'new_follower', 'lost_follower', 'review_like', 'review_reply'],
+    enum: ['follow_request', 'community_join_request', 'ai_generated', 'new_follower', 'lost_follower', 'review_like', 'review_reply', 'referral'],
     required: true
   },
 
@@ -78,6 +78,10 @@ const notificationSchema = new mongoose.Schema({
 notificationSchema.index({ recipient: 1, read: 1, createdAt: -1 });
 notificationSchema.index({ recipient: 1, createdAt: -1 });
 
-const Notification = mongoose.models.Notification || mongoose.model('Notification', notificationSchema);
+// Force re-registration so schema changes (e.g. new enum values) always take effect
+if (mongoose.models.Notification) {
+  mongoose.deleteModel('Notification');
+}
+const Notification = mongoose.model('Notification', notificationSchema);
 
 export default Notification;

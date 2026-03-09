@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server'
+import connectDB from '@/lib/config/database.js'
 import User from '@/lib/models/User.js'
+import Notification from '@/lib/models/Notification.js'
 import jwt from 'jsonwebtoken'
-import { pendingRegistrations } from '../register/route.js'
+import pendingRegistrations from '@/lib/pendingRegistrations.js'
 
 export async function POST(request) {
   try {
+    await connectDB()
+
     const body = await request.json()
     const { registrationId, otp } = body
 
@@ -74,19 +78,67 @@ export async function POST(request) {
 
     const newUser = new User(userData)
 
-    // Process referral if provided
-    if (pendingReg.referralCode) {
-      await newUser.processReferral(pendingReg.referralCode)
+    // Process referral if provided — must happen before save so points are included
+    let referralResult = null
+    const trimmedReferralCode = (pendingReg.referralCode || '').trim()
+    if (trimmedReferralCode) {
+      console.log(`[REFERRAL] Processing referral code: "${trimmedReferralCode}"`)
+      referralResult = await newUser.processReferral(trimmedReferralCode)
+      console.log(`[REFERRAL] processReferral result:`, JSON.stringify(referralResult))
     }
 
+    // Save the new user (single save — processReferral no longer calls this.save() internally)
     await newUser.save()
+    console.log(`[REFERRAL] New user saved. _id=${newUser._id}, username=${newUser.username}`)
+
+    // Create referral notifications now that both users exist in the DB
+    if (referralResult && referralResult.success) {
+      const referralPoints = referralResult.pointsAwarded
+      const referrerIdStr = String(referralResult.referrerId)
+      const newUserIdStr = String(newUser._id)
+      console.log(`[REFERRAL] Referral was successful. Creating notifications. referrerId=${referrerIdStr}, newUserId=${newUserIdStr}`)
+
+      // Notification for the new user who joined via referral
+      try {
+        const newUserNotif = await Notification.create({
+          recipient: newUser._id,
+          type: 'referral',
+          title: 'Referral Bonus Unlocked!',
+          message: `You joined using ${referralResult.referrerName}'s referral code and earned ${referralPoints} bonus points. Welcome to Cinnect!`,
+          image: referralResult.referrerAvatar || '',
+          link: `/profile/${referrerIdStr}`,
+          read: false
+        })
+        console.log(`[REFERRAL] ✅ New user notification created: ${newUserNotif._id}`)
+      } catch (notifErr) {
+        console.error('[REFERRAL] ❌ Failed to create new user notification:', notifErr.message, notifErr.stack)
+      }
+
+      // Notification for the referrer who invited them
+      try {
+        const referrerNotif = await Notification.create({
+          recipient: referralResult.referrerId,
+          type: 'referral',
+          title: 'Referral Reward Earned!',
+          message: `${newUser.username} joined Cinnect using your referral code. You earned ${referralPoints} bonus points!`,
+          image: newUser.avatar || '',
+          link: `/profile/${newUserIdStr}`,
+          read: false
+        })
+        console.log(`[REFERRAL] ✅ Referrer notification created: ${referrerNotif._id}`)
+      } catch (notifErr) {
+        console.error('[REFERRAL] ❌ Failed to create referrer notification:', notifErr.message, notifErr.stack)
+      }
+    } else if (trimmedReferralCode) {
+      console.log(`[REFERRAL] Referral processing was not successful or returned null. Result:`, referralResult)
+    }
 
     // Clean up pending registration
     pendingRegistrations.delete(registrationId)
 
     // Generate JWT token
     const token = jwt.sign(
-      { userId: newuser._id, email: newUser.email },
+      { userId: newUser._id, email: newUser.email },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     )
@@ -100,7 +152,11 @@ export async function POST(request) {
       message: 'Registration completed successfully!',
       data: {
         token,
-        user: userResponse
+        user: userResponse,
+        ...(referralResult?.success && { referralReward: referralResult }),
+        _debug_referralCode: trimmedReferralCode || null,
+        _debug_referralSuccess: referralResult?.success || false,
+        _debug_referralMessage: referralResult?.message || null
       }
     })
   } catch (error) {

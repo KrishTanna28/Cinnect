@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import useInfiniteScroll from "@/hooks/useInfiniteScroll"
 import { useUser } from "@/contexts/UserContext"
 import { getReviews, updateReview, createReview, likeReview, dislikeReview, addReply, likeReply, dislikeReply, deleteReview, } from "@/lib/reviews"
+import { getMovieDetails, getTVDetails } from "@/lib/movies"
 import { ReviewsPageSkeleton, InlineLoadingSkeleton } from "@/components/skeletons"
 
 export default function ReviewsPage({ params }) {
@@ -44,8 +45,29 @@ export default function ReviewsPage({ params }) {
   const [mentionUser, setMentionUser] = useState(null)
   const [revealedSpoilers, setRevealedSpoilers] = useState(new Set())
 
+  // Media title
+  const [mediaTitle, setMediaTitle] = useState('')
+
   // Delete confirmation
   const [deleteConfirmation, setDeleteConfirmation] = useState(null) // { type: 'review' | 'reply', id: string, reviewId?: string }
+
+  // Fetch media title
+  useEffect(() => {
+    const fetchTitle = async () => {
+      try {
+        if (unwrappedParams.mediaType === 'tv') {
+          const data = await getTVDetails(unwrappedParams.mediaId)
+          setMediaTitle(data?.data?.name || data?.data?.title || '')
+        } else {
+          const data = await getMovieDetails(unwrappedParams.mediaId)
+          setMediaTitle(data?.data?.title || data?.data?.name || '')
+        }
+      } catch {
+        // ignore, mediaTitle stays empty
+      }
+    }
+    fetchTitle()
+  }, [unwrappedParams.mediaId, unwrappedParams.mediaType])
 
   // Fetch reviews
   const fetchReviews = async (pageNum = 1, sortBy) => {
@@ -190,7 +212,7 @@ export default function ReviewsPage({ params }) {
             ...formData,
             mediaId: unwrappedParams.mediaId,
             mediaType: unwrappedParams.mediaType,
-            mediaTitle: 'Movie Title' // You'll need to pass this from the detail page
+            mediaTitle: mediaTitle
           }
         )
 
