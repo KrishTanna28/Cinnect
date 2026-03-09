@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, use } from "react"
-import { User, Calendar, MapPin, Award, Film, Tv, Instagram, Facebook, Twitter, ExternalLink, Newspaper, BookOpen } from "lucide-react"
+import { User, Calendar, MapPin, Award, Film, Tv, Instagram, Facebook, Twitter, ExternalLink, Newspaper, BookOpen, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import * as movieAPI from "@/lib/movies"
 import Link from "next/link"
@@ -135,7 +135,8 @@ export default function ActorDetailsPage({ params }) {
         return
       }
 
-      const url = `https://newsapi.org/v2/everything?q="${encodeURIComponent(actorName)}" AND (actor OR actress OR celebrity OR star)&sortBy=relevancy&pageSize=20&page=${pageNum}&language=en&apiKey=${apiKey}`
+      const entertainmentKeywords = 'actor OR actress OR movie OR film OR Hollywood OR celebrity OR director OR role OR cast OR premiere OR interview OR trailer'
+      const url = `https://newsapi.org/v2/everything?qInTitle=${encodeURIComponent('"' + actorName + '"')}&q=${encodeURIComponent(entertainmentKeywords)}&sortBy=relevancy&pageSize=20&page=${pageNum}&language=en&apiKey=${apiKey}`
       console.log('[FETCH] Fetching from NewsAPI...')
 
       const response = await fetch(url)
@@ -144,16 +145,21 @@ export default function ActorDetailsPage({ params }) {
       console.log('[INFO] NewsAPI Response:', data)
 
       if (data.status === 'ok' && data.articles && data.articles.length > 0) {
-        // Filter articles to only include those that actually mention the actor's name
+        // Filter articles: name must be in headline AND article must be entertainment-related
+        const entertainmentTerms = ['actor', 'actress', 'movie', 'film', 'hollywood', 'celebrity', 'director', 'role', 'cast', 'premiere', 'interview', 'trailer', 'oscar', 'emmy', 'netflix', 'disney', 'hbo', 'amazon', 'hulu', 'series', 'tv', 'streaming', 'imdb']
         const filteredArticles = data.articles.filter(article => {
           const nameLower = actorName.toLowerCase()
           const articleTitle = (article.title || '').toLowerCase()
           const articleDesc = (article.description || '').toLowerCase()
           const articleContent = (article.content || '').toLowerCase()
+          const fullText = articleTitle + ' ' + articleDesc + ' ' + articleContent
 
-          return articleTitle.includes(nameLower) ||
-            articleDesc.includes(nameLower) ||
-            articleContent.includes(nameLower)
+          // Name must appear in the article headline
+          const nameInHeadline = articleTitle.includes(nameLower)
+          // Article must contain at least one entertainment keyword
+          const isEntertainment = entertainmentTerms.some(term => fullText.includes(term))
+
+          return nameInHeadline && isEntertainment
         })
 
         console.log('[OK] Found', filteredArticles.length, 'relevant news articles (filtered from', data.articles.length, ')')
@@ -550,9 +556,8 @@ export default function ActorDetailsPage({ params }) {
                       )}
                       {credit.rating > 0 && (
                         <div className="absolute top-2 right-2">
-                          <span className="px-2 py-1 bg-black/70 text-white rounded text-xs font-medium">
-                            <Star className="w-3 h-3 text-primary" />
-                            {credit.rating.toFixed(1)}
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded text-primary text-[11px] sm:text-xs font-semibold bg-black/50">
+                            <Star className="w-3 h-3 fill-primary text-primary" /> {credit.rating.toFixed(1)}
                           </span>
                         </div>
                       )}
@@ -588,9 +593,8 @@ export default function ActorDetailsPage({ params }) {
                       )}
                       {credit.rating > 0 && (
                         <div className="absolute top-2 right-2">
-                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-black/70 text-white rounded text-xs font-medium">
-                            <Star className="w-3 h-3 text-primary" />
-                            {credit.rating.toFixed(1)}
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded text-primary text-[11px] sm:text-xs font-semibold bg-black/50">
+                            <Star className="w-3 h-3 fill-primary text-primary" /> {credit.rating.toFixed(1)}
                           </span>
                         </div>
                       )}

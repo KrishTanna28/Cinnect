@@ -104,7 +104,7 @@ export default function VideosGrid({
             <img
               src={`https://img.youtube.com/vi/${video.key}/maxresdefault.jpg`}
               alt={decodeHTMLEntities(video.name)}
-              className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover/video:scale-110"
               onError={(e) => {
                 e.target.src = `https://img.youtube.com/vi/${video.key}/hqdefault.jpg`
               }}

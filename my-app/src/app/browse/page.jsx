@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { X, Filter, Star, Search, Loader2, Film, Tv } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -421,11 +420,15 @@ export default function BrowsePage() {
                           <h4 className="text-[10px] font-semibold text-muted-foreground uppercase px-2 mb-1">Movies &amp; TV</h4>
                           <div className="space-y-0.5">
                             {mobileSearchResults.movies.map((item) => (
-                              <Link
+                              <div
                                 key={`${item.mediaType}-${item.id}`}
-                                href={item.mediaType === 'tv' ? `/tv/${item.id}` : `/movies/${item.id}`}
-                                onClick={() => { setShowMobileSearchDropdown(false); setMobileSearchQuery('') }}
-                                className="flex items-center gap-2.5 p-2 hover:bg-secondary rounded-lg transition-colors"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  setShowMobileSearchDropdown(false);
+                                  setMobileSearchQuery('');
+                                  router.push(item.mediaType === 'tv' ? `/tv/${item.id}` : `/movies/${item.id}`);
+                                }}
+                                className="flex items-center gap-2.5 p-2 hover:bg-secondary rounded-lg transition-colors cursor-pointer"
                               >
                                 {item.poster ? (
                                   <img src={item.poster} alt="" className="w-8 h-11 object-cover rounded flex-shrink-0" />
@@ -441,7 +444,7 @@ export default function BrowsePage() {
                                     {item.releaseDate && ` • ${item.releaseDate.split('-')[0]}`}
                                   </p>
                                 </div>
-                              </Link>
+                              </div>
                             ))}
                           </div>
                         </div>
@@ -451,11 +454,15 @@ export default function BrowsePage() {
                           <h4 className="text-[10px] font-semibold text-muted-foreground uppercase px-2 mb-1">Celebrities</h4>
                           <div className="space-y-0.5">
                             {mobileSearchResults.people.map((person) => (
-                              <Link
+                              <div
                                 key={`person-${person.id}`}
-                                href={`/actor/${person.id}`}
-                                onClick={() => { setShowMobileSearchDropdown(false); setMobileSearchQuery('') }}
-                                className="flex items-center gap-2.5 p-2 hover:bg-secondary rounded-lg transition-colors"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  setShowMobileSearchDropdown(false);
+                                  setMobileSearchQuery('');
+                                  router.push(`/actor/${person.id}`);
+                                }}
+                                className="flex items-center gap-2.5 p-2 hover:bg-secondary rounded-lg transition-colors cursor-pointer"
                               >
                                 {person.poster ? (
                                   <img src={person.poster} alt="" className="w-8 h-8 object-cover rounded-full flex-shrink-0" />
@@ -469,7 +476,7 @@ export default function BrowsePage() {
                                   <p className="text-xs text-muted-foreground">Celebrity</p>
 
                                 </div>
-                              </Link>
+                              </div>
                             ))}
                           </div>
                         </div>

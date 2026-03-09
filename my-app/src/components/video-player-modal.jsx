@@ -26,39 +26,35 @@ export default function VideoPlayerModal({videoKey, videoTitle, onClose }) {
 
   return (
     <div
-      className="mt-20 fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex flex-col bg-black animate-in fade-in duration-200"
       onClick={onClose}
     >
-      <div
-        className="relative w-full max-w-5xl mx-4 aspect-video animate-in zoom-in-95 duration-300"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Close Button */}
+      {/* Top Bar with Title and Close */}
+      <div className="flex items-center justify-between px-4 py-3 bg-black/80 z-10" onClick={(e) => e.stopPropagation()}>
+        {videoTitle && (
+          <h3 className="text-lg font-semibold text-white truncate mr-4">{videoTitle}</h3>
+        )}
         <button
           onClick={onClose}
-          className="absolute -top-12 right-0 p-2 transition-all active:scale-90 cursor-pointer"
+          className="ml-auto p-2 transition-all active:scale-90 cursor-pointer"
           aria-label="Close video"
         >
           <X className="w-8 h-8 text-muted-foreground hover:text-primary" />
         </button>
+      </div>
 
-        {/* Video Title */}
-        {videoTitle && (
-          <div className="absolute -top-12 left-0 text-white">
-            <h3 className="text-lg font-semibold">{videoTitle}</h3>
-          </div>
-        )}
-
-        {/* Video Container */}
-        <div className="relative w-full h-full bg-black rounded-lg overflow-hidden shadow-2xl">
-          <iframe
-            src={`https://www.youtube.com/embed/${videoKey}?autoplay=1&rel=0`}
-            title={videoTitle || "Video player"}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            className="absolute inset-0 w-full h-full"
-          />
-        </div>
+      {/* Fullscreen Video Container */}
+      <div
+        className="flex-1 relative animate-in zoom-in-95 duration-300"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <iframe
+          src={`https://www.youtube.com/embed/${videoKey}?autoplay=1&rel=0`}
+          title={videoTitle || "Video player"}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          className="absolute inset-0 w-full h-full"
+        />
       </div>
     </div>
   )

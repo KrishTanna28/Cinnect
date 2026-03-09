@@ -437,10 +437,15 @@ export default function Navigation() {
                               <h4 className="text-xs font-semibold text-muted-foreground uppercase px-2 mb-2">Movies & TV</h4>
                               <div className="space-y-1">
                                 {searchResults.movies.map((item) => (
-                                  <Link
+                                  <div
                                     key={`${item.mediaType}-${item.id}`}
-                                    href={item.mediaType === 'tv' ? `/tv/${item.id}` : `/movies/${item.id}`}
-                                    onClick={() => { saveSearchQuery(searchQuery.trim()); setShowSearchDropdown(false); setSearchQuery(''); }}
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      saveSearchQuery(searchQuery.trim());
+                                      setShowSearchDropdown(false);
+                                      setSearchQuery('');
+                                      router.push(item.mediaType === 'tv' ? `/tv/${item.id}` : `/movies/${item.id}`);
+                                    }}
                                     className="flex items-center gap-3 p-2 hover:bg-secondary rounded-lg transition-colors cursor-pointer"
                                   >
                                     {item.poster ? (
@@ -458,7 +463,7 @@ export default function Navigation() {
                                         {item.releaseDate && ` • ${item.releaseDate.split('-')[0]}`}
                                       </p>
                                     </div>
-                                  </Link>
+                                  </div>
                                 ))}
                               </div>
                             </div>
@@ -470,10 +475,15 @@ export default function Navigation() {
                               <h4 className="text-xs font-semibold text-muted-foreground uppercase px-2 mb-2">Celebrities</h4>
                               <div className="space-y-1">
                                 {searchResults.celebrities.map((person) => (
-                                  <Link
+                                  <div
                                     key={`celebrity-${person.id}`}
-                                    href={`/actor/${person.id}`}
-                                    onClick={() => { saveSearchQuery(searchQuery.trim()); setShowSearchDropdown(false); setSearchQuery(''); }}
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      saveSearchQuery(searchQuery.trim());
+                                      setShowSearchDropdown(false);
+                                      setSearchQuery('');
+                                      router.push(`/actor/${person.id}`);
+                                    }}
                                     className="flex items-center gap-3 p-2 hover:bg-secondary rounded-lg transition-colors cursor-pointer"
                                   >
                                     {person.poster ? (
@@ -492,7 +502,7 @@ export default function Navigation() {
                                     <div className="flex-shrink-0">
                                       <span className="text-xs px-2 py-1 bg-amber-500/20 text-amber-500 rounded-full">Celebrity</span>
                                     </div>
-                                  </Link>
+                                  </div>
                                 ))}
                               </div>
                             </div>
@@ -504,10 +514,14 @@ export default function Navigation() {
                               <h4 className="text-xs font-semibold text-muted-foreground uppercase px-2 mb-2">Communities</h4>
                               <div className="space-y-1">
                                 {searchResults.communities.map((community) => (
-                                  <Link
+                                  <div
                                     key={community._id}
-                                    href={`/communities/${community.slug}`}
-                                    onClick={() => { setShowSearchDropdown(false); setSearchQuery(''); }}
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      setShowSearchDropdown(false);
+                                      setSearchQuery('');
+                                      router.push(`/communities/${community.slug}`);
+                                    }}
                                     className="flex items-center gap-3 p-2 hover:bg-secondary rounded-lg transition-colors cursor-pointer"
                                   >
                                     {community.icon ? (
@@ -521,7 +535,7 @@ export default function Navigation() {
                                       <p className="text-sm font-medium text-foreground truncate">c/{community.name}</p>
                                       <p className="text-xs text-muted-foreground truncate">{community.memberCount == 1 ? "1 member" : `${community.memberCount || 0} members`}</p>
                                     </div>
-                                  </Link>
+                                  </div>
                                 ))}
                               </div>
                             </div>
@@ -533,10 +547,14 @@ export default function Navigation() {
                               <h4 className="text-xs font-semibold text-muted-foreground uppercase px-2 mb-2">Posts</h4>
                               <div className="space-y-1">
                                 {searchResults.posts.map((post) => (
-                                  <Link
+                                  <div
                                     key={post._id}
-                                    href={`/communities/${post.community?.slug}`}
-                                    onClick={() => { setShowSearchDropdown(false); setSearchQuery(''); }}
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      setShowSearchDropdown(false);
+                                      setSearchQuery('');
+                                      router.push(`/communities/${post.community?.slug}`);
+                                    }}
                                     className="flex items-center gap-3 p-2 hover:bg-secondary rounded-lg transition-colors cursor-pointer"
                                   >
                                     <div className="w-10 h-10 bg-secondary rounded flex items-center justify-center flex-shrink-0">
@@ -548,7 +566,7 @@ export default function Navigation() {
                                         in c/{post.community?.name} • by u/{post.user?.username}
                                       </p>
                                     </div>
-                                  </Link>
+                                  </div>
                                 ))}
                               </div>
                             </div>
@@ -560,10 +578,14 @@ export default function Navigation() {
                               <h4 className="text-xs font-semibold text-muted-foreground uppercase px-2 mb-2">Users</h4>
                               <div className="space-y-1">
                                 {searchResults.people.map((person) => (
-                                  <Link
+                                  <div
                                     key={person._id}
-                                    href={`/profile/${person._id}`}
-                                    onClick={() => { setShowSearchDropdown(false); setSearchQuery(''); }}
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      setShowSearchDropdown(false);
+                                      setSearchQuery('');
+                                      router.push(`/profile/${person._id}`);
+                                    }}
                                     className="flex items-center gap-3 p-2 hover:bg-secondary rounded-lg transition-colors cursor-pointer"
                                   >
                                     {person.avatar ? (
@@ -577,7 +599,7 @@ export default function Navigation() {
                                       <p className="text-sm font-medium text-foreground truncate">u/{person.username}</p>
                                       {person.fullName && <p className="text-xs text-muted-foreground truncate">{person.fullName}</p>}
                                     </div>
-                                  </Link>
+                                  </div>
                                 ))}
                               </div>
                             </div>

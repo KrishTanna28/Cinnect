@@ -148,7 +148,8 @@ export default function DetailsPage({ params }) {
         return
       }
       
-      const url = `https://newsapi.org/v2/everything?q="${encodeURIComponent(movieTitle)}" AND (movie OR film OR cinema)&sortBy=relevancy&pageSize=20&page=${pageNum}&language=en&apiKey=${apiKey}`
+      const entertainmentKeywords = 'movie OR film OR cinema OR trailer OR review OR "box office" OR cast OR streaming OR premiere OR sequel'
+      const url = `https://newsapi.org/v2/everything?qInTitle=${encodeURIComponent('"' + movieTitle + '"')}&q=${encodeURIComponent(entertainmentKeywords)}&sortBy=relevancy&pageSize=20&page=${pageNum}&language=en&apiKey=${apiKey}`
       console.log('[FETCH] Fetching from NewsAPI...')
       
       const response = await fetch(url)
@@ -157,16 +158,21 @@ export default function DetailsPage({ params }) {
       console.log('[INFO] NewsAPI Response:', data)
       
       if (data.status === 'ok' && data.articles && data.articles.length > 0) {
-        // Filter articles to only include those that actually mention the movie title
+        // Filter articles: title must be in headline AND article must be entertainment-related
+        const entertainmentTerms = ['movie', 'film', 'cinema', 'trailer', 'review', 'box office', 'cast', 'streaming', 'premiere', 'sequel', 'director', 'actor', 'actress', 'oscar', 'emmy', 'hollywood', 'netflix', 'disney', 'hbo', 'amazon', 'hulu', 'rating', 'imdb']
         const filteredArticles = data.articles.filter(article => {
           const titleLower = movieTitle.toLowerCase()
           const articleTitle = (article.title || '').toLowerCase()
           const articleDesc = (article.description || '').toLowerCase()
           const articleContent = (article.content || '').toLowerCase()
+          const fullText = articleTitle + ' ' + articleDesc + ' ' + articleContent
           
-          return articleTitle.includes(titleLower) || 
-                 articleDesc.includes(titleLower) || 
-                 articleContent.includes(titleLower)
+          // Title must appear in the article headline
+          const titleInHeadline = articleTitle.includes(titleLower)
+          // Article must contain at least one entertainment keyword
+          const isEntertainment = entertainmentTerms.some(term => fullText.includes(term))
+          
+          return titleInHeadline && isEntertainment
         })
         
         console.log('[OK] Found', filteredArticles.length, 'relevant news articles (filtered from', data.articles.length, ')')

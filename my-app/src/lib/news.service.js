@@ -17,7 +17,8 @@ export async function searchNews(query, page = 1) {
   }
 
   try {
-    const url = `${BASE_URL}/everything?q="${encodeURIComponent(query)}" AND (movie OR film OR cinema)&sortBy=relevancy&pageSize=20&page=${page}&language=en&apiKey=${API_KEY}`
+    const entertainmentKeywords = 'movie OR film OR cinema OR trailer OR review OR cast OR streaming OR premiere'
+    const url = `${BASE_URL}/everything?qInTitle=${encodeURIComponent('"' + query + '"')}&q=${encodeURIComponent(entertainmentKeywords)}&sortBy=relevancy&pageSize=20&page=${page}&language=en&apiKey=${API_KEY}`
 
     console.log('[FETCH] Fetching from NewsAPI...')
     const response = await fetch(url)
