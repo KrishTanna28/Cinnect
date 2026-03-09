@@ -3,6 +3,7 @@ import { withAuth } from '@/lib/middleware/withAuth.js'
 import User from '@/lib/models/User.js'
 import Notification from '@/lib/models/Notification.js'
 import connectDB from '@/lib/config/database.js'
+import { emitNotification } from '@/lib/socketServer.js'
 
 await connectDB()
 
@@ -95,7 +96,7 @@ export const POST = withAuth(async (request, { params, user }) => {
     try {
       const pushEnabled = targetUser.preferences?.notifications?.push !== false
       if (pushEnabled) {
-        await Notification.create({
+        const notif = await Notification.create({
           recipient: targetUserId,
           type: 'new_follower',
           fromUser: user._id,
@@ -104,6 +105,7 @@ export const POST = withAuth(async (request, { params, user }) => {
           image: user.avatar || '',
           link: `/profile/${user._id}`
         })
+        emitNotification(targetUserId, notif.toObject())
       }
     } catch (notifErr) {
       console.error('Failed to create follow notification:', notifErr)
@@ -196,7 +198,7 @@ export const DELETE = withAuth(async (request, { params, user }) => {
     try {
       const pushEnabled = targetUser.preferences?.notifications?.push !== false
       if (pushEnabled) {
-        await Notification.create({
+        const notif = await Notification.create({
           recipient: targetUserId,
           type: 'lost_follower',
           fromUser: user._id,
@@ -205,6 +207,7 @@ export const DELETE = withAuth(async (request, { params, user }) => {
           image: user.avatar || '',
           link: `/profile/${user._id}`
         })
+        emitNotification(targetUserId, notif.toObject())
       }
     } catch (notifErr) {
       console.error('Failed to create unfollow notification:', notifErr)

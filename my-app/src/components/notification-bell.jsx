@@ -3,15 +3,18 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { Bell, Check, X, UserPlus, UserMinus, UserCheck as UserCheckIcon, Users, Sparkles, Loader2, Heart, MessageCircle, Gift } from "lucide-react"
 import { useUser } from "@/contexts/UserContext"
+import { useSocket } from "@/contexts/SocketContext"
+import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 
 export default function NotificationBell() {
   const { user } = useUser()
+  const { on } = useSocket() || {}
+  const { toast } = useToast()
   const [open, setOpen] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(false)
-  // No loading state — we use optimistic updates for instant UI
   const dropdownRef = useRef(null)
   const hasFetchedAi = useRef(false)
 
@@ -73,24 +76,25 @@ export default function NotificationBell() {
     }
   }, [user, fetchNotifications, generateAiNotifications])
 
-  // Poll every 60s
+  // ─── Real-time: listen for new notifications via Socket.IO ───
   useEffect(() => {
-    if (!user) return
-    const interval = setInterval(fetchNotifications, 60000)
-    return () => clearInterval(interval)
-  }, [user, fetchNotifications])
+    if (!on) return
+    const unsub = on("notification:new", (notif) => {
+      // Prepend the new notification to the list
+      setNotifications(prev => [notif, ...prev])
+      setUnreadCount(prev => prev + 1)
 
-  // Toggle dropdown
-  const toggleDropdown = () => {
-    const next = !open
-    setOpen(next)
-    if (next) {
-      fetchNotifications()
-    }
-  }
+      // Show toast
+      toast({
+        title: notif.title || "New Notification",
+        description: notif.message || "",
+      })
+    })
+    return unsub
+  }, [on, toast])
 
-  // Mark all as read
-  const markAllRead = async () => {
+  // ─── Mark all as read when dropdown is opened ───
+  const markAllRead = useCallback(async () => {
     const token = localStorage.getItem("token")
     if (!token) return
     try {
@@ -109,6 +113,19 @@ export default function NotificationBell() {
     } catch {
       // ignore
     }
+  }, [])
+
+  // Toggle dropdown — auto-mark-as-read on open
+  const toggleDropdown = () => {
+    const next = !open
+    setOpen(next)
+    if (next) {
+      fetchNotifications()
+      // Mark all as read when opening the dropdown
+      if (unreadCount > 0) {
+        markAllRead()
+      }
+    }
   }
 
   // Handle accept / reject actions — optimistic update
@@ -116,11 +133,9 @@ export default function NotificationBell() {
     const token = localStorage.getItem("token")
     if (!token) return
 
-    // Snapshot for rollback
     const prevNotifications = notifications
     const prevUnreadCount = unreadCount
 
-    // Optimistic: immediately reflect the action in UI
     setNotifications(prev =>
       prev.map(n =>
         n._id === notificationId
@@ -141,18 +156,15 @@ export default function NotificationBell() {
       })
       if (res.ok) {
         const json = await res.json()
-        // Reconcile unread count with server truth
         if (json.data?.unreadCount !== undefined) {
           setUnreadCount(json.data.unreadCount)
         }
       } else {
-        // Revert on failure
         setNotifications(prevNotifications)
         setUnreadCount(prevUnreadCount)
       }
     } catch (err) {
       console.error("Notification action failed:", err)
-      // Revert on network error
       setNotifications(prevNotifications)
       setUnreadCount(prevUnreadCount)
     }
@@ -219,14 +231,6 @@ export default function NotificationBell() {
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-secondary/30">
             <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
-            {unreadCount > 0 && (
-              <button
-                onClick={markAllRead}
-                className="text-xs text-primary hover:underline cursor-pointer"
-              >
-                Mark all as read
-              </button>
-            )}
           </div>
 
           {/* Body */}

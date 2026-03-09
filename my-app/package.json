@@ -2,11 +2,12 @@
   "name": "my-v0-project",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "build": "next build",
-    "dev": "next dev -H 0.0.0.0",
+    "dev": "node server.js",
     "lint": "eslint .",
-    "start": "next start -H 0.0.0.0"
+    "start": "NODE_ENV=production node server.js"
   },
   "dependencies": {
     "@google/genai": "^1.41.0",
@@ -68,6 +69,8 @@
     "react-hook-form": "^7.60.0",
     "react-resizable-panels": "^2.1.7",
     "recharts": "2.15.4",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
     "sonner": "^1.7.4",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",

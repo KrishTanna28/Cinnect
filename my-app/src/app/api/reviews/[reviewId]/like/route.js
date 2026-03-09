@@ -3,6 +3,7 @@ import Review from '@/lib/models/Review.js'
 import Notification from '@/lib/models/Notification.js'
 import User from '@/lib/models/User.js'
 import { withAuth } from '@/lib/middleware/withAuth.js'
+import { emitNotification } from '@/lib/socketServer.js'
 
 // POST /api/reviews/[reviewId]/like - Like/unlike a review
 export const POST = withAuth(async (request, { user, params }) => {
@@ -32,7 +33,7 @@ export const POST = withAuth(async (request, { user, params }) => {
         const pushEnabled = recipient?.preferences?.notifications?.push !== false
 
         if (pushEnabled) {
-          await Notification.create({
+          const notif = await Notification.create({
             recipient: review.user,
             type: 'review_like',
             fromUser: user._id,
@@ -41,6 +42,7 @@ export const POST = withAuth(async (request, { user, params }) => {
             image: user.avatar || '',
             link: `/reviews/${review.mediaType}/${review.mediaId}`
           })
+          emitNotification(review.user, notif.toObject())
         }
       } catch (notifErr) {
         console.error('Failed to create like notification:', notifErr)

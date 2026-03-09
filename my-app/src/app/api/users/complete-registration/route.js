@@ -4,6 +4,7 @@ import User from '@/lib/models/User.js'
 import Notification from '@/lib/models/Notification.js'
 import jwt from 'jsonwebtoken'
 import pendingRegistrations from '@/lib/pendingRegistrations.js'
+import { emitNotification } from '@/lib/socketServer.js'
 
 export async function POST(request) {
   try {
@@ -109,6 +110,7 @@ export async function POST(request) {
           link: `/profile/${referrerIdStr}`,
           read: false
         })
+        emitNotification(newUser._id, newUserNotif.toObject())
         console.log(`[REFERRAL] ✅ New user notification created: ${newUserNotif._id}`)
       } catch (notifErr) {
         console.error('[REFERRAL] ❌ Failed to create new user notification:', notifErr.message, notifErr.stack)
@@ -125,6 +127,7 @@ export async function POST(request) {
           link: `/profile/${newUserIdStr}`,
           read: false
         })
+        emitNotification(referralResult.referrerId, referrerNotif.toObject())
         console.log(`[REFERRAL] ✅ Referrer notification created: ${referrerNotif._id}`)
       } catch (notifErr) {
         console.error('[REFERRAL] ❌ Failed to create referrer notification:', notifErr.message, notifErr.stack)

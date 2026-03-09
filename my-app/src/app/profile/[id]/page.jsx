@@ -159,15 +159,11 @@ export default function PublicProfilePage({ params }) {
 
       const data = await response.json()
       if (data.success) {
-        // Reconcile with server truth
+        // Only reconcile if server truth differs from our optimistic value
         const serverStatus = data.data.status || 'none'
-        setFollowStatus(serverStatus)
+        setFollowStatus(prev => prev !== serverStatus ? serverStatus : prev)
         if (data.data.targetFollowersCount !== undefined) {
-          setFollowersCount(data.data.targetFollowersCount)
-        }
-
-        if (profile?.isPrivate) {
-          fetchUserProfile()
+          setFollowersCount(prev => prev !== data.data.targetFollowersCount ? data.data.targetFollowersCount : prev)
         }
       } else {
         // Revert on failure
