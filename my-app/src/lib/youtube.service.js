@@ -5,14 +5,14 @@ const BASE_URL = 'https://www.googleapis.com/youtube/v3'
 
 export async function searchVideos(query, pageToken = null) {
   if (!API_KEY || API_KEY === 'demo') {
-    console.log('⚠️ YouTube API key not configured')
+    console.log('[WARN] YouTube API key not configured')
     return { items: [], nextPageToken: null }
   }
 
   const cacheKey = `youtube:search:${query}:${pageToken || 'first'}`
   const cached = await get(cacheKey)
   if (cached) {
-    console.log('✅ YouTube cache hit:', cacheKey)
+    console.log('[OK] YouTube cache hit:', cacheKey)
     return cached
   }
 
@@ -24,7 +24,7 @@ export async function searchVideos(query, pageToken = null) {
       url += `&pageToken=${pageToken}`
     }
 
-    console.log('📡 Fetching from YouTube API...')
+    console.log('[FETCH] Fetching from YouTube API...')
     const response = await fetch(url)
 
     if (!response.ok) {
@@ -47,11 +47,11 @@ export async function searchVideos(query, pageToken = null) {
     }
 
     await set(cacheKey, result, 3600)
-    console.log('✅ YouTube data cached:', cacheKey)
+    console.log('[OK] YouTube data cached:', cacheKey)
 
     return result
   } catch (error) {
-    console.error('❌ YouTube API error:', error)
+    console.error('[ERROR] YouTube API error:', error)
     return { items: [], nextPageToken: null }
   }
 }

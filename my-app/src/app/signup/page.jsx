@@ -74,7 +74,7 @@ export default function SignupPage() {
         if (data.data.welcomeBonus) {
           toast({
             variant: "success",
-            title: "🎁 Welcome Bonus!",
+            title: "Welcome Bonus!",
             description: `You received ${data.data.welcomeBonus.points} points as a welcome gift!`,
             duration: 5000,
           })
@@ -85,7 +85,7 @@ export default function SignupPage() {
           setTimeout(() => {
             toast({
               variant: "success",
-              title: "🎉 Referral Bonus!",
+              title: "Referral Bonus!",
               description: `You and ${data.data.referralReward.referrerName} both received ${data.data.referralReward.pointsAwarded} points!`,
               duration: 5000,
             })
@@ -96,7 +96,7 @@ export default function SignupPage() {
         setTimeout(() => {
           toast({
             variant: "success",
-            title: "✅ Registration Complete!",
+            title: "Registration Complete!",
             description: "Welcome to Cinnect! Check your email for more details.",
             duration: 5000,
           })
@@ -143,7 +143,7 @@ export default function SignupPage() {
         // Show OTP sent message
         toast({
           variant: "success",
-          title: "📧 OTP Sent!",
+          title: "OTP Sent!",
           description: `A 6-digit OTP has been sent to your email. Please check your inbox to complete registration.`,
           duration: 5000,
         })
@@ -329,7 +329,7 @@ export default function SignupPage() {
               {fieldErrors.referralCode ? (
                 <p className="text-xs text-destructive">{fieldErrors.referralCode}</p>
               ) : (
-                <p className="text-xs text-primary font-medium">🎁 Both you and your friend get 50 points!</p>
+                <p className="text-xs text-primary font-medium"><Gift className="w-3.5 h-3.5 inline mr-1" />Both you and your friend get 50 points!</p>
               )}
             </div>
 

@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { Film, Star } from "lucide-react"
 
 /**
  * MovieCard — Unified card component used across the app.
@@ -49,7 +50,7 @@ export default function MovieCard({
             alwaysShowInfo ? "h-full" : "h-54"
           }`}
         >
-          <span className="text-4xl text-muted-foreground">🎬</span>
+          <Film className="w-10 h-10 text-muted-foreground" />
         </div>
       )}
 
@@ -78,7 +79,7 @@ export default function MovieCard({
           <div className="flex items-center gap-1.5 sm:gap-2">
             {movie.rating > 0 && (
               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded text-primary text-[11px] sm:text-xs font-semibold bg-black/50">
-                ★ {movie.rating.toFixed(1)}
+                <Star className="w-3 h-3 fill-primary text-primary" /> {movie.rating.toFixed(1)}
               </span>
             )}
             {year && (

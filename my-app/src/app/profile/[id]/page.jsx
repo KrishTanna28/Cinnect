@@ -21,7 +21,10 @@ import {
   Trash2,
   Pencil,
   MoreVertical,
-  X
+  X,
+  ThumbsUp,
+  MessageCircle,
+  AlertTriangle
 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -590,9 +593,9 @@ export default function PublicProfilePage({ params }) {
                           </div>
                           <p className="text-foreground line-clamp-3">{review.content}</p>
                           <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
-                            <span>👍 {review.likeCount || 0} likes</span>
-                            <span>💬 {review.replyCount || 0} replies</span>
-                            {review.hasSpoilers && <span className="text-red-500">⚠️ Contains spoilers</span>}
+                            <span><ThumbsUp className="w-3.5 h-3.5 inline mr-1" />{review.likeCount || 0} likes</span>
+                            <span><MessageCircle className="w-3.5 h-3.5 inline mr-1" />{review.replyCount || 0} replies</span>
+                            {review.hasSpoilers && <span className="text-red-500"><AlertTriangle className="w-3.5 h-3.5 inline mr-1" />Contains spoilers</span>}
                           </div>
                         </div>
                       </Link>

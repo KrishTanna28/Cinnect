@@ -112,7 +112,7 @@ export async function retrieveRAGContext(query) {
       context += `\n${i + 1}. Review for "${r.mediaTitle}" (${r.mediaType}) — Rating: ${r.rating}/10\n`;
       context += `   Title: ${r.title}\n`;
       context += `   "${r.content.slice(0, 300)}${r.content.length > 300 ? "..." : ""}"\n`;
-      context += `   👍 ${r.likeCount} likes\n`;
+      context += `   Likes: ${r.likeCount}\n`;
     });
   }
 
@@ -121,7 +121,7 @@ export async function retrieveRAGContext(query) {
     posts.forEach((p, i) => {
       context += `\n${i + 1}. "${p.title}"\n`;
       context += `   "${(p.content || "").slice(0, 300)}${(p.content || "").length > 300 ? "..." : ""}"\n`;
-      context += `   👍 ${p.likeCount} likes · 💬 ${p.commentCount} comments · 👁️ ${p.views} views\n`;
+      context += `   Likes: ${p.likeCount} · Comments: ${p.commentCount} · Views: ${p.views}\n`;
     });
   }
 

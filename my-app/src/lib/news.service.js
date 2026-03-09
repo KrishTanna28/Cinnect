@@ -5,21 +5,21 @@ const BASE_URL = 'https://newsapi.org/v2'
 
 export async function searchNews(query, page = 1) {
   if (!API_KEY || API_KEY === 'demo') {
-    console.log('⚠️ News API key not configured')
+    console.log('[WARN] News API key not configured')
     return { articles: [], hasMore: false }
   }
 
   const cacheKey = `news:search:${query}:${page}`
   const cached = await get(cacheKey)
   if (cached) {
-    console.log('✅ News cache hit:', cacheKey)
+    console.log('[OK] News cache hit:', cacheKey)
     return cached
   }
 
   try {
     const url = `${BASE_URL}/everything?q="${encodeURIComponent(query)}" AND (movie OR film OR cinema)&sortBy=relevancy&pageSize=20&page=${page}&language=en&apiKey=${API_KEY}`
 
-    console.log('📡 Fetching from NewsAPI...')
+    console.log('[FETCH] Fetching from NewsAPI...')
     const response = await fetch(url)
 
     if (!response.ok) {
@@ -49,11 +49,11 @@ export async function searchNews(query, page = 1) {
     }
 
     await set(cacheKey, result, 7200)
-    console.log('✅ News data cached:', cacheKey, `(${filteredArticles.length} articles)`)
+    console.log('[OK] News data cached:', cacheKey, `(${filteredArticles.length} articles)`)
 
     return result
   } catch (error) {
-    console.error('❌ NewsAPI error:', error)
+    console.error('[ERROR] NewsAPI error:', error)
     return { articles: [], hasMore: false }
   }
 }

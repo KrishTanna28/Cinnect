@@ -26,7 +26,7 @@ export default function AIAssistant() {
   const [messages, setMessages] = useState([
     {
       role: "assistant",
-      content: "Hey there! 👋 I'm C.A.S.T — your Cinematic Assistant for Smart Tastes. Ask me anything about movies, shows, actors, or what's trending! 🎬",
+      content: "Hey there! I'm C.A.S.T \u2014 your Cinematic Assistant for Smart Tastes. Ask me anything about movies, shows, actors, or what's trending!",
     },
   ])
   const [input, setInput] = useState("")
@@ -122,7 +122,7 @@ export default function AIAssistant() {
           ...prev,
           {
             role: "assistant",
-            content: "Sorry, I encountered an error. Please try again! 😅",
+            content: "Sorry, I encountered an error. Please try again!",
           },
         ])
       }
@@ -132,7 +132,7 @@ export default function AIAssistant() {
         ...prev,
         {
           role: "assistant",
-          content: "Oops! Something went wrong. Please try again later. 🎬",
+          content: "Oops! Something went wrong. Please try again later.",
         },
       ])
     } finally {

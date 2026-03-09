@@ -12,10 +12,10 @@ const verifyCloudinaryConfig = () => {
   if (!process.env.CLOUDINARY_CLOUD_NAME || 
       !process.env.CLOUDINARY_API_KEY || 
       !process.env.CLOUDINARY_API_SECRET) {
-    console.warn('⚠️ Cloudinary credentials not found in environment variables');
+    console.warn('[WARN] Cloudinary credentials not found in environment variables');
     return false;
   }
-  console.log('✅ Cloudinary configured successfully');
+  console.log('[OK] Cloudinary configured successfully');
   return true;
 };
 

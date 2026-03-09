@@ -298,7 +298,7 @@ export const sendOTPEmail = async (email, otp, userName = 'User') => {
         const mailOptions = {
           from: `"Cinnect" <${process.env.EMAIL_USER}>`,
           to: email,
-          subject: '🎬 Your Cinnect Verification Code',
+          subject: 'Your Cinnect Verification Code',
           html: `
             <!DOCTYPE html>
             <html>
@@ -311,7 +311,7 @@ export const sendOTPEmail = async (email, otp, userName = 'User') => {
               <div class="email-wrapper">
                 <!-- Logo Section -->
                 <div class="logo-section">
-                  <div class="logo-icon"><span>🎬</span></div>
+                  <div class="logo-icon"><span>C</span></div>
                   <div class="logo-title">Verification Code</div>
                   <div class="logo-subtitle">Verify your email to continue to Cinnect</div>
                 </div>
@@ -334,7 +334,7 @@ export const sendOTPEmail = async (email, otp, userName = 'User') => {
 
                   <!-- Warning Alert -->
                   <div class="alert alert-warning">
-                    <div class="alert-title">⚠️ Security Notice</div>
+                    <div class="alert-title">Security Notice</div>
                     <ul>
                       <li>Never share this code with anyone</li>
                       <li>Cinnect will never ask for your code</li>
@@ -348,7 +348,7 @@ export const sendOTPEmail = async (email, otp, userName = 'User') => {
 
                   <!-- Signature -->
                   <div class="signature">
-                    <div class="signature-text">Happy watching! 🍿</div>
+                    <div class="signature-text">Happy watching!</div>
                     <div class="signature-name">The Cinnect Team</div>
                   </div>
                 </div>
@@ -365,12 +365,12 @@ export const sendOTPEmail = async (email, otp, userName = 'User') => {
         };
 
         const info = await transporter.sendMail(mailOptions);
-        console.log(`✅ Email sent successfully to ${email}`);
-        console.log(`📧 Message ID: ${info.messageId}`);
+        console.log(`[OK] Email sent successfully to ${email}`);
+        console.log(`[EMAIL] Message ID: ${info.messageId}`);
         return true;
 
       } catch (emailError) {
-        console.error('❌ Email Error:', emailError.message);
+        console.error('[ERROR] Email Error:', emailError.message);
         return false;
       }
     }
@@ -408,7 +408,7 @@ export const sendWelcomeEmail = async (email, userName) => {
     const mailOptions = {
       from: `"Cinnect" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: '🎉 Welcome to Cinnect - 50 Points Bonus!',
+      subject: 'Welcome to Cinnect - 50 Points Bonus!',
       html: `
         <!DOCTYPE html>
         <html>
@@ -421,7 +421,7 @@ export const sendWelcomeEmail = async (email, userName) => {
           <div class="email-wrapper">
             <!-- Logo Section -->
             <div class="logo-section">
-              <div class="logo-icon"><span>🎬</span></div>
+              <div class="logo-icon"><span>C</span></div>
               <div class="logo-title">Welcome to Cinnect!</div>
               <div class="logo-subtitle">Your movie community awaits</div>
             </div>
@@ -437,7 +437,7 @@ export const sendWelcomeEmail = async (email, userName) => {
 
               <!-- Points Box -->
               <div class="points-box">
-                <div class="points-label" style="margin-bottom: 8px;">🎁 Welcome Bonus</div>
+                <div class="points-label" style="margin-bottom: 8px;">Welcome Bonus</div>
                 <div class="points-number">50</div>
                 <div class="points-label">POINTS CREDITED</div>
               </div>
@@ -448,29 +448,29 @@ export const sendWelcomeEmail = async (email, userName) => {
 
               <!-- Feature Items -->
               <div class="feature-item">
-                <div class="feature-title">🎬 Discover Movies</div>
+                <div class="feature-title">Discover Movies</div>
                 <div class="feature-desc">Browse thousands of movies and find your next favorite</div>
               </div>
 
               <div class="feature-item">
-                <div class="feature-title">⭐ Write Reviews</div>
+                <div class="feature-title">Write Reviews</div>
                 <div class="feature-desc">Share your thoughts and earn more points</div>
               </div>
 
               <div class="feature-item">
-                <div class="feature-title">📝 Create Watchlists</div>
+                <div class="feature-title">Create Watchlists</div>
                 <div class="feature-desc">Keep track of movies you want to watch</div>
               </div>
 
               <div class="feature-item">
-                <div class="feature-title">🏆 Earn Points & Level Up</div>
+                <div class="feature-title">Earn Points & Level Up</div>
                 <div class="feature-desc">Get rewarded for your contributions</div>
               </div>
 
               <!-- CTA Button -->
               <div style="text-align: center; margin-top: 32px;">
                 <a href="${appUrl}" class="btn-primary btn-primary-lg">
-                  Start Exploring 🍿
+                  Start Exploring
                 </a>
               </div>
 
@@ -493,7 +493,7 @@ export const sendWelcomeEmail = async (email, userName) => {
     };
 
     await transporter.sendMail(mailOptions);
-    console.log(`✅ Welcome email sent to ${email}`);
+    console.log(`[OK] Welcome email sent to ${email}`);
     return true;
 
   } catch (error) {
@@ -526,7 +526,7 @@ export const sendPasswordResetEmail = async (email, resetToken, userName = 'User
         const mailOptions = {
           from: `"Cinnect" <${process.env.EMAIL_USER}>`,
           to: email,
-          subject: '🔐 Reset Your Cinnect Password',
+          subject: 'Reset Your Cinnect Password',
           html: `
             <!DOCTYPE html>
             <html>
@@ -539,7 +539,7 @@ export const sendPasswordResetEmail = async (email, resetToken, userName = 'User
               <div class="email-wrapper">
                 <!-- Logo Section -->
                 <div class="logo-section">
-                  <div class="logo-icon"><span>🔐</span></div>
+                  <div class="logo-icon"><span>C</span></div>
                   <div class="logo-title" style="color: #141414;">Reset Password</div>
                   <div class="logo-subtitle " style="color: #141414;">Create a new password for your Cinnect account</div>
                 </div>
@@ -562,13 +562,13 @@ export const sendPasswordResetEmail = async (email, resetToken, userName = 'User
 
                   <!-- Info Alert -->
                   <div class="alert alert-info">
-                    <div class="alert-title">⏱️ Important</div>
+                    <div class="alert-title">Important</div>
                     <div>This password reset link will expire in 1 hour for security reasons.</div>
                   </div>
 
                   <!-- Warning Alert -->
                   <div class="alert alert-warning">
-                    <div class="alert-title">⚠️ Security Notice</div>
+                    <div class="alert-title">Security Notice</div>
                     <ul>
                       <li>If you didn't request this, ignore this email</li>
                       <li>Never share this link with anyone</li>
@@ -601,7 +601,7 @@ export const sendPasswordResetEmail = async (email, resetToken, userName = 'User
         };
 
         await transporter.sendMail(mailOptions);
-        console.log(`✅ Password reset email sent to ${email}`);
+        console.log(`[OK] Password reset email sent to ${email}`);
         return true;
 
       } catch (error) {
@@ -610,7 +610,7 @@ export const sendPasswordResetEmail = async (email, resetToken, userName = 'User
       }
     }
 
-    console.log('⚠️ Email service not configured');
+    console.log('[WARN] Email service not configured');
     return false;
 
   } catch (error) {

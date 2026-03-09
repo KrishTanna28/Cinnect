@@ -39,11 +39,11 @@ You MUST ONLY answer questions related to:
 - Any topic outside of movies, TV, and the entertainment industry
 
 If a user asks something unrelated to cinema/entertainment, politely decline and redirect them:
-"I'm C.A.S.T, your cinematic intelligence! 🎬 I can only help with questions about movies, TV shows, actors, the entertainment industry, or Cinnect features. Is there anything cinema-related I can help you with?"
+"I'm C.A.S.T, your cinematic intelligence! I can only help with questions about movies, TV shows, actors, the entertainment industry, or Cinnect features. Is there anything cinema-related I can help you with?"
 
 **Response Guidelines:**
 - Be conversational and friendly, but concise
-- Use emojis sparingly to add personality 🎬
+- Use emojis sparingly to add personality
 - When recommending movies/shows, mention the genre and a brief reason why
 - If asked about specific movies, provide useful details like year, director, main cast
 - Encourage users to check out the movie/show pages on Cinnect for more details
@@ -249,49 +249,49 @@ function formatContextForAI(context) {
   let contextStr = "\n\n--- CURRENT CINNECT DATA ---\n";
 
   if (context.trendingMovies?.length > 0) {
-    contextStr += "\n📽️ Trending Movies This Week:\n";
+    contextStr += "\n[TRENDING] Trending Movies This Week:\n";
     context.trendingMovies.forEach((movie, i) => {
-      contextStr += `${i + 1}. ${movie.title} (${movie.releaseDate?.split("-")[0] || "N/A"}) - ⭐ ${movie.rating?.toFixed(1) || "N/A"}\n`;
+      contextStr += `${i + 1}. ${movie.title} (${movie.releaseDate?.split("-")[0] || "N/A"}) - Rating: ${movie.rating?.toFixed(1) || "N/A"}\n`;
     });
   }
 
   if (context.trendingTV?.length > 0) {
-    contextStr += "\n📺 Trending TV Shows This Week:\n";
+    contextStr += "\n[TRENDING] Trending TV Shows This Week:\n";
     context.trendingTV.forEach((show, i) => {
-      contextStr += `${i + 1}. ${show.title} (${show.releaseDate?.split("-")[0] || "N/A"}) - ⭐ ${show.rating?.toFixed(1) || "N/A"}\n`;
+      contextStr += `${i + 1}. ${show.title} (${show.releaseDate?.split("-")[0] || "N/A"}) - Rating: ${show.rating?.toFixed(1) || "N/A"}\n`;
     });
   }
 
   if (context.upcomingMovies?.length > 0) {
-    contextStr += "\n🎬 Upcoming Movies:\n";
+    contextStr += "\n[UPCOMING] Upcoming Movies:\n";
     context.upcomingMovies.forEach((movie, i) => {
       contextStr += `${i + 1}. ${movie.title} - Releasing: ${movie.releaseDate || "TBA"}\n`;
     });
   }
 
   if (context.nowPlaying?.length > 0) {
-    contextStr += "\n🎭 Now Playing in Theaters:\n";
+    contextStr += "\n[NOW PLAYING] Now Playing in Theaters:\n";
     context.nowPlaying.forEach((movie, i) => {
-      contextStr += `${i + 1}. ${movie.title} - ⭐ ${movie.rating?.toFixed(1) || "N/A"}\n`;
+      contextStr += `${i + 1}. ${movie.title} - Rating: ${movie.rating?.toFixed(1) || "N/A"}\n`;
     });
   }
 
   if (context.searchedMovies?.length > 0) {
-    contextStr += "\n🔍 Relevant Movies Found:\n";
+    contextStr += "\n[SEARCH] Relevant Movies Found:\n";
     context.searchedMovies.forEach((movie, i) => {
-      contextStr += `${i + 1}. ${movie.title} (${movie.releaseDate?.split("-")[0] || "N/A"}) - ⭐ ${movie.rating?.toFixed(1) || "N/A"} - ${movie.overview?.slice(0, 100) || "No description"}...\n`;
+      contextStr += `${i + 1}. ${movie.title} (${movie.releaseDate?.split("-")[0] || "N/A"}) - Rating: ${movie.rating?.toFixed(1) || "N/A"} - ${movie.overview?.slice(0, 100) || "No description"}...\n`;
     });
   }
 
   if (context.searchedTV?.length > 0) {
-    contextStr += "\n🔍 Relevant TV Shows Found:\n";
+    contextStr += "\n[SEARCH] Relevant TV Shows Found:\n";
     context.searchedTV.forEach((show, i) => {
-      contextStr += `${i + 1}. ${show.title} (${show.releaseDate?.split("-")[0] || "N/A"}) - ⭐ ${show.rating?.toFixed(1) || "N/A"} - ${show.overview?.slice(0, 100) || "No description"}...\n`;
+      contextStr += `${i + 1}. ${show.title} (${show.releaseDate?.split("-")[0] || "N/A"}) - Rating: ${show.rating?.toFixed(1) || "N/A"} - ${show.overview?.slice(0, 100) || "No description"}...\n`;
     });
   }
 
   if (context.searchedPerson?.length > 0) {
-    contextStr += "\n👤 People Found:\n";
+    contextStr += "\n[PEOPLE] People Found:\n";
     context.searchedPerson.forEach((person, i) => {
       contextStr += `${i + 1}. ${person.name} - Known for: ${person.knownForDepartment || "Acting"}\n`;
     });

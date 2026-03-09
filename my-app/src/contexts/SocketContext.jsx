@@ -42,17 +42,17 @@ export function SocketProvider({ children }) {
     })
 
     socket.on("connect", () => {
-      console.log("🔌 Socket connected:", socket.id)
+      console.log("[SOCKET] Socket connected:", socket.id)
       setConnected(true)
     })
 
     socket.on("disconnect", (reason) => {
-      console.log("🔌 Socket disconnected:", reason)
+      console.log("[SOCKET] Socket disconnected:", reason)
       setConnected(false)
     })
 
     socket.on("connect_error", (err) => {
-      console.warn("🔌 Socket connection error:", err.message)
+      console.warn("[SOCKET] Socket connection error:", err.message)
     })
 
     socketRef.current = socket

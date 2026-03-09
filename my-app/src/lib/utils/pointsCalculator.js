@@ -302,24 +302,24 @@ export function calculateBadges(user) {
     const badges = [];
 
     // Review count badges
-    if (user.totalReviews >= 100) badges.push({ name: 'Century Club', icon: '💯' });
-    if (user.totalReviews >= 500) badges.push({ name: 'Review Master', icon: '👑' });
+    if (user.totalReviews >= 100) badges.push({ name: 'Century Club', icon: 'hash' });
+    if (user.totalReviews >= 500) badges.push({ name: 'Review Master', icon: 'crown' });
 
     // Engagement badges
-    if (user.totalLikes >= 1000) badges.push({ name: 'Community Favorite', icon: '⭐' });
-    if (user.totalReplies >= 500) badges.push({ name: 'Discussion Leader', icon: '💬' });
+    if (user.totalLikes >= 1000) badges.push({ name: 'Community Favorite', icon: 'star' });
+    if (user.totalReplies >= 500) badges.push({ name: 'Discussion Leader', icon: 'message-circle' });
 
     // Streak badges
-    if (user.reviewStreak >= 30) badges.push({ name: 'Dedicated Critic', icon: '🔥' });
-    if (user.reviewStreak >= 90) badges.push({ name: 'Unstoppable', icon: '⚡' });
+    if (user.reviewStreak >= 30) badges.push({ name: 'Dedicated Critic', icon: 'flame' });
+    if (user.reviewStreak >= 90) badges.push({ name: 'Unstoppable', icon: 'zap' });
 
     // Diversity badges
-    if (user.reviewedGenres?.length >= 15) badges.push({ name: 'Genre Explorer', icon: '🎭' });
-    if (user.reviewedFormats?.length >= 2) badges.push({ name: 'Format Master', icon: '📺' });
+    if (user.reviewedGenres?.length >= 15) badges.push({ name: 'Genre Explorer', icon: 'drama' });
+    if (user.reviewedFormats?.length >= 2) badges.push({ name: 'Format Master', icon: 'tv' });
 
     // Quality badges
-    if (user.averageReviewLength >= 500) badges.push({ name: 'Detailed Analyst', icon: '📝' });
-    if (user.helpfulnessRatio >= 0.8) badges.push({ name: 'Helpful Reviewer', icon: '🌟' });
+    if (user.averageReviewLength >= 500) badges.push({ name: 'Detailed Analyst', icon: 'file-text' });
+    if (user.helpfulnessRatio >= 0.8) badges.push({ name: 'Helpful Reviewer', icon: 'sparkles' });
 
     return badges;
   }

@@ -60,7 +60,7 @@ Return ONLY a JSON array of objects, each with:
 - "link" (a relative URL like "/movies/{tmdbId}" or "/tv/{tmdbId}" if you know the ID from the data above, otherwise "/browse")
 
 Example:
-[{"title":"🔥 Episode just dropped!","message":"The latest episode of X has a perfect 10/10 rating — fans are losing it.","link":"/tv/12345"}]
+[{"title":"Episode just dropped!","message":"The latest episode of X has a perfect 10/10 rating \u2014 fans are losing it.","link":"/tv/12345"}]
 
 Do not include markdown fences. Only output the JSON array.`;
 
@@ -75,7 +75,7 @@ Do not include markdown fences. Only output the JSON array.`;
       // Fallback static notifications
       items = [
         {
-          title: '🎬 Trending Now',
+          title: 'Trending Now',
           message: trendingMovies?.[0]
             ? `${trendingMovies[0].title} is trending today — have you seen it?`
             : 'Check out what\'s trending on Cinnect right now!',
@@ -90,7 +90,7 @@ Do not include markdown fences. Only output the JSON array.`;
       const notif = await Notification.create({
         recipient: user._id,
         type: 'ai_generated',
-        title: (item.title || '🎬 New Update').slice(0, 200),
+        title: (item.title || 'New Update').slice(0, 200),
         message: (item.message || 'Something exciting is happening on Cinnect!').slice(0, 500),
         link: item.link || '/browse',
         image: ''

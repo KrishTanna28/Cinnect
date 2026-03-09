@@ -111,9 +111,9 @@ export async function POST(request) {
           read: false
         })
         emitNotification(newUser._id, newUserNotif.toObject())
-        console.log(`[REFERRAL] ✅ New user notification created: ${newUserNotif._id}`)
+        console.log(`[REFERRAL] [OK] New user notification created: ${newUserNotif._id}`)
       } catch (notifErr) {
-        console.error('[REFERRAL] ❌ Failed to create new user notification:', notifErr.message, notifErr.stack)
+        console.error('[REFERRAL] [ERROR] Failed to create new user notification:', notifErr.message, notifErr.stack)
       }
 
       // Notification for the referrer who invited them
@@ -128,9 +128,9 @@ export async function POST(request) {
           read: false
         })
         emitNotification(referralResult.referrerId, referrerNotif.toObject())
-        console.log(`[REFERRAL] ✅ Referrer notification created: ${referrerNotif._id}`)
+        console.log(`[REFERRAL] [OK] Referrer notification created: ${referrerNotif._id}`)
       } catch (notifErr) {
-        console.error('[REFERRAL] ❌ Failed to create referrer notification:', notifErr.message, notifErr.stack)
+        console.error('[REFERRAL] [ERROR] Failed to create referrer notification:', notifErr.message, notifErr.stack)
       }
     } else if (trimmedReferralCode) {
       console.log(`[REFERRAL] Referral processing was not successful or returned null. Result:`, referralResult)

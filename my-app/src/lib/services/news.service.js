@@ -30,7 +30,7 @@ function buildSmartNewsQuery(query, type = 'movie') {
  */
 export async function searchNews(query, page = 1, type = 'movie') {
   if (!API_KEY || API_KEY === 'demo') {
-    console.log('⚠️ News API key not configured')
+    console.log('[WARN] News API key not configured')
     return { articles: [], hasMore: false }
   }
 
@@ -44,7 +44,7 @@ export async function searchNews(query, page = 1, type = 'movie') {
       `sources=variety,the-hollywood-reporter,deadline-entertainment,entertainment-weekly&` +
       `sortBy=relevancy&pageSize=20&page=${page}&language=en&apiKey=${API_KEY}`
 
-    console.log('📡 Fetching from NewsAPI...')
+    console.log('[FETCH] Fetching from NewsAPI...')
     const response = await fetch(url)
 
     if (!response.ok) {
@@ -62,7 +62,7 @@ export async function searchNews(query, page = 1, type = 'movie') {
       hasMore: data.articles?.length === 20
     }
   } catch (error) {
-    console.error('❌ NewsAPI error:', error)
+    console.error('[ERROR] NewsAPI error:', error)
     return { articles: [], hasMore: false }
   }
 }

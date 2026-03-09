@@ -13,16 +13,16 @@ export async function initializeServer() {
   }
 
   try {
-    console.log('🚀 Initializing server services...')
+    console.log('[START] Initializing server services...')
 
     // Connect to MongoDB
     await connectDB()
-    console.log('✅ Database connected')
+    console.log('[OK] Database connected')
 
     globalForInit._serverInitialized = true
-    console.log('✅ Server initialization complete')
+    console.log('[OK] Server initialization complete')
   } catch (error) {
-    console.error('❌ Server initialization failed:', error)
+    console.error('[ERROR] Server initialization failed:', error)
     throw error
   }
 }

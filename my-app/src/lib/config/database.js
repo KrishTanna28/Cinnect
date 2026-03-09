@@ -21,17 +21,17 @@ const connectDB = async () => {
       family: 4, // Force IPv4 — avoids DNS resolution issues
     });
 
-    console.log(`✅ MongoDB Connected`);
-    // console.log(`📊 Database: ${conn.connection.name}`);
+    console.log(`[OK] MongoDB Connected`);
+    // console.log(`[DATA] Database: ${conn.connection.name}`);
 
     // Handle connection events (only set once)
     if (!globalForMongoose._mongooseListenersSet) {
       mongoose.connection.on('error', (err) => {
-        console.error('❌ MongoDB connection error:', err);
+        console.error('[ERROR] MongoDB connection error:', err);
       });
 
       mongoose.connection.on('disconnected', () => {
-        console.log('⚠️ MongoDB disconnected');
+        console.log('[WARN] MongoDB disconnected');
         globalForMongoose._mongooseConnection = null;
       });
 
@@ -48,7 +48,7 @@ const connectDB = async () => {
     globalForMongoose._mongooseConnection = conn;
     return conn;
   } catch (error) {
-    console.error('❌ Error connecting to MongoDB:', error.message);
+    console.error('[ERROR] Error connecting to MongoDB:', error.message);
     process.exit(1);
   }
 };

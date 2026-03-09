@@ -54,12 +54,12 @@ export default function DetailsPage({ params }) {
     } else {
       setIsLoadingMoreVideos(true)
     }
-    console.log('🎬 Fetching YouTube videos for movie:', movieTitle, 'Page:', pageNum)
+    console.log('[INFO] Fetching YouTube videos for movie:', movieTitle, 'Page:', pageNum)
     try {
       const apiKey = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY
       
       if (!apiKey || apiKey === 'demo') {
-        console.log('❌ YouTube API key not configured')
+        console.log('[ERROR] YouTube API key not configured')
         setFeaturedVideos([])
         setLoadingFeaturedVideos(false)
         setIsLoadingMoreVideos(false)
@@ -74,11 +74,11 @@ export default function DetailsPage({ params }) {
         url += `&pageToken=${pageToken}`
       }
       
-      console.log('📡 Fetching from YouTube API...')
+      console.log('[FETCH] Fetching from YouTube API...')
       const response = await fetch(url)
       const data = await response.json()
 
-      console.log('🎥 YouTube API Response:', data)
+      console.log('[INFO] YouTube API Response:', data)
 
       if (data.items && data.items.length > 0) {
         const videos = data.items.map(item => ({
@@ -90,7 +90,7 @@ export default function DetailsPage({ params }) {
           official: false
         }))
 
-        console.log('✅ Found', videos.length, 'YouTube videos')
+        console.log('[OK] Found', videos.length, 'YouTube videos')
         
         if (pageNum === 1) {
           setFeaturedVideos(videos)
@@ -101,14 +101,14 @@ export default function DetailsPage({ params }) {
         setNextPageToken(data.nextPageToken || null)
         setHasMoreVideos(!!data.nextPageToken)
       } else {
-        console.log('⚠️ No videos found or API error:', data.error?.message)
+        console.log('[WARN] No videos found or API error:', data.error?.message)
         if (pageNum === 1) {
           setFeaturedVideos([])
         }
         setHasMoreVideos(false)
       }
     } catch (err) {
-      console.error('❌ Failed to fetch YouTube videos:', err)
+      console.error('[ERROR] Failed to fetch YouTube videos:', err)
       if (pageNum === 1) {
         setFeaturedVideos([])
       }
@@ -135,13 +135,13 @@ export default function DetailsPage({ params }) {
     } else {
       setIsLoadingMoreNews(true)
     }
-    console.log('🔍 Fetching news for:', movieTitle, 'Page:', pageNum)
+    console.log('[SEARCH] Fetching news for:', movieTitle, 'Page:', pageNum)
     try {
       const apiKey = process.env.NEXT_PUBLIC_NEWS_API_KEY
-      console.log('🔑 API Key exists:', !!apiKey, 'Length:', apiKey?.length)
+      console.log('[AUTH] API Key exists:', !!apiKey, 'Length:', apiKey?.length)
       
       if (!apiKey || apiKey === 'demo') {
-        console.log('❌ News API key not configured, showing placeholder')
+        console.log('[ERROR] News API key not configured, showing placeholder')
         setNews([])
         setLoadingNews(false)
         setIsLoadingMoreNews(false)
@@ -149,12 +149,12 @@ export default function DetailsPage({ params }) {
       }
       
       const url = `https://newsapi.org/v2/everything?q="${encodeURIComponent(movieTitle)}" AND (movie OR film OR cinema)&sortBy=relevancy&pageSize=20&page=${pageNum}&language=en&apiKey=${apiKey}`
-      console.log('📡 Fetching from NewsAPI...')
+      console.log('[FETCH] Fetching from NewsAPI...')
       
       const response = await fetch(url)
       const data = await response.json()
       
-      console.log('📰 NewsAPI Response:', data)
+      console.log('[INFO] NewsAPI Response:', data)
       
       if (data.status === 'ok' && data.articles && data.articles.length > 0) {
         // Filter articles to only include those that actually mention the movie title
@@ -169,7 +169,7 @@ export default function DetailsPage({ params }) {
                  articleContent.includes(titleLower)
         })
         
-        console.log('✅ Found', filteredArticles.length, 'relevant news articles (filtered from', data.articles.length, ')')
+        console.log('[OK] Found', filteredArticles.length, 'relevant news articles (filtered from', data.articles.length, ')')
         
         if (pageNum === 1) {
           setNews(filteredArticles)
@@ -179,14 +179,14 @@ export default function DetailsPage({ params }) {
         
         setHasMoreNews(filteredArticles.length > 0 && data.articles.length === 20)
       } else {
-        console.log('⚠️ No news articles found or API error:', data.message || data.code)
+        console.log('[WARN] No news articles found or API error:', data.message || data.code)
         if (pageNum === 1) {
           setNews([])
         }
         setHasMoreNews(false)
       }
     } catch (err) {
-      console.error('❌ Failed to fetch news:', err)
+      console.error('[ERROR] Failed to fetch news:', err)
       if (pageNum === 1) {
         setNews([])
       }
@@ -194,7 +194,7 @@ export default function DetailsPage({ params }) {
     } finally {
       setLoadingNews(false)
       setIsLoadingMoreNews(false)
-      console.log('✅ News loading complete')
+      console.log('[OK] News loading complete')
     }
   }
 

@@ -130,7 +130,7 @@ export default function CommunityPage() {
       const apiKey = process.env.NEXT_PUBLIC_NEWS_API_KEY
       
       if (!apiKey || apiKey === 'demo') {
-        console.log('❌ News API key not configured')
+        console.log('[ERROR] News API key not configured')
         setNews([])
         setLoadingNews(false)
         return

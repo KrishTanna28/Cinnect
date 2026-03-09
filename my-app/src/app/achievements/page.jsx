@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Star, Lock, Loader2 } from "lucide-react"
+import { Star, Lock, Loader2, Clapperboard, PenLine, Users, Crown, Timer } from "lucide-react"
 import { AchievementsSkeleton } from "@/components/skeletons"
 
 // Achievement definitions — these are static definitions of what achievements exist,
@@ -11,7 +11,7 @@ const ACHIEVEMENT_DEFINITIONS = [
     id: "cinephile",
     name: "Cinephile",
     description: "Write 50 reviews",
-    icon: "🎬",
+    icon: <Clapperboard className="w-10 h-10 text-primary" />,
     field: "reviewsWritten",
     threshold: 50,
   },
@@ -19,7 +19,7 @@ const ACHIEVEMENT_DEFINITIONS = [
     id: "critic",
     name: "Critic",
     description: "Write 10 reviews",
-    icon: "✍️",
+    icon: <PenLine className="w-10 h-10 text-primary" />,
     field: "reviewsWritten",
     threshold: 10,
   },
@@ -27,7 +27,7 @@ const ACHIEVEMENT_DEFINITIONS = [
     id: "social_butterfly",
     name: "Social Butterfly",
     description: "Follow 5 other users",
-    icon: "🦋",
+    icon: <Users className="w-10 h-10 text-primary" />,
     field: "followingCount",
     threshold: 5,
   },
@@ -35,7 +35,7 @@ const ACHIEVEMENT_DEFINITIONS = [
     id: "community_leader",
     name: "Community Leader",
     description: "Get 100 likes on your reviews",
-    icon: "👑",
+    icon: <Crown className="w-10 h-10 text-primary" />,
     field: "totalLikes",
     threshold: 100,
   },
@@ -43,7 +43,7 @@ const ACHIEVEMENT_DEFINITIONS = [
     id: "marathon_runner",
     name: "Marathon Runner",
     description: "Add 20 titles to your watchlist",
-    icon: "🏃",
+    icon: <Timer className="w-10 h-10 text-primary" />,
     field: "watchlistCount",
     threshold: 20,
   },
@@ -51,7 +51,7 @@ const ACHIEVEMENT_DEFINITIONS = [
     id: "legendary",
     name: "Legendary",
     description: "Reach 5000 points",
-    icon: "⭐",
+    icon: <Star className="w-10 h-10 text-primary" />,
     field: "points",
     threshold: 5000,
   },
@@ -155,7 +155,7 @@ export default function AchievementsPage() {
                   }`}
                 >
                   <div className="text-center">
-                    <div className="text-4xl mb-3 relative inline-block">
+                    <div className="mb-3 relative inline-block">
                       {achievement.icon}
                       {!achievement.unlocked && (
                         <div className="absolute inset-0 flex items-center justify-center">
