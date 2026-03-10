@@ -5,6 +5,8 @@ import { withAuth } from '@/lib/middleware/withAuth.js'
 import connectDB from '@/lib/config/database.js'
 import { uploadPostImagesToCloudinary, uploadPostVideosToCloudinary } from '@/lib/utils/cloudinaryHelper.js'
 import { generateEmbedding } from '@/lib/services/embedding.service.js'
+import { runModerationPipeline } from '@/lib/services/moderation.service.js'
+import { checkAdultContentAccess, getAdultContentFilter } from '@/lib/middleware/ageGate.js'
 
 await connectDB()
 
@@ -25,7 +27,19 @@ export async function GET(request, { params }) {
       )
     }
 
-    const postQuery = { community: community._id, isApproved: true }
+    // Check if user should see adult content
+    const { shouldFilterAdult } = await checkAdultContentAccess(request)
+
+    // If community is flagged as adult and user is underage, block access
+    if (shouldFilterAdult && community.adult_content) {
+      return NextResponse.json(
+        { success: false, message: 'This community contains age-restricted content' },
+        { status: 403 }
+      )
+    }
+
+    const adultFilter = getAdultContentFilter(shouldFilterAdult)
+    const postQuery = { community: community._id, isApproved: true, ...adultFilter }
     const skip = (page - 1) * limit
 
     // Use aggregation for proper sorting with computed fields
@@ -217,6 +231,28 @@ export const POST = withAuth(async (request, { user, params }) => {
         console.error('Video upload error:', videoError)
         // Continue without videos - post is already created
       }
+    }
+
+    // Run adult content moderation pipeline (non-blocking — don't fail the request)
+    try {
+      const moderationText = `${title}. ${content || ''}`
+      const moderationResult = await runModerationPipeline({
+        text: moderationText,
+        imageUrls: post.images,
+        videoUrls: post.videos
+      })
+      post.adult_content = moderationResult.adult_content
+      post.moderation = moderationResult.moderation
+
+      // If a post contains adult content, also mark the community
+      if (moderationResult.adult_content && !community.adult_content) {
+        community.adult_content = true
+        await community.save()
+      }
+
+      await post.save()
+    } catch (modErr) {
+      console.error('Moderation pipeline failed (post saved without moderation):', modErr)
     }
 
     // Update community post count

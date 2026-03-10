@@ -28,10 +28,23 @@ export const PUT = withAuth(async (request, { user }) => {
     const bio = formData.get('bio')
     const avatarFile = formData.get('avatar')
     const favoriteGenresRaw = formData.get('favoriteGenres')
+    const dateOfBirth = formData.get('dateOfBirth')
 
     // Update allowed fields (use !== null so empty strings can clear fields)
     if (fullName !== null && fullName !== undefined) user.fullName = fullName
     if (bio !== null && bio !== undefined) user.bio = bio
+
+    // Update date of birth
+    if (dateOfBirth !== null && dateOfBirth !== undefined) {
+      if (dateOfBirth === '') {
+        user.dateOfBirth = null
+      } else {
+        const parsedDate = new Date(dateOfBirth)
+        if (!isNaN(parsedDate.getTime())) {
+          user.dateOfBirth = parsedDate
+        }
+      }
+    }
 
     // Handle favorite genres
     if (favoriteGenresRaw !== null && favoriteGenresRaw !== undefined) {

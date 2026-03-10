@@ -1,11 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Star, ThumbsUp, MessageCircle, ArrowRight, AlertTriangle } from "lucide-react"
+import { Star, ThumbsUp, MessageCircle, ArrowRight, AlertTriangle, ShieldAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { useUser } from "@/contexts/UserContext"
 import { ReviewListSkeleton } from "@/components/skeletons"
+import { shouldFilterAdultContent } from "@/lib/utils/ageUtils"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api'
 
@@ -15,6 +16,7 @@ export default function ReviewPreview({ mediaId, mediaType, mediaTitle }) {
   const [stats, setStats] = useState({ total: 0, averageRating: 0 })
   const [revealedSpoilers, setRevealedSpoilers] = useState(new Set())
   const { user } = useUser()
+  const isMinor = shouldFilterAdultContent(user)
 
   useEffect(() => {
     const fetchReviews = async () => {
@@ -125,6 +127,11 @@ export default function ReviewPreview({ mediaId, mediaType, mediaTitle }) {
           const isSpoilerRevealed = revealedSpoilers.has(review._id)
           const isOwnReview = user && review.user?._id === user._id
           const shouldBlur = review.spoiler && !isSpoilerRevealed && !isOwnReview
+          const adultRevealed = revealedSpoilers.has(`adult_${review._id}`)
+          const shouldBlurAdult = review.adult_content && !isOwnReview && !adultRevealed && !isMinor
+
+          // Hide adult reviews entirely for minors
+          if (isMinor && review.adult_content) return null
 
           return (
             <div key={review._id} className="bg-card rounded-lg p-4 hover:shadow-lg transition-shadow">
@@ -161,17 +168,23 @@ export default function ReviewPreview({ mediaId, mediaType, mediaTitle }) {
                         SPOILER
                       </span>
                     )}
+                    {review.adult_content && (
+                      <span className="px-2 py-0.5 bg-orange-500/20 text-orange-400 rounded text-xs font-semibold flex items-center gap-1">
+                        <ShieldAlert className="w-3 h-3" />
+                        18+
+                      </span>
+                    )}
                   </div>
 
-                  {/* Review Content with Spoiler Blur */}
+                  {/* Review Content with Spoiler/Adult Blur */}
                   <div className="relative">
                     <h4 className={`font-semibold text-foreground mb-2 line-clamp-1 transition-all ${
-                      shouldBlur ? 'blur-md select-none' : ''
+                      (shouldBlur || shouldBlurAdult) ? 'blur-md select-none' : ''
                     }`}>
                       {review.title}
                     </h4>
                     <p className={`text-sm text-muted-foreground line-clamp-2 transition-all ${
-                      shouldBlur ? 'blur-md select-none' : ''
+                      (shouldBlur || shouldBlurAdult) ? 'blur-md select-none' : ''
                     }`}>
                       {review.content}
                     </p>
@@ -188,6 +201,21 @@ export default function ReviewPreview({ mediaId, mediaType, mediaTitle }) {
                           className="px-3 py-1.5 bg-destructive/90 hover:bg-destructive text-white rounded-lg text-xs font-semibold transition-colors shadow-lg"
                         >
                           Click to Reveal Spoiler
+                        </button>
+                      </div>
+                    )}
+                    {/* Adult Content Reveal Button */}
+                    {shouldBlurAdult && !shouldBlur && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <button
+                          onClick={() => {
+                            const newRevealed = new Set(revealedSpoilers)
+                            newRevealed.add(`adult_${review._id}`)
+                            setRevealedSpoilers(newRevealed)
+                          }}
+                          className="px-3 py-1.5 bg-orange-600/90 hover:bg-orange-600 text-white rounded-lg text-xs font-semibold transition-colors shadow-lg"
+                        >
+                          Click to Reveal Adult Content
                         </button>
                       </div>
                     )}

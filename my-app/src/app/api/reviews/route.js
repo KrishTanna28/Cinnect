@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import Review from '@/lib/models/Review.js'
 import { withAuth } from '@/lib/middleware/withAuth.js'
 import { generateEmbedding } from '@/lib/services/embedding.service.js'
+import { moderateText } from '@/lib/services/moderation.service.js'
+import { checkAdultContentAccess, getAdultContentFilter } from '@/lib/middleware/ageGate.js'
 
 // GET /api/reviews - Get reviews with optional filters
 export async function GET(request) {
@@ -18,6 +20,11 @@ export async function GET(request) {
     if (mediaId) query.mediaId = mediaId
     if (mediaType) query.mediaType = mediaType
     if (userId) query.user = userId
+
+    // Filter adult content for underage users
+    const { shouldFilterAdult } = await checkAdultContentAccess(request)
+    const adultFilter = getAdultContentFilter(shouldFilterAdult)
+    Object.assign(query, adultFilter)
 
     const reviews = await Review.find(query)
       .populate('user', 'username avatar fullName')
@@ -90,6 +97,20 @@ export const POST = withAuth(async (request, { user }) => {
       content,
       spoiler: spoiler || false
     })
+
+    // Run adult content text moderation (non-blocking)
+    try {
+      const moderationText = `${title}. ${content}`
+      const textResult = await moderateText(moderationText)
+      review.adult_content = textResult.isAdult
+      review.moderation = {
+        text_score: textResult.score,
+        moderation_type: textResult.isAdult ? 'text' : null,
+        confidence: textResult.score
+      }
+    } catch (modErr) {
+      console.error('Review moderation failed (saved without moderation):', modErr)
+    }
 
     // Generate embedding for RAG (non-blocking — don't fail the request)
     try {

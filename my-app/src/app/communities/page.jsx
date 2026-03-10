@@ -3,13 +3,14 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Plus, Users, Film, Tv, User, Sparkles, Filter, ChevronDown, ChevronUp, Heart, MessageCircle, Eye, Clock, AlertTriangle, ThumbsUp, ThumbsDown, Video, Play } from "lucide-react"
+import { Plus, Users, Film, Tv, User, Sparkles, Filter, ChevronDown, ChevronUp, Heart, MessageCircle, Eye, Clock, AlertTriangle, ShieldAlert, ThumbsUp, ThumbsDown, Video, Play } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useUser } from "@/contexts/UserContext"
 import { useToast } from "@/hooks/use-toast"
 import useInfiniteScroll from "@/hooks/useInfiniteScroll"
 import PostMediaPreview from "@/components/post-media-preview"
 import { CommunitiesFeedSkeleton } from "@/components/skeletons"
+import { shouldFilterAdultContent } from "@/lib/utils/ageUtils"
 
 const categories = [
   { id: 'all', label: 'All Posts' },
@@ -401,7 +402,7 @@ export default function CommunitiesPage() {
                       No communities found
                     </div>
                   ) : (
-                    recommendedCommunities.slice(0, 10).map((community) => {
+                    recommendedCommunities.filter(c => !(shouldFilterAdultContent(user) && c.adult_content)).slice(0, 10).map((community) => {
                       const CategoryIcon = categories.find(c => c.id === community.category)?.icon || Sparkles
                       
                       return (
@@ -477,7 +478,7 @@ export default function CommunitiesPage() {
             ) : (
               <>
                 <div className="space-y-4">
-                  {allPosts.map((post) => {
+                  {allPosts.filter(post => !(shouldFilterAdultContent(user) && post.adult_content)).map((post) => {
                     const CategoryIcon = categories.find(c => c.id === post.community?.category)?.icon || Sparkles
                     const userLiked = user && post.likes?.some(id => id?.toString() === user._id)
                     const userDisliked = user && post.dislikes?.some(id => id?.toString() === user._id)
@@ -534,6 +535,12 @@ export default function CommunitiesPage() {
                                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 mr-2 bg-destructive/20 text-destructive rounded text-xs font-semibold align-middle">
                                     <AlertTriangle className="w-3 h-3" />
                                     SPOILER
+                                  </span>
+                                )}
+                                {post.adult_content && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 mr-2 bg-orange-500/20 text-orange-400 rounded text-xs font-semibold align-middle">
+                                    <ShieldAlert className="w-3 h-3" />
+                                    18+
                                   </span>
                                 )}
                                 {post.title}
@@ -625,7 +632,7 @@ export default function CommunitiesPage() {
                       No recent posts
                     </div>
                   ) : (
-                    recentPosts.slice(0, 10).map((post) => {
+                    recentPosts.filter(post => !(shouldFilterAdultContent(user) && post.adult_content)).slice(0, 10).map((post) => {
                       const CategoryIcon = categories.find(c => c.id === post.community?.category)?.icon || Sparkles
                       
                       return (
@@ -665,6 +672,14 @@ export default function CommunitiesPage() {
                                   <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400">
                                     <AlertTriangle className="w-3 h-3" />
                                     SPOILER
+                                  </span>
+                                </div>
+                              )}
+                              {post.adult_content && (
+                                <div className="flex items-center gap-1 mb-1">
+                                  <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400">
+                                    <ShieldAlert className="w-3 h-3" />
+                                    18+
                                   </span>
                                 </div>
                               )}

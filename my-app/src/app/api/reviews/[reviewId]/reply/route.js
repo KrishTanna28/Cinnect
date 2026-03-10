@@ -4,6 +4,7 @@ import User from '@/lib/models/User.js'
 import Notification from '@/lib/models/Notification.js'
 import { withAuth } from '@/lib/middleware/withAuth.js'
 import { emitNotification } from '@/lib/socketServer.js'
+import { moderateText } from '@/lib/services/moderation.service.js'
 
 // POST /api/reviews/[reviewId]/reply - Add a reply to a review
 export const POST = withAuth(async (request, { user, params }) => {
@@ -30,6 +31,18 @@ export const POST = withAuth(async (request, { user, params }) => {
 
     // Add reply using model method
     await review.addReply(user._id, content, spoiler || false)
+
+    // Run adult content text moderation on the reply (non-blocking)
+    try {
+      const textResult = await moderateText(content)
+      if (textResult.isAdult) {
+        const lastReply = review.replies[review.replies.length - 1]
+        lastReply.adult_content = true
+        await review.save()
+      }
+    } catch (modErr) {
+      console.error('Review reply moderation failed:', modErr)
+    }
 
     // Update user achievements
     user.achievements.commentsPosted += 1

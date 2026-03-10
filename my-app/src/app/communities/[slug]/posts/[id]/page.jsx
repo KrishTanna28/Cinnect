@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, ThumbsUp, ThumbsDown, MessageCircle, Eye, Pin, Lock, Trash2, Send, Pencil, MoreVertical, Cross2, X, AlertTriangle } from "lucide-react"
+import { ArrowLeft, ThumbsUp, ThumbsDown, MessageCircle, Eye, Pin, Lock, Trash2, Send, Pencil, MoreVertical, Cross2, X, AlertTriangle, ShieldAlert } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -12,6 +12,7 @@ import useInfiniteScroll from "@/hooks/useInfiniteScroll"
 import { fetchPosts } from "@/lib/communities/posts.js"
 import PostMediaGallery from "@/components/post-media-gallery"
 import { PostDetailSkeleton } from "@/components/skeletons"
+import { shouldFilterAdultContent } from "@/lib/utils/ageUtils"
 
 export default function PostDetailPage() {
   const [post, setPost] = useState(null)
@@ -717,6 +718,29 @@ export default function PostDetailPage() {
   const postSpoilerRevealed = revealedSpoilers.has(post._id)
   const shouldBlurPost = post.spoiler && !postSpoilerRevealed && !isOwnPost
 
+  // Adult content handling
+  const isMinor = shouldFilterAdultContent(user)
+  const postAdultRevealed = revealedSpoilers.has(`adult_${post._id}`)
+  const shouldBlurAdult = post.adult_content && !isOwnPost && !postAdultRevealed
+
+  // Block minors from viewing adult posts entirely
+  if (isMinor && post.adult_content) {
+    return (
+      <main className="min-h-screen bg-background">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <button onClick={() => router.back()} className="flex items-center text-sm gap-2 hover:text-primary transition-all active:scale-95 cursor-pointer mb-5">
+            <ArrowLeft className="w-4 h-4" /> Back
+          </button>
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <ShieldAlert className="w-16 h-16 text-orange-400 mb-4" />
+            <h2 className="text-xl font-bold text-foreground mb-2">Age-Restricted Content</h2>
+            <p className="text-muted-foreground max-w-md">This post contains adult content and is restricted to users 18 years and older.</p>
+          </div>
+        </div>
+      </main>
+    )
+  }
+
   const revealSpoiler = (id) => {
     setRevealedSpoilers(prev => new Set([...prev, id]))
   }
@@ -805,17 +829,23 @@ export default function PostDetailPage() {
                 SPOILER
               </span>
             )}
-            <h1 className={`text-xl font-bold text-foreground mb-4 transition-all ${shouldBlurPost ? 'blur-md select-none' : ''}`}>{post.title}</h1>
+            {post.adult_content && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 mb-2 ml-1 bg-orange-500/20 text-orange-400 rounded text-xs font-semibold">
+                <ShieldAlert className="w-3 h-3" />
+                18+ CONTENT
+              </span>
+            )}
+            <h1 className={`text-xl font-bold text-foreground mb-4 transition-all ${(shouldBlurPost || shouldBlurAdult) ? 'blur-md select-none' : ''}`}>{post.title}</h1>
           </div>
 
           {/* Media Gallery (Images + Videos) */}
-          <div className={`transition-all ${shouldBlurPost ? 'blur-md select-none pointer-events-none' : ''}`}>
+          <div className={`transition-all ${(shouldBlurPost || shouldBlurAdult) ? 'blur-md select-none pointer-events-none' : ''}`}>
             <PostMediaGallery images={post.images} videos={post.videos} />
           </div>
 
           {/* Content */}
           {post.content && (
-            <div className={`text-muted-foreground whitespace-pre-wrap mb-4 transition-all ${shouldBlurPost ? 'blur-md select-none' : ''}`}>
+            <div className={`text-muted-foreground whitespace-pre-wrap mb-4 transition-all ${(shouldBlurPost || shouldBlurAdult) ? 'blur-md select-none' : ''}`}>
               {post.content}
             </div>
           )}
@@ -829,6 +859,19 @@ export default function PostDetailPage() {
               >
                 <Eye className="w-4 h-4" />
                 Click to Reveal Spoiler
+              </button>
+            </div>
+          )}
+
+          {/* Adult Content Reveal Button for Post (only for 18+ users) */}
+          {shouldBlurAdult && !shouldBlurPost && (
+            <div className="flex justify-center mb-4">
+              <button
+                onClick={() => revealSpoiler(`adult_${post._id}`)}
+                className="flex items-center gap-2 px-4 py-2 bg-orange-600/90 hover:bg-orange-600 text-white rounded-lg text-sm font-semibold transition-colors shadow-lg cursor-pointer"
+              >
+                <Eye className="w-4 h-4" />
+                Click to Reveal Adult Content
               </button>
             </div>
           )}
@@ -947,6 +990,8 @@ export default function PostDetailPage() {
                 const isOwnComment = user && comment.user?._id === user._id
                 const commentSpoilerRevealed = revealedSpoilers.has(comment._id)
                 const shouldBlurComment = comment.spoiler && !commentSpoilerRevealed && !isOwnComment
+                const commentAdultRevealed = revealedSpoilers.has(`adult_${comment._id}`)
+                const shouldBlurAdultComment = comment.adult_content && !isOwnComment && !commentAdultRevealed && !isMinor
 
                 return (
                 <div key={comment._id} className="flex gap-3">
@@ -972,10 +1017,19 @@ export default function PostDetailPage() {
                           SPOILER
                         </span>
                       )}
+                      {comment.adult_content && (
+                        <span className="px-1.5 py-0.5 bg-orange-500/20 text-orange-400 rounded text-xs font-semibold flex items-center gap-1">
+                          <ShieldAlert className="w-2.5 h-2.5" />
+                          18+
+                        </span>
+                      )}
                     </div>
 
+                    {isMinor && comment.adult_content ? (
+                      <p className="text-xs text-muted-foreground italic mb-2">This comment contains age-restricted content.</p>
+                    ) : (
                     <div className="relative">
-                      <p className={`text-sm text-foreground mb-2 transition-all ${shouldBlurComment ? 'blur-md select-none' : ''}`}>{comment.content}</p>
+                      <p className={`text-sm text-foreground mb-2 transition-all ${(shouldBlurComment || shouldBlurAdultComment) ? 'blur-md select-none' : ''}`}>{comment.content}</p>
                       {shouldBlurComment && (
                         <div className="absolute inset-0 flex items-center justify-center">
                           <button
@@ -987,7 +1041,19 @@ export default function PostDetailPage() {
                           </button>
                         </div>
                       )}
+                      {shouldBlurAdultComment && !shouldBlurComment && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <button
+                            onClick={() => revealSpoiler(`adult_${comment._id}`)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-600/90 hover:bg-orange-600 text-white rounded-lg text-xs font-semibold transition-colors shadow-lg cursor-pointer"
+                          >
+                            <Eye className="w-3 h-3" />
+                            Reveal 18+ Content
+                          </button>
+                        </div>
+                      )}
                     </div>
+                    )}
 
                     <div className="flex items-center gap-3">
                       <button

@@ -3,6 +3,7 @@ import { withAuth } from '@/lib/middleware/withAuth';
 import Review from '@/lib/models/Review';
 import Community from '@/lib/models/Community';
 import SearchHistory from '@/lib/models/SearchHistory';
+import { isUserAdult } from '@/lib/services/moderation.service';
 import {
   getMovieRecommendations,
   getTVRecommendations,
@@ -36,11 +37,12 @@ function hashSeed(seed) {
   return Math.abs(h);
 }
 
-// Deduplicate and cap results
-function dedup(items, max = 20) {
+// Deduplicate and cap results, optionally filtering adult content
+function dedup(items, max = 20, filterAdult = false) {
   const seen = new Set();
   const result = [];
   for (const item of items) {
+    if (filterAdult && item.adult) continue;
     const key = `${item.mediaType || 'movie'}-${item.id}`;
     if (!seen.has(key)) {
       seen.add(key);
@@ -56,6 +58,9 @@ export const GET = withAuth(async (request, { user }) => {
     const { searchParams } = new URL(request.url);
     const country = searchParams.get('country') || 'US';
     const countryName = searchParams.get('countryName') || 'Your Country';
+
+    // Check if user is underage — filter adult content from TMDB results
+    const filterAdult = user?.dateOfBirth ? !isUserAdult(user.dateOfBirth) : false;
 
     // Gather user signals in parallel
     const [
@@ -141,7 +146,8 @@ export const GET = withAuth(async (request, { user }) => {
     // Shuffle and deduplicate
     const recommended = dedup(
       recommendedFlat.sort(() => 0.5 - Math.random()),
-      20
+      20,
+      filterAdult
     );
 
     // ------------------- 2. Because You Liked ... -------------------
@@ -187,7 +193,7 @@ export const GET = withAuth(async (request, { user }) => {
           anchorTitle,
           anchorId: anchor.id,
           anchorType: anchor.type,
-          items: dedup(becauseItems, 20),
+          items: dedup(becauseItems, 20, filterAdult),
         };
       }
     }
@@ -212,7 +218,7 @@ export const GET = withAuth(async (request, { user }) => {
     let trendingInCircles = [];
     if (circlePromises.length > 0) {
       const circleResults = await Promise.all(circlePromises);
-      trendingInCircles = dedup(circleResults.flat().sort(() => 0.5 - Math.random()), 20);
+      trendingInCircles = dedup(circleResults.flat().sort(() => 0.5 - Math.random()), 20, filterAdult);
     } else if (userSearchHistory.length > 0) {
       // Fallback: use search history queries to find content via TMDB search
       const searchQueries = userSearchHistory.slice(0, 3).map((h) => h.query);
@@ -225,7 +231,7 @@ export const GET = withAuth(async (request, { user }) => {
         }
       });
       const searchResults = await Promise.all(searchPromises);
-      trendingInCircles = dedup(searchResults.flat().sort(() => 0.5 - Math.random()), 20);
+      trendingInCircles = dedup(searchResults.flat().sort(() => 0.5 - Math.random()), 20, filterAdult);
     }
 
     // ------------------- 4 & 5. Top 10 Trending in Country -------------------
@@ -240,8 +246,8 @@ export const GET = withAuth(async (request, { user }) => {
         recommended,
         becauseYouLiked,
         trendingInCircles,
-        top10Movies: (trendingMoviesRegion.results || []).slice(0, 10),
-        top10TV: (trendingTVRegion.results || []).slice(0, 10),
+        top10Movies: (trendingMoviesRegion.results || []).filter(m => !filterAdult || !m.adult).slice(0, 10),
+        top10TV: (trendingTVRegion.results || []).filter(m => !filterAdult || !m.adult).slice(0, 10),
         country,
         countryName,
       },

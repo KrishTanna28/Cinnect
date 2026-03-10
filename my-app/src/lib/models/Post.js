@@ -16,6 +16,10 @@ const replySchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  adult_content: {
+    type: Boolean,
+    default: false
+  },
   likes: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
@@ -47,6 +51,10 @@ const commentSchema = new mongoose.Schema({
     maxlength: [2000, 'Comment cannot exceed 2000 characters']
   },
   spoiler: {
+    type: Boolean,
+    default: false
+  },
+  adult_content: {
     type: Boolean,
     default: false
   },
@@ -138,6 +146,19 @@ const postSchema = new mongoose.Schema({
     default: false
   },
 
+  // Adult content moderation
+  adult_content: {
+    type: Boolean,
+    default: false
+  },
+  moderation: {
+    text_score: { type: Number, default: 0 },
+    image_score: { type: Number, default: 0 },
+    video_score: { type: Number, default: 0 },
+    moderation_type: { type: String, enum: ['text', 'image', 'video', null], default: null },
+    confidence: { type: Number, default: 0 }
+  },
+
   // Metadata
   isPinned: {
     type: Boolean,
@@ -192,8 +213,8 @@ postSchema.virtual('score').get(function() {
 });
 
 // Methods
-postSchema.methods.addComment = function(userId, content, spoiler = false) {
-  this.comments.push({ user: userId, content, spoiler });
+postSchema.methods.addComment = function(userId, content, spoiler = false, adult_content = false) {
+  this.comments.push({ user: userId, content, spoiler, adult_content });
   return this.save();
 };
 
@@ -248,11 +269,11 @@ postSchema.methods.incrementViews = function() {
   return this.save();
 };
 
-postSchema.methods.addReply = function(commentId, userId, content, spoiler = false) {
+postSchema.methods.addReply = function(commentId, userId, content, spoiler = false, adult_content = false) {
   const comment = this.comments.id(commentId);
   if (!comment) throw new Error('Comment not found');
   
-  comment.replies.push({ user: userId, content, spoiler });
+  comment.replies.push({ user: userId, content, spoiler, adult_content });
   return this.save();
 };
 

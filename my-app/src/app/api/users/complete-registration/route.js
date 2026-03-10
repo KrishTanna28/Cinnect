@@ -70,6 +70,11 @@ export async function POST(request) {
       isVerified: true
     }
 
+    // Store date of birth if provided
+    if (pendingReg.dateOfBirth) {
+      userData.dateOfBirth = new Date(pendingReg.dateOfBirth)
+    }
+
     // Handle avatar upload if exists
     if (pendingReg.avatar) {
       const { uploadAvatarToCloudinary } = await import('@/lib/utils/cloudinaryHelper.js')
