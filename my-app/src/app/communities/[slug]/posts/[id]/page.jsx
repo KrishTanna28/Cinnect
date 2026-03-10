@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, ThumbsUp, ThumbsDown, MessageCircle, Eye, Pin, Lock, Trash2, Send, Pencil, MoreVertical, Cross2, X, AlertTriangle } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
@@ -35,6 +35,7 @@ export default function PostDetailPage() {
   const votingPost = useRef(false)
   const votingComments = useRef(new Set())
   const votingReplies = useRef(new Set())
+  const commentTextareaRef = useRef(null)
 
   // Infinite scroll for comments
   const loadMoreCommentsRef = useInfiniteScroll(
@@ -49,8 +50,17 @@ export default function PostDetailPage() {
 
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user } = useUser()
   const { toast } = useToast()
+
+  // Auto-focus comment textarea when navigated with ?comment=true
+  useEffect(() => {
+    if (searchParams.get('comment') === 'true' && !loading && commentTextareaRef.current) {
+      commentTextareaRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      setTimeout(() => commentTextareaRef.current?.focus(), 400)
+    }
+  }, [loading, searchParams])
 
   useEffect(() => {
     if (!viewsIncremented.current) {
@@ -880,6 +890,7 @@ export default function PostDetailPage() {
             <form onSubmit={handleAddComment} className="mb-6">
               <div className="flex gap-2">
                 <Textarea
+                  ref={commentTextareaRef}
                   placeholder={user ? "What are your thoughts?" : "Login to comment..."}
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}

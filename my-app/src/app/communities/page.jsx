@@ -46,6 +46,7 @@ export default function CommunitiesPage() {
   const feedContainerRef = useRef(null)
   const leftSidebarRef = useRef(null)
   const rightSidebarRef = useRef(null)
+  const votingPosts = useRef(new Set())
 
   // Global wheel handler: scroll from anywhere (including navbar) goes to the feed container,
   // except when cursor is over a sidebar — then that sidebar scrolls instead.
@@ -200,6 +201,86 @@ export default function CommunitiesPage() {
     if (diffDays < 30) return `${diffDays}d ago`
     if (diffMonths < 12) return `${diffMonths}mo ago`
     return `${diffYears}y ago`
+  }
+
+  const handleLikePost = async (e, postId) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!user) { router.push('/login'); return }
+    if (votingPosts.current.has(postId)) return
+    votingPosts.current.add(postId)
+
+    setAllPosts(prev => prev.map(p => {
+      if (p._id !== postId) return p
+      const userLiked = p.likes?.some(id => id?.toString() === user._id)
+      const userDisliked = p.dislikes?.some(id => id?.toString() === user._id)
+      return {
+        ...p,
+        likes: userLiked
+          ? (p.likes || []).filter(id => id?.toString() !== user._id)
+          : [...(p.likes || []), user._id],
+        likesCount: userLiked ? (p.likesCount || 1) - 1 : (p.likesCount || 0) + 1,
+        dislikes: userDisliked
+          ? (p.dislikes || []).filter(id => id?.toString() !== user._id)
+          : p.dislikes || [],
+        dislikesCount: userDisliked ? (p.dislikesCount || 1) - 1 : p.dislikesCount || 0,
+      }
+    }))
+
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`/api/posts/${postId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ action: 'like' })
+      })
+      const data = await response.json()
+      if (!data.success) fetchPosts(1)
+    } catch { fetchPosts(1) }
+    finally { votingPosts.current.delete(postId) }
+  }
+
+  const handleDislikePost = async (e, postId) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!user) { router.push('/login'); return }
+    if (votingPosts.current.has(postId)) return
+    votingPosts.current.add(postId)
+
+    setAllPosts(prev => prev.map(p => {
+      if (p._id !== postId) return p
+      const userLiked = p.likes?.some(id => id?.toString() === user._id)
+      const userDisliked = p.dislikes?.some(id => id?.toString() === user._id)
+      return {
+        ...p,
+        likes: userLiked
+          ? (p.likes || []).filter(id => id?.toString() !== user._id)
+          : p.likes || [],
+        likesCount: userLiked ? (p.likesCount || 1) - 1 : p.likesCount || 0,
+        dislikes: userDisliked
+          ? (p.dislikes || []).filter(id => id?.toString() !== user._id)
+          : [...(p.dislikes || []), user._id],
+        dislikesCount: userDisliked ? (p.dislikesCount || 1) - 1 : (p.dislikesCount || 0) + 1,
+      }
+    }))
+
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`/api/posts/${postId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ action: 'dislike' })
+      })
+      const data = await response.json()
+      if (!data.success) fetchPosts(1)
+    } catch { fetchPosts(1) }
+    finally { votingPosts.current.delete(postId) }
+  }
+
+  const handleCommentClick = (e, post) => {
+    e.preventDefault()
+    e.stopPropagation()
+    router.push(`/communities/${post.community?.slug}/posts/${post._id}?comment=true#comments`)
   }
 
   return (
@@ -398,6 +479,8 @@ export default function CommunitiesPage() {
                 <div className="space-y-4">
                   {allPosts.map((post) => {
                     const CategoryIcon = categories.find(c => c.id === post.community?.category)?.icon || Sparkles
+                    const userLiked = user && post.likes?.some(id => id?.toString() === user._id)
+                    const userDisliked = user && post.dislikes?.some(id => id?.toString() === user._id)
                     
                     return (
                       <Link 
@@ -460,22 +543,39 @@ export default function CommunitiesPage() {
                               <PostMediaPreview images={post.images} videos={post.videos} />
 
                               {/* Post Stats */}
-                              <div className="flex items-center gap-4 text-sm text-muted-foreground pt-2 border-t border-border/50">
-                                <span className="flex items-center gap-1.5">
-                                  <ThumbsUp className="w-4 h-4" />
-                                  {formatNumber(post.likesCount || 0)}
-                                </span>
-                                <span className="flex items-center gap-1.5">
-                                  <ThumbsDown className="w-4 h-4" />
-                                  {formatNumber(post.dislikesCount || 0)}
-                                </span>
-                                <span className="flex items-center gap-1.5">
+                              <div className="flex items-center gap-4 text-sm pt-2 border-t border-border/50">
+                                <button
+                                  onClick={(e) => handleLikePost(e, post._id)}
+                                  className={`flex items-center gap-2 transition-all active:scale-95 cursor-pointer ${
+                                    userLiked
+                                      ? 'text-primary font-bold'
+                                      : 'text-muted-foreground hover:text-primary'
+                                  }`}
+                                >
+                                  <ThumbsUp className={`w-4 h-4 ${userLiked ? 'fill-primary text-primary' : ''}`} />
+                                  <span>{formatNumber(post.likesCount || 0)}</span>
+                                </button>
+                                <button
+                                  onClick={(e) => handleDislikePost(e, post._id)}
+                                  className={`flex items-center gap-2 transition-all active:scale-95 cursor-pointer ${
+                                    userDisliked
+                                      ? 'text-destructive'
+                                      : 'text-muted-foreground hover:text-destructive'
+                                  }`}
+                                >
+                                  <ThumbsDown className={`w-4 h-4 ${userDisliked ? 'fill-destructive text-destructive' : ''}`} />
+                                  <span>{formatNumber(post.dislikesCount || 0)}</span>
+                                </button>
+                                <button
+                                  onClick={(e) => handleCommentClick(e, post)}
+                                  className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-all active:scale-95 cursor-pointer"
+                                >
                                   <MessageCircle className="w-4 h-4" />
-                                  {formatNumber(post.commentsCount || 0)}
-                                </span>
-                                <span className="flex items-center gap-1.5">
+                                  <span>{formatNumber(post.commentsCount || 0)}</span>
+                                </button>
+                                <span className="flex items-center gap-2 text-muted-foreground">
                                   <Eye className="w-4 h-4" />
-                                  {formatNumber(post.views || 0)}
+                                  <span>{formatNumber(post.views || 0)}</span>
                                 </span>
                               </div>
                             </div>
