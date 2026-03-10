@@ -3,7 +3,7 @@
 import { useState, useEffect, use, useRef, useCallback } from "react"
 import { Award, Calendar, Clock, ArrowLeft, Play } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import {getTVSeasonDetails} from "@/lib/movies"
+import { getTVSeasonDetails } from "@/lib/movies"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { SeasonDetailSkeleton, InlineLoadingSkeleton } from "@/components/skeletons"
@@ -40,7 +40,7 @@ export default function SeasonDetailsPage({ params }) {
   // Infinite scroll logic
   const loadMoreEpisodes = useCallback(() => {
     if (isLoadingMore || !season?.episodes) return
-    
+
     const totalEpisodes = season.episodes.length
     if (displayedEpisodes >= totalEpisodes) return
 
@@ -96,19 +96,19 @@ export default function SeasonDetailsPage({ params }) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back Button */}
         <button
-      onClick={() => router.back()}
-      className="flex items-center text-sm gap-2 hover:text-primary transition-all active:scale-95 cursor-pointer mb-5"
-    >
-      <ArrowLeft className="w-7 h-7" />
-    </button>
+          onClick={() => router.back()}
+          className="flex items-center text-sm gap-2 hover:text-primary transition-all active:scale-95 cursor-pointer mb-5"
+        >
+          <ArrowLeft className="w-7 h-7" />
+        </button>
 
         <div className="grid grid-cols-4 gap-4 md:gap-8 mb-12">
           {/* Season Poster */}
           <div className="col-span-1">
-            <img 
-              src={season.poster || "/placeholder.svg"} 
-              alt={season.name} 
-              className="w-full rounded-lg shadow-2xl" 
+            <img
+              src={season.poster || "/placeholder.svg"}
+              alt={season.name}
+              className="w-full rounded-lg shadow-2xl"
             />
           </div>
 
@@ -152,28 +152,25 @@ export default function SeasonDetailsPage({ params }) {
             </h2>
             <div className="space-y-4">
               {season.episodes.slice(0, displayedEpisodes).map((episode) => (
-                <div 
-                  key={episode.id} 
+                <div
+                  key={episode.id}
                   className="bg-secondary/30 rounded-lg p-4 sm:p-6 hover:bg-secondary/50 transition-colors"
                 >
                   <div className="grid grid-cols-4 gap-4">
                     {/* Episode Still */}
                     <div className="col-span-1">
-                      <div className="relative aspect-video rounded-lg overflow-hidden bg-secondary group cursor-pointer">
+                      <div className="relative aspect-video rounded-lg overflow-hidden bg-secondary">
                         {episode.stillPath ? (
                           <img
                             src={episode.stillPath}
                             alt={episode.name}
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                            className="w-full h-full object-cover"
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
                             <Play className="w-12 h-12 text-muted-foreground" />
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <Play className="w-12 h-12 text-white" />
-                        </div>
                       </div>
                     </div>
 
@@ -195,10 +192,10 @@ export default function SeasonDetailsPage({ params }) {
                         {episode.airDate && (
                           <span className="flex items-center gap-1">
                             <Calendar className="w-4 h-4" />
-                            {new Date(episode.airDate).toLocaleDateString('en-US', { 
-                              year: 'numeric', 
-                              month: 'short', 
-                              day: 'numeric' 
+                            {new Date(episode.airDate).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric'
                             })}
                           </span>
                         )}
