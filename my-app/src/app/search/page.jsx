@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Search, Film, Tv, User, Star, Users, Trophy } from "lucide-react"
@@ -8,6 +8,8 @@ import { searchMulti } from "@/lib/movies"
 import useInfiniteScroll from "@/hooks/useInfiniteScroll"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { SearchResultsSkeleton, InlineLoadingSkeleton } from "@/components/skeletons"
+import { useUser } from "@/contexts/UserContext"
+import { shouldFilterAdultContent } from "@/lib/utils/ageUtils"
 
 const searchTabs = [
   { id: 'all', label: 'All', icon: Search },
@@ -19,8 +21,11 @@ const searchTabs = [
 export default function SearchPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
+  const { user } = useUser()
   const query = searchParams.get("q") || ""
   const initialTab = searchParams.get("tab") || "all"
+
+  const filterAdult = useMemo(() => shouldFilterAdultContent(user), [user])
 
   const [activeTab, setActiveTab] = useState(initialTab)
   const [results, setResults] = useState([])
@@ -73,7 +78,12 @@ export default function SearchPage() {
     try {
       const data = await searchMulti(searchTerm, page)
 
-      const newResults = data.data?.results || []
+      let newResults = data.data?.results || []
+
+      // Filter adult content for underage users
+      if (filterAdult) {
+        newResults = newResults.filter(item => !item.adult)
+      }
 
       setResults(prev => {
         const combined = append ? [...prev, ...newResults] : newResults

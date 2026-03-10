@@ -40,6 +40,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     maxlength: [500, 'Bio cannot exceed 500 characters']
   },
+  dateOfBirth: {
+    type: Date,
+    default: null
+  },
   emailVerified: {
     type: Boolean,
     default: false

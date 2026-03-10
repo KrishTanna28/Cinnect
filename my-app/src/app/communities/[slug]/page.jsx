@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Users, FileText, Plus, Clock, ThumbsUp, MessageCircle, Pin, Lock, Film, Tv, User as UserIcon, Sparkles, Trash2, UserCheck, UserX, Bell, Pencil, MoreVertical, ThumbsDown, Newspaper, X, Check, ExternalLink, AlertTriangle } from "lucide-react"
+import { Users, FileText, Plus, Clock, ThumbsUp, MessageCircle, Pin, Lock, Film, Tv, User as UserIcon, Sparkles, Trash2, UserCheck, UserX, Bell, Pencil, MoreVertical, ThumbsDown, Newspaper, X, Check, ExternalLink, AlertTriangle, ShieldAlert } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { useUser } from "@/contexts/UserContext"
@@ -11,6 +11,7 @@ import useInfiniteScroll from "@/hooks/useInfiniteScroll"
 import Link from "next/link"
 import PostMediaPreview from "@/components/post-media-preview"
 import { CommunityDetailSkeleton } from "@/components/skeletons"
+import { shouldFilterAdultContent } from "@/lib/utils/ageUtils"
 
 const categoryIcons = {
   general: Sparkles,
@@ -38,6 +39,11 @@ export default function CommunityPage() {
   const [news, setNews] = useState([])
   const [loadingNews, setLoadingNews] = useState(false)
   const newsContainerRef = useRef(null)
+  const leftSidebarRef = useRef(null)
+  const rightSidebarRef = useRef(null)
+  const feedContainerRef = useRef(null)
+  const stickyAreaRef = useRef(null)
+  const centerColumnRef = useRef(null)
   
   // Edit states
   const [editingAbout, setEditingAbout] = useState(false)
@@ -514,6 +520,36 @@ export default function CommunityPage() {
     return d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
   }
 
+  // Wheel handler: forward to feedContainerRef when hovering on non-scrollable parts
+  // of the sticky area (filter bar, join requests). Banner/header scroll main natively.
+  // Left sidebar and news list scroll themselves.
+  useEffect(() => {
+    const handleWheel = (e) => {
+      const stickyArea = stickyAreaRef.current
+      const feed = feedContainerRef.current
+      const left = leftSidebarRef.current
+      const news = newsContainerRef.current
+      if (!stickyArea || !feed) return
+
+      // Not inside sticky area → let main scroll naturally (banner/header phase)
+      if (!stickyArea.contains(e.target)) return
+
+      // Left sidebar scrolls itself
+      if (left && left.contains(e.target) && left.scrollHeight > left.clientHeight) return
+
+      // News list scrolls itself
+      if (news && news.contains(e.target) && news.scrollHeight > news.clientHeight) return
+
+      // Already inside posts feed → handled natively
+      if (feed.contains(e.target)) return
+
+      // On filter bar / join requests → forward to posts feed
+      feed.scrollBy({ top: e.deltaY, left: 0 })
+    }
+    document.addEventListener('wheel', handleWheel, { passive: true })
+    return () => document.removeEventListener('wheel', handleWheel)
+  }, [])
+
   if (loading) {
     return <CommunityDetailSkeleton />
   }
@@ -526,10 +562,30 @@ export default function CommunityPage() {
     )
   }
 
+  // Block minors from accessing adult communities
+  if (community.adult_content && shouldFilterAdultContent(user)) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <div className="text-center max-w-md">
+          <div className="w-20 h-20 bg-orange-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <ShieldAlert className="w-10 h-10 text-orange-500" />
+          </div>
+          <h2 className="text-2xl font-bold text-foreground mb-3">Age-Restricted Community</h2>
+          <p className="text-muted-foreground mb-6">
+            This community contains adult content and is only available to users who are 18 years or older.
+          </p>
+          <Button onClick={() => router.push('/communities')} className="gap-2">
+            Back to Communities
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   const CategoryIcon = categoryIcons[community.category] || Sparkles
 
   return (
-    <main className="min-h-screen bg-background -mt-16">
+    <main className="min-h-screen bg-background -mt-16 overflow-y-auto">
       {/* Banner - Extended behind navbar */}
       <div className="relative h-48 sm:h-64 bg-black overflow-hidden">
         {community.banner && (
@@ -662,12 +718,11 @@ export default function CommunityPage() {
         </div>
       </div>
 
-      {/* Main Content Section with Sidebars */}
-      <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-8">
-        <div className="flex gap-6">
+      {/* Main Content Section with Sidebars — sticks below navbar once banner+header scroll away */}
+      <div ref={stickyAreaRef} className="sticky top-16 h-[calc(100vh-4rem)] overflow-hidden w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 flex gap-6">
           {/* Left Sidebar - Community Info (Hidden on mobile) */}
-          <aside className="hidden lg:block w-72 lg:w-80 flex-shrink-0">
-            <div className="sticky top-20 space-y-4">
+          <aside ref={leftSidebarRef} className="hidden lg:block w-72 lg:w-80 flex-shrink-0 overflow-y-auto overscroll-contain scrollbar-thin py-6">
+            <div className="space-y-4">
               {/* Community Stats Card */}
               <div className="bg-secondary/30 border border-border rounded-lg p-4">
                 <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
@@ -845,7 +900,7 @@ export default function CommunityPage() {
           </aside>
 
           {/* Center - Posts Section */}
-          <div className="flex-1 min-w-0">
+          <div ref={centerColumnRef} className="flex-1 min-w-0 flex flex-col min-h-0 py-6">
             {/* Join Requests Section - Only visible to creator */}
             {isCreator && community.pendingRequests && community.pendingRequests.length > 0 && (
               <div className="mb-6 bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 md:p-6">
@@ -911,8 +966,8 @@ export default function CommunityPage() {
               </div>
             )}
 
-            {/* Sort Controls */}
-            <div className="flex items-center justify-start mb-6">
+            {/* Sort Controls - Pinned */}
+            <div className="flex items-center justify-start mb-4 flex-shrink-0">
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
@@ -925,6 +980,7 @@ export default function CommunityPage() {
             </div>
 
             {/* Posts List */}
+            <div ref={feedContainerRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-thin pb-6">
             {posts.length === 0 ? (
               <div className="text-center py-12 bg-secondary/20 rounded-lg border border-border">
                 <FileText className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
@@ -941,7 +997,7 @@ export default function CommunityPage() {
               </div>
             ) : (
               <div className="space-y-6">
-                {posts.map((post) => (
+                {posts.filter(post => !(shouldFilterAdultContent(user) && post.adult_content)).map((post) => (
                   <Link key={post._id} href={`/communities/${params.slug}/posts/${post._id}`} className="block">
                     <div className="bg-secondary/20 hover:bg-secondary/30 rounded-lg border border-border p-4 transition-colors cursor-pointer">
                       <div className="flex gap-4">
@@ -975,6 +1031,12 @@ export default function CommunityPage() {
                               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 mr-2 bg-destructive/20 text-destructive rounded text-xs font-semibold align-middle">
                                 <AlertTriangle className="w-3 h-3" />
                                 SPOILER
+                              </span>
+                            )}
+                            {post.adult_content && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 mr-2 bg-orange-500/20 text-orange-400 rounded text-xs font-semibold align-middle">
+                                <ShieldAlert className="w-3 h-3" />
+                                18+
                               </span>
                             )}
                             {post.title}
@@ -1016,14 +1078,15 @@ export default function CommunityPage() {
                 </div>
               </div>
             )}
+            </div>
           </div>
 
           {/* Right Sidebar - Latest News (Hidden on mobile and small tablets) */}
-          <aside className="hidden lg:block w-80 xl:w-96 flex-shrink-0">
-            <div className="sticky top-20">
-              {/* News Section with Auto-Scroll */}
-              <div className="bg-secondary/30 border border-border rounded-lg overflow-hidden">
-                <div className="p-4 border-b border-border">
+          <aside ref={rightSidebarRef} className="hidden lg:block w-80 xl:w-96 flex-shrink-0 flex flex-col min-h-0 py-6">
+            <div className="flex flex-col flex-1 min-h-0">
+              {/* News Section */}
+              <div className="bg-secondary/30 border border-border rounded-lg overflow-hidden flex flex-col flex-1 min-h-0">
+                <div className="p-4 border-b border-border flex-shrink-0">
                   <h3 className="font-semibold text-foreground flex items-center gap-2">
                     <Newspaper className="w-4 h-4 text-primary" />
                     Latest News
@@ -1046,11 +1109,10 @@ export default function CommunityPage() {
                 ) : (
                   <div 
                     ref={newsContainerRef}
-                    className="h-[500px] overflow-hidden"
+                    className="overflow-y-scroll scrollbar-news" style={{ maxHeight: 'calc(100vh - 14rem)' }}
                   >
                     <div className="space-y-0">
-                      {/* Duplicate news for seamless loop */}
-                      {[...news, ...news].map((article, index) => (
+                      {news.map((article, index) => (
                         <a
                           key={index}
                           href={article.url}
@@ -1094,7 +1156,6 @@ export default function CommunityPage() {
               </div>
             </div>
           </aside>
-        </div>
       </div>
     </main>
   )

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import Post from '@/lib/models/Post.js'
 import { withAuth } from '@/lib/middleware/withAuth.js'
 import connectDB from '@/lib/config/database.js'
+import { moderateText } from '@/lib/services/moderation.service.js'
 
 await connectDB()
 
@@ -34,6 +35,20 @@ export const POST = withAuth(async (request, { user, params }) => {
     }
 
     await post.addReply(commentId, user._id, content, spoiler || false)
+
+    // Run adult content text moderation on the new reply (non-blocking)
+    try {
+      const textResult = await moderateText(content)
+      if (textResult.isAdult) {
+        const comment = post.comments.id(commentId)
+        const lastReply = comment.replies[comment.replies.length - 1]
+        lastReply.adult_content = true
+        await post.save()
+      }
+    } catch (modErr) {
+      console.error('Reply moderation failed:', modErr)
+    }
+
     await post.populate('comments.user', 'username avatar fullName')
     await post.populate('comments.replies.user', 'username avatar fullName')
 

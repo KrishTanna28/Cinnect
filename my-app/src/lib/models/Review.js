@@ -15,6 +15,10 @@ const replySchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  adult_content: {
+    type: Boolean,
+    default: false
+  },
   likes: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
@@ -98,6 +102,17 @@ const reviewSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+
+  // Adult content moderation
+  adult_content: {
+    type: Boolean,
+    default: false
+  },
+  moderation: {
+    text_score: { type: Number, default: 0 },
+    moderation_type: { type: String, enum: ['text', null], default: null },
+    confidence: { type: Number, default: 0 }
+  },
   
   // Embedding for RAG vector search
   embedding: {
@@ -158,11 +173,12 @@ reviewSchema.virtual('replyCount').get(function() {
 });
 
 // Method to add a reply
-reviewSchema.methods.addReply = function(userId, content, spoiler = false) {
+reviewSchema.methods.addReply = function(userId, content, spoiler = false, adult_content = false) {
   this.replies.push({
     user: userId,
     content: content,
-    spoiler: spoiler
+    spoiler: spoiler,
+    adult_content: adult_content
   });
   return this.save();
 };

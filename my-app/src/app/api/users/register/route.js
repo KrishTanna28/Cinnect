@@ -9,7 +9,7 @@ export async function POST(request) {
     await connectDB()
 
     const contentType = request.headers.get('content-type') || ''
-    let username, email, password, fullName, referralCode, avatarFile
+    let username, email, password, fullName, referralCode, avatarFile, dateOfBirth
 
     if (contentType.includes('multipart/form-data') || contentType.includes('application/x-www-form-urlencoded')) {
       const formData = await request.formData()
@@ -19,6 +19,7 @@ export async function POST(request) {
       fullName = formData.get('fullName')
       referralCode = formData.get('referralCode')
       avatarFile = formData.get('avatar')
+      dateOfBirth = formData.get('dateOfBirth')
     } else {
       // JSON body (standard signup form)
       const body = await request.json()
@@ -28,6 +29,7 @@ export async function POST(request) {
       fullName = body.fullName
       referralCode = body.referralCode
       avatarFile = null
+      dateOfBirth = body.dateOfBirth
     }
 
     // Check if user already exists
@@ -67,6 +69,7 @@ export async function POST(request) {
       password,
       fullName,
       referralCode,
+      dateOfBirth,
       avatar: avatarBuffer,
       avatarName,
       otp,

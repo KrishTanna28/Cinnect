@@ -7,6 +7,7 @@ import { Eye, EyeOff, Mail, Lock, User, UserCircle, Film, Gift, Phone } from "lu
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { DatePicker } from "@/components/ui/date-picker"
 import { useToast } from "@/hooks/use-toast"
 import { useUser } from "@/contexts/UserContext"
 
@@ -16,6 +17,7 @@ export default function SignupPage() {
     email: "",
     password: "",
     fullName: "",
+    dateOfBirth: "",
     referralCode: "",
   })
   const [showPassword, setShowPassword] = useState(false)
@@ -308,6 +310,28 @@ export default function SignupPage() {
                 <p className="text-xs text-destructive">{fieldErrors.password}</p>
               ) : (
                 <p className="text-xs text-muted-foreground">Must be at least 6 characters</p>
+              )}
+            </div>
+
+            {/* Date of Birth */}
+            <div className="space-y-2">
+              <Label htmlFor="dateOfBirth">Date of Birth</Label>
+              <DatePicker
+                id="dateOfBirth"
+                value={formData.dateOfBirth}
+                onChange={(val) => {
+                  setFormData(prev => ({ ...prev, dateOfBirth: val }))
+                  if (fieldErrors.dateOfBirth) setFieldErrors(prev => ({ ...prev, dateOfBirth: "" }))
+                }}
+                max={new Date().toISOString().split('T')[0]}
+                required
+                error={!!fieldErrors.dateOfBirth}
+                placeholder="Select your date of birth"
+              />
+              {fieldErrors.dateOfBirth ? (
+                <p className="text-xs text-destructive">{fieldErrors.dateOfBirth}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">Required to personalize your experience</p>
               )}
             </div>
 

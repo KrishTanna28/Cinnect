@@ -119,6 +119,12 @@ const communitySchema = new mongoose.Schema({
     description: String
   }],
   
+  // Adult content flag
+  adult_content: {
+    type: Boolean,
+    default: false
+  },
+
   // Moderation
   isFlagged: {
     type: Boolean,

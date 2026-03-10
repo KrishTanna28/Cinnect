@@ -23,6 +23,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { DatePicker } from "@/components/ui/date-picker"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,6 +72,7 @@ export default function SettingsPage() {
   const [profileForm, setProfileForm] = useState({
     fullName: "",
     bio: "",
+    dateOfBirth: "",
     favoriteGenres: []
   })
   const [avatarPreview, setAvatarPreview] = useState(null)
@@ -93,6 +95,7 @@ export default function SettingsPage() {
       setProfileForm({
         fullName: user.fullName || "",
         bio: user.bio || "",
+        dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : "",
         favoriteGenres: user.preferences?.favoriteGenres || []
       })
     }
@@ -176,6 +179,7 @@ export default function SettingsPage() {
       const formData = new FormData()
       formData.append("fullName", profileForm.fullName)
       formData.append("bio", profileForm.bio)
+      formData.append("dateOfBirth", profileForm.dateOfBirth)
       formData.append("favoriteGenres", JSON.stringify(profileForm.favoriteGenres))
       if (removeAvatar) {
         formData.append("removeAvatar", "true")
@@ -506,6 +510,20 @@ export default function SettingsPage() {
                     <p className="text-xs text-muted-foreground text-right mt-1">
                       {profileForm.bio.length} / 500
                     </p>
+                  </div>
+
+                  {/* Date of Birth */}
+                  <div className="mb-5">
+                    <label className="block text-sm font-semibold text-foreground mb-2">
+                      Date of Birth
+                    </label>
+                    <DatePicker
+                      value={profileForm.dateOfBirth}
+                      onChange={(val) => setProfileForm(prev => ({ ...prev, dateOfBirth: val }))}
+                      max={new Date().toISOString().split('T')[0]}
+                      placeholder="Select your date of birth"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Used to personalize content visibility</p>
                   </div>
 
                   {/* Favorite Genres */}
