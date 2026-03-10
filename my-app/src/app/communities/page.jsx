@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Plus, Users, Film, Tv, User, Sparkles, Filter, ChevronDown, ChevronUp, Heart, MessageCircle, Eye, Clock, AlertTriangle, ThumbsUp, ThumbsDown, Video, Play } from "lucide-react"
@@ -43,6 +43,32 @@ export default function CommunitiesPage() {
   const searchParams = useSearchParams()
   const { user } = useUser()
   const { toast } = useToast()
+  const feedContainerRef = useRef(null)
+  const leftSidebarRef = useRef(null)
+  const rightSidebarRef = useRef(null)
+
+  // Global wheel handler: scroll from anywhere (including navbar) goes to the feed container,
+  // except when cursor is over a sidebar — then that sidebar scrolls instead.
+  useEffect(() => {
+    const handleWheel = (e) => {
+      const left = leftSidebarRef.current
+      const right = rightSidebarRef.current
+      const feed = feedContainerRef.current
+      if (!feed) return
+
+      // If cursor is over a sidebar that can scroll, let it handle natively
+      if (left && left.contains(e.target) && left.scrollHeight > left.clientHeight) return
+      if (right && right.contains(e.target) && right.scrollHeight > right.clientHeight) return
+
+      // If cursor is already over the feed scroll container, let it handle natively
+      if (feed.contains(e.target)) return
+
+      // Otherwise (navbar, filter bar, empty space), forward scroll to feed
+      feed.scrollBy({ top: e.deltaY, left: 0 })
+    }
+    document.addEventListener('wheel', handleWheel, { passive: true })
+    return () => document.removeEventListener('wheel', handleWheel)
+  }, [])
 
   // Infinite scroll
   const loadMoreRef = useInfiniteScroll(
@@ -71,7 +97,7 @@ export default function CommunitiesPage() {
   const fetchRecommendedCommunities = async () => {
     setCommunitiesLoading(true)
     try {
-      const response = await fetch('/api/communities?sort=popular&limit=8')
+      const response = await fetch('/api/communities?sort=popular&limit=10')
       const data = await response.json()
       if (data.success) {
         setRecommendedCommunities(data.data)
@@ -177,11 +203,11 @@ export default function CommunitiesPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background">
+    <main className="h-[calc(100vh-4rem)] bg-background flex flex-col overflow-hidden">
 
-      <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-0 flex flex-col flex-1 min-h-0">
         {/* Filters */}
-        <div className="mb-8">
+        <div className="mb-6">
           <div className="flex items-center gap-3">
             {/* Category Dropdown */}
             <div className="hidden lg:block">
@@ -270,11 +296,11 @@ export default function CommunitiesPage() {
           </div>
         </div>
 
-        {/* Main Content Area with Sidebars */}
-        <div className="flex gap-6">
+        {/* Main Content Area with Sidebars — this is the scroll container, scrollbar at right edge */}
+        <div ref={feedContainerRef} className="flex gap-6 flex-1 min-h-0 overflow-y-auto">
           {/* Left Sidebar - Recommended Communities */}
-          <aside className="hidden lg:block w-72 flex-shrink-0">
-            <div className="sticky top-24">
+          <aside ref={leftSidebarRef} className="hidden lg:block w-72 flex-shrink-0 self-start sticky top-0 max-h-[calc(100vh-10rem)] overflow-y-auto overscroll-contain scrollbar-thin">
+            <div>
               <div className="bg-secondary/30 rounded-lg border border-border overflow-hidden">
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border">
@@ -294,7 +320,7 @@ export default function CommunitiesPage() {
                       No communities found
                     </div>
                   ) : (
-                    recommendedCommunities.map((community) => {
+                    recommendedCommunities.slice(0, 10).map((community) => {
                       const CategoryIcon = categories.find(c => c.id === community.category)?.icon || Sparkles
                       
                       return (
@@ -352,7 +378,7 @@ export default function CommunitiesPage() {
           </aside>
 
           {/* Posts Feed - Main Column */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 pb-6">
             {/* Posts Feed */}
             {loading ? (
               <CommunitiesFeedSkeleton />
@@ -478,8 +504,8 @@ export default function CommunitiesPage() {
           </div>
 
           {/* Recent Posts Sidebar - Right Column */}
-          <aside className="hidden xl:block w-80 flex-shrink-0">
-            <div className="sticky top-24">
+          <aside ref={rightSidebarRef} className="hidden xl:block w-80 flex-shrink-0 self-start sticky top-0 max-h-[calc(100vh-10rem)] overflow-y-auto overscroll-contain scrollbar-thin">
+            <div>
               <div className="bg-secondary/30 rounded-lg border border-border overflow-hidden">
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border">
@@ -499,7 +525,7 @@ export default function CommunitiesPage() {
                       No recent posts
                     </div>
                   ) : (
-                    recentPosts.map((post) => {
+                    recentPosts.slice(0, 10).map((post) => {
                       const CategoryIcon = categories.find(c => c.id === post.community?.category)?.icon || Sparkles
                       
                       return (
@@ -604,3 +630,4 @@ export default function CommunitiesPage() {
     </main>
   )
 }
+
