@@ -226,6 +226,24 @@ export default function TVDetailsPage({ params }) {
             checkIfInFavorites()
           }
 
+          // Track this view for notification personalization
+          if (user) {
+            const token = localStorage.getItem('token')
+            if (token) {
+              fetch('/api/users/me/activity', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({
+                  type: 'view_media',
+                  mediaId: String(response.data.id),
+                  mediaType: 'tv',
+                  title: response.data.name || '',
+                  genres: (response.data.genres || []).map(g => g.name || g).filter(Boolean)
+                })
+              }).catch(() => {})
+            }
+          }
+
           // Fetch YouTube videos and news about the TV show
           if (response.data.name) {
             setVideosPage(1)

@@ -1029,6 +1029,18 @@ async function executeTool(name, args) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// Helper: extract text from a Gemini result without triggering the
+// "non-text parts" warning that the .text getter emits.
+// ────────────────────────────────────────────────────────────────────────────
+function extractText(result) {
+  const parts = result.candidates?.[0]?.content?.parts || [];
+  return parts
+    .filter((p) => typeof p.text === "string")
+    .map((p) => p.text)
+    .join("");
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // POST handler
 // ────────────────────────────────────────────────────────────────────────────
 export async function POST(request) {
@@ -1060,10 +1072,12 @@ export async function POST(request) {
           },
         ],
       },
-      ...conversationHistory.map((msg) => ({
-        role: msg.role === "assistant" ? "model" : "user",
-        parts: [{ text: msg.content }],
-      })),
+      ...conversationHistory
+        .filter((msg) => msg.content && msg.content.trim() !== "")
+        .map((msg) => ({
+          role: msg.role === "assistant" ? "model" : "user",
+          parts: [{ text: msg.content }],
+        })),
       {
         role: "user",
         parts: [
@@ -1087,18 +1101,25 @@ export async function POST(request) {
       },
     });
 
-    // ── Handle tool calls (may be multiple) ──
-    const candidate = result.candidates?.[0];
-    const parts = candidate?.content?.parts || [];
+    // ── Agentic loop: keep handling tool calls until the model returns text ──
+    const MAX_TOOL_ROUNDS = 5;
+    let round = 0;
 
-    const functionCalls = parts.filter((p) => p.functionCall);
+    while (round < MAX_TOOL_ROUNDS) {
+      round++;
 
-    if (functionCalls.length > 0) {
-      // Execute all requested tools
-      const toolResults = [];
+      // Read parts directly — never use the .text getter here to avoid the
+      // "non-text parts" warning when functionCall parts are present.
+      const parts = result.candidates?.[0]?.content?.parts || [];
+      const functionCalls = parts.filter((p) => p.functionCall);
+
+      if (functionCalls.length === 0) break; // No tool calls → go to text response
+
+      // Execute every requested tool for this round
+      const toolResultParts = [];
       for (const fc of functionCalls) {
         const output = await executeTool(fc.functionCall.name, fc.functionCall.args);
-        toolResults.push({
+        toolResultParts.push({
           functionResponse: {
             name: fc.functionCall.name,
             response: { result: output },
@@ -1106,16 +1127,19 @@ export async function POST(request) {
         });
       }
 
-      // Send tool results back to the model for final answer
+      // Append the model's tool-call turn (only functionCall parts, never empty/undefined)
       contents.push({
         role: "model",
         parts: functionCalls.map((fc) => ({ functionCall: fc.functionCall })),
       });
+
+      // Append the tool results as a user turn
       contents.push({
         role: "user",
-        parts: toolResults,
+        parts: toolResultParts,
       });
 
+      // Call the model again with the updated conversation
       result = await ai.models.generateContent({
         model: "gemini-2.5-flash",
         contents,
@@ -1127,8 +1151,11 @@ export async function POST(request) {
       });
     }
 
+    // Extract the final text response from parts directly (avoids the .text warning)
+    const responseText = extractText(result);
+
     return NextResponse.json({
-      message: result.text,
+      message: responseText,
       context: Object.keys(contextData).length ? contextData : null,
     });
   } catch (error) {

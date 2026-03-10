@@ -18,11 +18,17 @@ import {
   Sun,
   Moon,
   Save,
-  X,
-  Menu
+  Trash2,
+  ImagePlus
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { useUser } from "@/contexts/UserContext"
 import { useToast } from "@/hooks/use-toast"
 
@@ -76,9 +82,6 @@ export default function SettingsPage() {
   const [followRequests, setFollowRequests] = useState([])
   const [requestsLoading, setRequestsLoading] = useState(false)
   const [processingIds, setProcessingIds] = useState(new Set())
-
-  // Mobile sidebar open
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -325,38 +328,41 @@ export default function SettingsPage() {
         {SIDEBAR_SECTIONS.filter(s => s.group === "account").map(section => (
           <button
             key={section.id}
-            onClick={() => { setActiveSection(section.id); setMobileSidebarOpen(false) }}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
+            onClick={() => setActiveSection(section.id)}
+            title={section.label}
+            className={`w-full flex items-center justify-center md:justify-start gap-3 px-2 md:px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
               activeSection === section.id
                 ? "bg-secondary/60 text-foreground border-l-2 border-primary"
                 : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
             }`}
           >
-            <section.icon className="w-5 h-5" />
-            {section.label}
+            <section.icon className="w-5 h-5 flex-shrink-0" />
+            <span className="hidden md:block">{section.label}</span>
           </button>
         ))}
 
         {/* Privacy heading */}
-        <p className="px-4 pt-6 pb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+        <p className="hidden md:block px-4 pt-6 pb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
           Who can see your content
         </p>
+        <div className="block md:hidden mx-2 my-3 border-t border-border" />
         {SIDEBAR_SECTIONS.filter(s => s.group === "privacy").map(section => {
           if (section.id === "follow-requests" && !settings.isPrivate) return null
           return (
             <button
               key={section.id}
-              onClick={() => { setActiveSection(section.id); setMobileSidebarOpen(false) }}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
+              onClick={() => setActiveSection(section.id)}
+              title={section.label}
+              className={`w-full flex items-center justify-center md:justify-start gap-3 px-2 md:px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
                 activeSection === section.id
                   ? "bg-secondary/60 text-foreground border-l-2 border-primary"
                   : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
               }`}
             >
-              <section.icon className="w-5 h-5" />
-              {section.label}
+              <section.icon className="w-5 h-5 flex-shrink-0" />
+              <span className="hidden md:block">{section.label}</span>
               {section.id === "follow-requests" && followRequests.length > 0 && (
-                <span className="ml-auto px-1.5 py-0.5 bg-red-500 text-white rounded-full text-[10px] font-bold">
+                <span className="md:ml-auto px-1.5 py-0.5 bg-red-500 text-white rounded-full text-[10px] font-bold">
                   {followRequests.length}
                 </span>
               )}
@@ -365,86 +371,52 @@ export default function SettingsPage() {
         })}
 
         {/* Preferences heading */}
-        <p className="px-4 pt-6 pb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+        <p className="hidden md:block px-4 pt-6 pb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
           Preferences
         </p>
+        <div className="block md:hidden mx-2 my-3 border-t border-border" />
         {SIDEBAR_SECTIONS.filter(s => s.group === "preferences").map(section => (
           <button
             key={section.id}
-            onClick={() => { setActiveSection(section.id); setMobileSidebarOpen(false) }}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
+            onClick={() => setActiveSection(section.id)}
+            title={section.label}
+            className={`w-full flex items-center justify-center md:justify-start gap-3 px-2 md:px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
               activeSection === section.id
                 ? "bg-secondary/60 text-foreground border-l-2 border-primary"
                 : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
             }`}
           >
-            <section.icon className="w-5 h-5" />
-            {section.label}
+            <section.icon className="w-5 h-5 flex-shrink-0" />
+            <span className="hidden md:block">{section.label}</span>
           </button>
         ))}
       </div>
 
       {/* Logout at bottom */}
-      <div className="border-t border-border p-4">
+      <div className="border-t border-border p-2 md:p-4">
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-destructive hover:bg-secondary/30 rounded-lg transition-colors cursor-pointer"
+          title="Log Out"
+          className="w-full flex items-center justify-center md:justify-start gap-3 px-2 md:px-3 py-2.5 text-sm font-medium text-destructive hover:bg-secondary/30 rounded-lg transition-colors cursor-pointer"
         >
-          <LogOut className="w-5 h-5" />
-          Log Out
+          <LogOut className="w-5 h-5 flex-shrink-0" />
+          <span className="hidden md:block">Log Out</span>
         </button>
       </div>
     </div>
   )
 
   return (
-    <main className="min-h-screen bg-background pb-24 md:pb-0">
-        <div className="flex flex-col md:flex-row min-h-[calc(100vh-64px)]">
+    <main className="bg-background h-[calc(100vh-64px)] overflow-hidden pb-16 md:pb-0">
+        <div className="flex flex-row h-full">
 
-          {/* Mobile header: current section + hamburger */}
-          <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-border">
-            <h2 className="text-lg font-bold text-foreground">Settings</h2>
-            <button
-              onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
-              className="p-2 rounded-lg hover:bg-secondary/50 transition-all active:scale-90 cursor-pointer"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* Mobile sidebar overlay */}
-          {mobileSidebarOpen && (
-            <div className="md:hidden fixed inset-0 z-40" onClick={() => setMobileSidebarOpen(false)}>
-              {/* Backdrop */}
-              <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-            </div>
-          )}
-
-          {/* Mobile slide-in sidebar */}
-          <aside
-            className={`md:hidden fixed top-0 left-0 z-50 h-full w-72 bg-background border-r border-border shadow-xl transition-transform duration-300 ease-in-out ${
-              mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-            }`}
-          >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <h2 className="text-lg font-bold text-foreground">Settings</h2>
-              <button
-                onClick={() => setMobileSidebarOpen(false)}
-                className="p-2 rounded-lg hover:bg-secondary/50 transition-all active:scale-90 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            {sidebarContent}
-          </aside>
-
-          {/* Desktop Sidebar */}
-          <aside className="hidden md:flex md:flex-col w-72 border-r border-border flex-shrink-0 sticky top-16 h-[calc(100vh-64px)] overflow-hidden">
+          {/* Sidebar — always visible: icon-only on mobile, full on desktop */}
+          <aside className="flex flex-col flex-shrink-0 w-14 md:w-64 border-r border-border h-full overflow-y-auto overflow-x-hidden">
             {sidebarContent}
           </aside>
 
           {/* Main Content */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 h-full overflow-y-auto">
             <div className="max-w-3xl mx-auto px-6 py-6">
 
               {/* ─── EDIT PROFILE ─── */}
@@ -453,28 +425,43 @@ export default function SettingsPage() {
                   <h2 className="text-xl font-bold text-foreground mb-6">Edit Profile</h2>
 
                   {/* Avatar section */}
-                  <div className="bg-secondary/20 rounded-2xl p-5 border border-border flex items-center gap-5 mb-6">
+                  <div className="bg-secondary/20 rounded-2xl p-5 border border-border flex flex-col items-center gap-3 mb-6">
                     <div className="relative">
-                      <Avatar className="w-20 h-20 border-2 border-primary">
-                        {removeAvatar ? (
-                          <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
-                            {user.username?.charAt(0).toUpperCase() || "U"}
-                          </AvatarFallback>
-                        ) : (
-                          <>
-                            <AvatarImage src={avatarPreview || user.avatar} alt={user.username} />
-                            <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
-                              {user.username?.charAt(0).toUpperCase() || "U"}
-                            </AvatarFallback>
-                          </>
-                        )}
-                      </Avatar>
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="absolute -bottom-1 -right-1 w-7 h-7 bg-primary text-primary-foreground rounded-full flex items-center justify-center cursor-pointer hover:opacity-90 transition-all active:scale-90"
-                      >
-                        <Camera className="w-3.5 h-3.5" />
-                      </button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="relative cursor-pointer group/avatar rounded-full focus:outline-none">
+                            <Avatar className="w-24 h-24 border-2 border-primary transition-opacity group-hover/avatar:opacity-80">
+                              {removeAvatar ? (
+                                <AvatarFallback className="bg-primary text-primary-foreground text-3xl">
+                                  {user.username?.charAt(0).toUpperCase() || "U"}
+                                </AvatarFallback>
+                              ) : (
+                                <>
+                                  <AvatarImage src={avatarPreview || user.avatar} alt={user.username} />
+                                  <AvatarFallback className="bg-primary text-primary-foreground text-3xl">
+                                    {user.username?.charAt(0).toUpperCase() || "U"}
+                                  </AvatarFallback>
+                                </>
+                              )}
+                            </Avatar>
+                            <div className="absolute inset-0 rounded-full flex items-center justify-center bg-black/40 opacity-0 group-hover/avatar:opacity-100 transition-opacity">
+                              <Camera className="w-5 h-5 text-white" />
+                            </div>
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="center" className="w-48">
+                          <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="cursor-pointer">
+                            <ImagePlus className="w-4 h-4 mr-2" />
+                            Change photo
+                          </DropdownMenuItem>
+                          {((user.avatar && user.avatar !== 'https://via.placeholder.com/150') || avatarPreview || avatarFile) && !removeAvatar && (
+                            <DropdownMenuItem onClick={handleRemoveAvatar} className="cursor-pointer text-destructive focus:text-destructive">
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Remove photo
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                       <input
                         ref={fileInputRef}
                         type="file"
@@ -483,28 +470,12 @@ export default function SettingsPage() {
                         onChange={handleAvatarChange}
                       />
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="text-center">
                       <p className="font-semibold text-foreground">{user.username}</p>
-                      <p className="text-sm text-muted-foreground truncate">{user.fullName || user.username}</p>
-                    </div>
-                    <div className="flex flex-col gap-2 flex-shrink-0">
-                      <Button
-                        size="sm"
-                        variant="default"
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        Change photo
-                      </Button>
-                      {(user.avatar && user.avatar !== 'https://via.placeholder.com/150') || avatarPreview || avatarFile ? (
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={handleRemoveAvatar}
-                          disabled={removeAvatar}
-                        >
-                          {removeAvatar ? "Will be removed" : "Remove photo"}
-                        </Button>
-                      ) : null}
+                      <p className="text-sm text-muted-foreground">{user.fullName || user.username}</p>
+                      {removeAvatar && (
+                        <p className="text-xs text-destructive mt-1">Photo will be removed on save</p>
+                      )}
                     </div>
                   </div>
 

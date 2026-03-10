@@ -12,7 +12,12 @@ const notificationSchema = new mongoose.Schema({
   // Notification type
   type: {
     type: String,
-    enum: ['follow_request', 'community_join_request', 'ai_generated', 'new_follower', 'lost_follower', 'review_like', 'review_reply', 'referral'],
+    enum: [
+      'follow_request', 'community_join_request', 'ai_generated',
+      'new_follower', 'lost_follower', 'review_like', 'review_reply', 'referral',
+      // Entertainment notification types
+      'trailer', 'news', 'announcement', 'casting_update', 'interview'
+    ],
     required: true
   },
 
@@ -56,6 +61,31 @@ const notificationSchema = new mongoose.Schema({
     default: ''
   },
 
+  // External link to YouTube video or news article
+  externalLink: {
+    type: String,
+    default: ''
+  },
+
+  // Related entity for entertainment notifications
+  relatedEntity: {
+    name: { type: String, default: '' },
+    type: { type: String, enum: ['movie', 'tv', 'actor', 'actress', ''], default: '' },
+    tmdbId: { type: String, default: '' }
+  },
+
+  // Source of the notification (YouTube channel name or news publisher)
+  source: {
+    type: String,
+    default: ''
+  },
+
+  // Unique external ID for deduplication (YouTube videoId or article URL)
+  externalId: {
+    type: String,
+    default: ''
+  },
+
   // Status
   read: {
     type: Boolean,
@@ -77,6 +107,8 @@ const notificationSchema = new mongoose.Schema({
 // Compound index for fast queries
 notificationSchema.index({ recipient: 1, read: 1, createdAt: -1 });
 notificationSchema.index({ recipient: 1, createdAt: -1 });
+// Index for deduplication: unique external content per user
+notificationSchema.index({ recipient: 1, externalId: 1 }, { sparse: true });
 
 // Force re-registration so schema changes (e.g. new enum values) always take effect
 if (mongoose.models.Notification) {

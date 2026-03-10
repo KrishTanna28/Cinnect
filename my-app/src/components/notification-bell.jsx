@@ -1,11 +1,14 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { Bell, Check, X, UserPlus, UserMinus, UserCheck as UserCheckIcon, Users, Sparkles, Loader2, Heart, MessageCircle, Gift } from "lucide-react"
+import { Bell, Check, X, UserPlus, UserMinus, UserCheck as UserCheckIcon, Users, Sparkles, Loader2, Heart, MessageCircle, Gift, Film, Tv, Megaphone, Clapperboard, Newspaper, ExternalLink, Play } from "lucide-react"
 import { useUser } from "@/contexts/UserContext"
 import { useSocket } from "@/contexts/SocketContext"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
+
+// Entertainment notification types that can link externally
+const ENTERTAINMENT_TYPES = new Set(["trailer", "news", "announcement", "casting_update", "interview"])
 
 export default function NotificationBell() {
   const { user } = useUser()
@@ -16,7 +19,7 @@ export default function NotificationBell() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(false)
   const dropdownRef = useRef(null)
-  const hasFetchedAi = useRef(false)
+  const hasFetchedEntertainment = useRef(false)
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -52,8 +55,8 @@ export default function NotificationBell() {
     }
   }, [])
 
-  // Generate AI notifications (once per session / on first open)
-  const generateAiNotifications = useCallback(async () => {
+  // Generate entertainment notifications (once per session)
+  const generateEntertainmentNotifications = useCallback(async () => {
     const token = localStorage.getItem("token")
     if (!token) return
     try {
@@ -66,25 +69,23 @@ export default function NotificationBell() {
     }
   }, [])
 
-  // On mount: fetch + trigger AI gen once
+  // On mount: fetch + trigger entertainment generation once
   useEffect(() => {
     if (!user) return
     fetchNotifications()
-    if (!hasFetchedAi.current) {
-      hasFetchedAi.current = true
-      generateAiNotifications().then(() => fetchNotifications())
+    if (!hasFetchedEntertainment.current) {
+      hasFetchedEntertainment.current = true
+      generateEntertainmentNotifications().then(() => fetchNotifications())
     }
-  }, [user, fetchNotifications, generateAiNotifications])
+  }, [user, fetchNotifications, generateEntertainmentNotifications])
 
   // ─── Real-time: listen for new notifications via Socket.IO ───
   useEffect(() => {
     if (!on) return
     const unsub = on("notification:new", (notif) => {
-      // Prepend the new notification to the list
       setNotifications(prev => [notif, ...prev])
       setUnreadCount(prev => prev + 1)
 
-      // Show toast
       toast({
         title: notif.title || "New Notification",
         description: notif.message || "",
@@ -115,13 +116,12 @@ export default function NotificationBell() {
     }
   }, [])
 
-  // Toggle dropdown — auto-mark-as-read on open
+  // Toggle dropdown
   const toggleDropdown = () => {
     const next = !open
     setOpen(next)
     if (next) {
       fetchNotifications()
-      // Mark all as read when opening the dropdown
       if (unreadCount > 0) {
         markAllRead()
       }
@@ -189,8 +189,30 @@ export default function NotificationBell() {
         return <MessageCircle className="w-4 h-4 text-blue-400" />
       case "referral":
         return <Gift className="w-4 h-4 text-emerald-400" />
+      case "trailer":
+        return <Play className="w-4 h-4 text-red-400" />
+      case "news":
+        return <Newspaper className="w-4 h-4 text-sky-400" />
+      case "announcement":
+        return <Megaphone className="w-4 h-4 text-amber-400" />
+      case "casting_update":
+        return <Clapperboard className="w-4 h-4 text-violet-400" />
+      case "interview":
+        return <Film className="w-4 h-4 text-teal-400" />
       default:
         return <Bell className="w-4 h-4 text-muted-foreground" />
+    }
+  }
+
+  // Label for entertainment notification type
+  const getTypeLabel = (type) => {
+    switch (type) {
+      case "trailer": return "Trailer"
+      case "news": return "News"
+      case "announcement": return "Announcement"
+      case "casting_update": return "Casting"
+      case "interview": return "Interview"
+      default: return null
     }
   }
 
@@ -246,11 +268,19 @@ export default function NotificationBell() {
               </div>
             ) : (
               notifications.map((notif) => {
-                const hasLink = !!notif.link
-                const RowTag = hasLink ? Link : "div"
+                const isEntertainment = ENTERTAINMENT_TYPES.has(notif.type)
+                const targetLink = isEntertainment && notif.externalLink ? notif.externalLink : notif.link
+                const isExternal = isEntertainment && notif.externalLink
+                const hasLink = !!targetLink
+
+                // For external links, use <a>; for internal, use <Link>; otherwise <div>
+                const RowTag = hasLink ? (isExternal ? "a" : Link) : "div"
                 const rowProps = hasLink
-                  ? { href: notif.link, onClick: () => setOpen(false) }
+                  ? isExternal
+                    ? { href: targetLink, target: "_blank", rel: "noopener noreferrer", onClick: () => setOpen(false) }
+                    : { href: targetLink, onClick: () => setOpen(false) }
                   : {}
+
                 return (
                   <RowTag
                     key={notif._id}
@@ -259,9 +289,18 @@ export default function NotificationBell() {
                       hasLink ? "cursor-pointer hover:bg-secondary/40" : ""
                     } ${notif.read ? "bg-transparent" : "bg-primary/5"}`}
                   >
-                  {/* Icon / avatar */}
+                  {/* Thumbnail / Icon */}
                   <div className="flex-shrink-0 mt-0.5">
-                    {notif.image ? (
+                    {isEntertainment && notif.image ? (
+                      <div className="relative w-14 h-9 rounded overflow-hidden bg-secondary">
+                        <img src={notif.image} alt="" className="w-full h-full object-cover" />
+                        {notif.type === "trailer" && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                            <Play className="w-3.5 h-3.5 text-white" fill="white" />
+                          </div>
+                        )}
+                      </div>
+                    ) : notif.image ? (
                       <img src={notif.image} alt="" className="w-9 h-9 rounded-full object-cover" />
                     ) : (
                       <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center">
@@ -272,8 +311,28 @@ export default function NotificationBell() {
 
                   {/* Content */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-foreground">{notif.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{notif.message}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs font-semibold text-foreground truncate">{notif.title}</p>
+                      {isExternal && <ExternalLink className="w-3 h-3 text-muted-foreground/60 flex-shrink-0" />}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-snug line-clamp-2">{notif.message}</p>
+
+                    {/* Metadata row for entertainment notifications */}
+                    {isEntertainment && (
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        {getTypeLabel(notif.type) && (
+                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                            {getTypeLabel(notif.type)}
+                          </span>
+                        )}
+                        {notif.source && (
+                          <span className="text-[10px] text-muted-foreground/70 truncate max-w-[120px]">
+                            {notif.source}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
                     <p className="text-[10px] text-muted-foreground/60 mt-1">{timeAgo(notif.createdAt)}</p>
 
                     {/* Action buttons for requests */}

@@ -228,6 +228,24 @@ export default function DetailsPage({ params }) {
             checkIfInWatchlist()
             checkIfInFavorites()
           }
+
+          // Track this view for notification personalization
+          if (user) {
+            const token = localStorage.getItem('token')
+            if (token) {
+              fetch('/api/users/me/activity', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({
+                  type: 'view_media',
+                  mediaId: String(response.data.id),
+                  mediaType: 'movie',
+                  title: response.data.title || '',
+                  genres: (response.data.genres || []).map(g => g.name || g).filter(Boolean)
+                })
+              }).catch(() => {})
+            }
+          }
           
           // Fetch YouTube videos and news about the movie
           if (response.data.title) {

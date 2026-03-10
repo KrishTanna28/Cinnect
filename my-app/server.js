@@ -4,6 +4,7 @@ import next from 'next'
 import { Server as SocketIOServer } from 'socket.io'
 import jwt from 'jsonwebtoken'
 import dotenv from 'dotenv'
+import { startNotificationScheduler } from './src/lib/services/notificationScheduler.js'
 
 dotenv.config({ path: '.env' })
 
@@ -64,5 +65,7 @@ app.prepare().then(() => {
 
   server.listen(port, hostname, () => {
     console.log(`> Ready on http://${hostname}:${port}`)
+    // Start the background entertainment notification scheduler
+    startNotificationScheduler(port)
   })
 })

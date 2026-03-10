@@ -209,6 +209,22 @@ export default function ActorDetailsPage({ params }) {
         if (response.success) {
           setPerson(response.data)
 
+          // Track this actor view for notification personalization
+          {
+            const token = localStorage.getItem('token')
+            if (token) {
+              fetch('/api/users/me/activity', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({
+                  type: 'view_actor',
+                  actorId: String(unwrappedParams.id),
+                  name: response.data.name || ''
+                })
+              }).catch(() => {})
+            }
+          }
+
           // Fetch YouTube videos about the actor
           if (response.data.name) {
             setVideosPage(1)
