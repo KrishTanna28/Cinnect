@@ -284,6 +284,20 @@ export default function CommunitiesPage() {
     router.push(`/communities/${post.community?.slug}/posts/${post._id}?comment=true#comments`)
   }
 
+  const handleCommunityNameClick = (e, slug) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!slug) return
+    router.push(`/communities/${slug}`)
+  }
+
+  const handleUserNameClick = (e, userId) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!userId) return
+    router.push(`/profile/${userId}`)
+  }
+
   return (
     <main className="h-[calc(100vh-4rem)] bg-background flex flex-col overflow-hidden">
 
@@ -506,9 +520,12 @@ export default function CommunitiesPage() {
                               )}
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
-                                  <span className="font-medium text-foreground text-sm truncate">
+                                  <button
+                                    onClick={(e) => handleCommunityNameClick(e, post.community?.slug)}
+                                    className="relative font-medium text-foreground text-sm truncate hover:text-primary transition-all active:scale-90 cursor-pointer"
+                                  >
                                     {post.community?.name || 'Unknown Community'}
-                                  </span>
+                                  </button>
                                   <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${
                                     post.community?.category === 'movie' ? 'bg-blue-500/20 text-blue-400' :
                                     post.community?.category === 'tv' ? 'bg-purple-500/20 text-purple-400' :
@@ -519,7 +536,17 @@ export default function CommunitiesPage() {
                                   </span>
                                   </div>
                                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                    <span>Posted by {post.user?.username == user.username ? 'You' : post.user?.username || 'Anonymous'}</span>
+                                    <span>Posted by</span>
+                                    {post.user?.username ? (
+                                      <button
+                                        onClick={(e) => handleUserNameClick(e, post.user?._id)}
+                                        className="relative text-xs text-foreground hover:text-primary transition-all active:scale-90 cursor-pointer"
+                                      >
+                                        {post.user?.username === user?.username ? 'You' : post.user?.username}
+                                      </button>
+                                    ) : (
+                                      <span>Anonymous</span>
+                                    )}
                                     <span>•</span>
                                     <span className="flex items-center gap-1">
                                       <Clock className="w-3 h-3" />
@@ -657,9 +684,12 @@ export default function CommunitiesPage() {
                                     <CategoryIcon className="w-3 h-3 text-primary" />
                                   </div>
                                 )}
-                                <span className="text-xs text-muted-foreground truncate">
+                                <button
+                                  onClick={(e) => handleCommunityNameClick(e, post.community?.slug)}
+                                  className="relative text-xs text-muted-foreground truncate hover:text-primary transition-all active:scale-90 cursor-pointer"
+                                >
                                   c/{post.community?.name || 'Unknown'}
-                                </span>
+                                </button>
                                 <span className="text-xs text-muted-foreground">•</span>
                                 <span className="text-xs text-muted-foreground whitespace-nowrap">
                                   {formatTimeAgo(post.createdAt)}
