@@ -163,6 +163,7 @@ communitySchema.methods.addMember = function(userId) {
     this.members.push(userId);
     this.memberCount = this.members.length;
   }
+  return this.save();
 };
 
 communitySchema.methods.removeMember = function(userId) {
@@ -195,6 +196,7 @@ communitySchema.methods.removeJoinRequest = function(userId) {
   this.pendingRequests = this.pendingRequests.filter(
     req => req.user.toString() !== userId?.toString()
   );
+  return this.save();
 };
 
 communitySchema.methods.hasJoinRequest = function(userId) {

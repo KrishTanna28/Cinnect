@@ -27,7 +27,6 @@ export default function CommunityPage() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [sortBy, setSortBy] = useState('recent')
   const [isMember, setIsMember] = useState(false)
-  const [joining, setJoining] = useState(false)
   const [hasPendingRequest, setHasPendingRequest] = useState(false)
   const [isCreator, setIsCreator] = useState(false)
   const [processingRequest, setProcessingRequest] = useState(null)
@@ -314,7 +313,13 @@ export default function CommunityPage() {
     fetchPosts(page + 1)
   }
 
-  const handleJoinLeave = async () => {
+  const handleJoinLeave = async (e) => {
+    // Prevent default behavior and event propagation
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
     if (!user) {
       toast({
         title: "Login Required",
@@ -325,52 +330,130 @@ export default function CommunityPage() {
       return
     }
 
-    setJoining(true)
-    try {
-      const token = localStorage.getItem('token')
+    const token = localStorage.getItem('token')
 
-      // Handle cancel request
-      if (hasPendingRequest) {
+    // Handle cancel request
+    if (hasPendingRequest) {
+      // Snapshot for rollback
+      const prevHasPendingRequest = hasPendingRequest
+
+      // Optimistic update
+      setHasPendingRequest(false)
+      
+      try {
         const response = await fetch(`/api/communities/${params.slug}/requests`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         })
         const data = await response.json()
+        
         if (data.success) {
-          setHasPendingRequest(false)
           toast({
             title: "Request Cancelled",
             description: data.message
           })
+        } else {
+          // Rollback on error
+          setHasPendingRequest(prevHasPendingRequest)
+          toast({
+            title: "Error",
+            description: data.message || "Failed to cancel request",
+            variant: "destructive"
+          })
         }
-        return
+      } catch (error) {
+        console.error('Error cancelling request:', error)
+        // Rollback on error
+        setHasPendingRequest(prevHasPendingRequest)
+        toast({
+          title: "Error",
+          description: "Failed to cancel request",
+          variant: "destructive"
+        })
       }
+      return
+    }
 
-      // Handle leave
-      if (isMember) {
+    // Handle leave
+    if (isMember) {
+      // Snapshot for rollback
+      const prevIsMember = isMember
+      const prevMemberCount = community?.memberCount || 0
+
+      // Optimistic update
+      setIsMember(false)
+      setCommunity(prev => ({
+        ...prev,
+        memberCount: Math.max(0, prev.memberCount - 1)
+      }))
+      
+      try {
         const response = await fetch(`/api/communities/${params.slug}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         })
         const data = await response.json()
+        
         if (data.success) {
-          setIsMember(false)
           toast({
             title: "Left Community",
             description: data.message
           })
-          fetchCommunity()
+          // Only reconcile if server truth differs from our optimistic value
+          if (data.data?.memberCount !== undefined) {
+            setCommunity(prev => ({
+              ...prev,
+              memberCount: data.data.memberCount
+            }))
+          }
         } else {
+          // Rollback on error
+          setIsMember(prevIsMember)
+          setCommunity(prev => ({
+            ...prev,
+            memberCount: prevMemberCount
+          }))
           toast({
             title: "Error",
             description: data.message || "Failed to leave community",
             variant: "destructive"
           })
         }
-        return
+      } catch (error) {
+        console.error('Error leaving community:', error)
+        // Rollback on error
+        setIsMember(prevIsMember)
+        setCommunity(prev => ({
+          ...prev,
+          memberCount: prevMemberCount
+        }))
+        toast({
+          title: "Error",
+          description: "Failed to leave community",
+          variant: "destructive"
+        })
       }
+      return
+    }
 
-      // Handle join or request to join
+    // Handle join or request to join
+    // Snapshot for rollback
+    const prevIsMember = isMember
+    const prevHasPendingRequest = hasPendingRequest
+    const prevMemberCount = community?.memberCount || 0
+
+    // Optimistic update
+    if (community?.isPrivate) {
+      setHasPendingRequest(true)
+    } else {
+      setIsMember(true)
+      setCommunity(prev => ({
+        ...prev,
+        memberCount: prev.memberCount + 1
+      }))
+    }
+
+    try {
       const response = await fetch(`/api/communities/${params.slug}`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -380,20 +463,36 @@ export default function CommunityPage() {
 
       if (data.success) {
         if (data.data.hasPendingRequest) {
-          setHasPendingRequest(true)
           toast({
             title: "Request Sent",
             description: data.message
           })
+          // Ensure state matches server
+          setHasPendingRequest(true)
+          setIsMember(false)
         } else {
-          setIsMember(true)
           toast({
             title: "Joined Community",
             description: data.message
           })
-          fetchCommunity()
+          // Only reconcile if server truth differs from our optimistic value
+          setIsMember(true)
+          setHasPendingRequest(false)
+          if (data.data?.memberCount !== undefined) {
+            setCommunity(prev => ({
+              ...prev,
+              memberCount: data.data.memberCount
+            }))
+          }
         }
       } else {
+        // Rollback on error
+        setIsMember(prevIsMember)
+        setHasPendingRequest(prevHasPendingRequest)
+        setCommunity(prev => ({
+          ...prev,
+          memberCount: prevMemberCount
+        }))
         toast({
           title: "Error",
           description: data.message || "Failed to update membership",
@@ -402,13 +501,20 @@ export default function CommunityPage() {
       }
     } catch (error) {
       console.error('Error updating membership:', error)
+      
+      // Rollback on error
+      setIsMember(prevIsMember)
+      setHasPendingRequest(prevHasPendingRequest)
+      setCommunity(prev => ({
+        ...prev,
+        memberCount: prevMemberCount
+      }))
+      
       toast({
         title: "Error",
         description: "Failed to update membership",
         variant: "destructive"
       })
-    } finally {
-      setJoining(false)
     }
   }
 
@@ -452,7 +558,12 @@ export default function CommunityPage() {
     }
   }
 
-  const handleDeleteCommunity = async () => {
+  const handleDeleteCommunity = async (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
     if (!confirm('Are you sure you want to delete this community? This action cannot be undone and will delete all posts.')) {
       return
     }
@@ -639,7 +750,10 @@ export default function CommunityPage() {
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {(isMember || isCreator) && (
                     <Button
-                      onClick={() => window.location.href = `/communities/${params.slug}/new-post`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        router.push(`/communities/${params.slug}/new-post`);
+                      }}
                       size="sm"
                       className="gap-1.5 cursor-pointer hidden sm:flex"
                     >
@@ -656,7 +770,10 @@ export default function CommunityPage() {
                     <DropdownMenuContent align="end">
                       {(isMember || isCreator) && (
                         <DropdownMenuItem 
-                          onClick={() => window.location.href = `/communities/${params.slug}/new-post`}
+                          onSelect={(e) => {
+                            e.preventDefault();
+                            router.push(`/communities/${params.slug}/new-post`);
+                          }}
                           className="sm:hidden"
                         >
                           <Plus className="w-4 h-4" />
@@ -665,30 +782,39 @@ export default function CommunityPage() {
                       )}
                       {!isCreator && (
                         <DropdownMenuItem
-                          onClick={handleJoinLeave}
-                          disabled={joining}
+                          onSelect={(e) => {
+                            e.preventDefault();
+                            handleJoinLeave(e);
+                          }}
                         >
-                          {joining ? (
-                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                          ) : isMember ? (
+                          {isMember ? (
+                            <UserX className="w-4 h-4" />
+                          ) : hasPendingRequest ? (
                             <UserX className="w-4 h-4" />
                           ) : (
                             <UserCheck className="w-4 h-4" />
                           )}
-                          {joining ? "Processing..." :
-                            isMember ? "Leave Community" :
-                              hasPendingRequest ? "Cancel Request" :
-                                community.isPrivate ? "Request to Join" : "Join Community"}
+                          {isMember ? "Leave Community" :
+                            hasPendingRequest ? "Cancel Request" :
+                              community.isPrivate ? "Request to Join" : "Join Community"}
                         </DropdownMenuItem>
                       )}
                       {isCreator && (
                         <>
-                          <DropdownMenuItem onClick={() => window.location.href = `/communities/${params.slug}/edit`}>
+                          <DropdownMenuItem 
+                            onSelect={(e) => {
+                              e.preventDefault();
+                              router.push(`/communities/${params.slug}/edit`);
+                            }}
+                          >
                             <Pencil className="w-4 h-4" />
                             Edit Community
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={handleDeleteCommunity}
+                            onSelect={(e) => {
+                              e.preventDefault();
+                              handleDeleteCommunity(e);
+                            }}
                             disabled={deleting}
                           >
                             {deleting ? (
