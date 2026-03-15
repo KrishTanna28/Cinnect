@@ -58,6 +58,21 @@ app.prepare().then(() => {
       console.log(`🔌 Socket connected: user ${userId} (${socket.id})`)
     }
 
+    // Handle typing indicator
+    socket.on('typing:start', (data) => {
+      socket.to(`user:${data.recipientId}`).emit('typing:start', {
+        conversationId: data.conversationId,
+        userId
+      })
+    })
+
+    socket.on('typing:stop', (data) => {
+      socket.to(`user:${data.recipientId}`).emit('typing:stop', {
+        conversationId: data.conversationId,
+        userId
+      })
+    })
+
     socket.on('disconnect', (reason) => {
       console.log(`🔌 Socket disconnected: user ${userId} (${reason})`)
     })

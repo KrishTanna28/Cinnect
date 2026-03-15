@@ -1,44 +1,45 @@
-import { NextResponse } from 'next/server'
-import User from '@/lib/models/User.js'
-import connectDB from '@/lib/config/database.js'
-import { buildFuzzyMongoQuery } from '@/lib/utils/fuzzySearch.js'
+import { NextResponse } from 'next/server';
+import { withAuth } from '@/lib/middleware/withAuth';
+import connectDB from '@/lib/config/database';
+import User from '@/lib/models/User';
 
-await connectDB()
-
-// GET /api/users/search - Search users
-export async function GET(request) {
+// GET /api/users/search - Search users by username or full name
+export const GET = withAuth(async (request, { user }) => {
   try {
-    const { searchParams } = new URL(request.url)
-    const search = searchParams.get('q') || searchParams.get('search') || ''
-    const limit = parseInt(searchParams.get('limit') || '20')
+    await connectDB();
 
-    if (!search.trim()) {
+    const { searchParams } = new URL(request.url);
+    const query = searchParams.get('q') || '';
+    const limit = parseInt(searchParams.get('limit') || '20');
+
+    if (!query.trim()) {
       return NextResponse.json({
         success: true,
         users: []
-      })
+      });
     }
 
-    // Use fuzzy matching to tolerate typos / misspellings
-    const fuzzyQuery = buildFuzzyMongoQuery(search, ['username', 'fullName'])
-
-    const users = await User.find(fuzzyQuery)
-      .select('username fullName avatar points level bio')
+    // Search users by username or full name
+    const users = await User.find({
+      _id: { $ne: user._id }, // Exclude current user
+      $or: [
+        { username: { $regex: query, $options: 'i' } },
+        { fullName: { $regex: query, $options: 'i' } }
+      ]
+    })
+      .select('username fullName avatar')
       .limit(limit)
-      .lean()
+      .lean();
 
     return NextResponse.json({
       success: true,
       users
-    })
+    });
   } catch (error) {
-    console.error('Search users error:', error)
+    console.error('Error searching users:', error);
     return NextResponse.json(
-      {
-        success: false,
-        message: error.message || 'Failed to search users'
-      },
+      { success: false, message: 'Failed to search users' },
       { status: 500 }
-    )
+    );
   }
-}
+});

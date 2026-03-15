@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
-import { Search, X, User, LogOut, Settings, Home, Compass, Users, Film, Tv, MessageCircle, Loader2, Bot, Clock, Trash2, Bell } from "lucide-react"
+import { Search, X, User, LogOut, Settings, Home, Compass, Users, Film, Tv, Send, Loader2, Bot, Clock, Trash2, Bell } from "lucide-react"
 import { Comfortaa } from "next/font/google"
 import NotificationBell from "@/components/notification-bell"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -558,7 +558,7 @@ export default function Navigation() {
                                     className="flex items-center gap-3 p-2 hover:bg-secondary rounded-lg transition-colors cursor-pointer"
                                   >
                                     <div className="w-10 h-10 bg-secondary rounded flex items-center justify-center flex-shrink-0">
-                                      <MessageCircle className="w-5 h-5 text-muted-foreground" />
+                                      <Send className="w-5 h-5 text-muted-foreground" />
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <p className="text-sm font-medium text-foreground truncate">{post.title}</p>
@@ -650,6 +650,9 @@ export default function Navigation() {
                   </Link>
                   <Link href="/communities" className="p-2 text-foreground hover:text-primary transition-all active:scale-90 cursor-pointer" title="Communities">
                     <Users className="w-5 h-5" />
+                  </Link>
+                  <Link href="/messages" className="p-2 text-foreground hover:text-primary transition-all active:scale-90 cursor-pointer" title="Messages">
+                    <Send className="w-5 h-5" />
                   </Link>
 
                   <NotificationBell />
@@ -744,6 +747,15 @@ export default function Navigation() {
                 }`}
             >
               <Users className="w-6 h-6" strokeWidth={pathname?.startsWith('/communities') ? 2.5 : 1.5} />
+            </Link>
+
+            {/* Messages */}
+            <Link
+              href="/messages"
+              className={`flex flex-col items-center justify-center flex-1 h-full transition-all active:scale-90 ${pathname?.startsWith('/messages') ? 'text-primary' : 'text-muted-foreground'
+                }`}
+            >
+              <Send className="w-6 h-6" strokeWidth={pathname?.startsWith('/messages') ? 2.5 : 1.5} />
             </Link>
 
             {/* AI Chatbot */}

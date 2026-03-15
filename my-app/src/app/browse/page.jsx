@@ -253,7 +253,7 @@ export default function BrowsePage() {
             <h2 className="text-xl font-bold text-foreground">Filters</h2>
             <button
               onClick={() => setShowFilters(false)}
-              className="p-2 hover:bg-secondary/50 rounded-lg transition-all active:scale-90 cursor-pointer"
+              className="p-2 text-foreground hover:text-primary transition-all active:scale-90 cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
