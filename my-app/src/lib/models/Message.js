@@ -15,18 +15,22 @@ const messageSchema = new mongoose.Schema({
   },
   content: {
     type: String,
-    required: [true, 'Message content is required'],
-    maxlength: [5000, 'Message cannot exceed 5000 characters']
+    maxlength: [5000, 'Message cannot exceed 5000 characters'],
+    default: ''
   },
   type: {
     type: String,
-    enum: ['text', 'image', 'video', 'audio'],
+    enum: ['text', 'image', 'video', 'audio', 'gif', 'sticker'],
     default: 'text'
   },
   mediaUrl: {
     type: String,
     default: null
   },
+  reactions: [{
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    emoji: String
+  }],
   readBy: [{
     user: {
       type: mongoose.Schema.Types.ObjectId,

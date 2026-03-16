@@ -109,13 +109,10 @@ export const uploadPostImagesToCloudinary = async (base64Images, postId) => {
         folder: 'moviehub/posts',
         public_id: `post_${postId}_${index}_${Date.now()}`,
         transformation: [
-          { width: 1200, height: 1200, crop: 'limit' },
           { quality: 'auto', fetch_format: 'auto' }
         ],
-        overwrite: true,
-        resource_type: 'image'
+        resource_type: 'auto'
       });
-
       return result.secure_url;
     });
 
@@ -123,6 +120,50 @@ export const uploadPostImagesToCloudinary = async (base64Images, postId) => {
   } catch (error) {
     console.error('Cloudinary post images upload error:', error);
     throw new Error('Failed to upload post images to Cloudinary');
+  }
+};
+
+/**
+ * Upload chat media to Cloudinary
+ * @param {String} base64Data - Base64 encoded media data
+ * @param {String} conversationId - Conversation ID for unique naming
+ * @param {String} type - Media type ('image', 'video', 'gif', 'sticker')
+ * @returns {Promise<String>} Cloudinary secure URL
+ */
+export const uploadChatMediaToCloudinary = async (base64Data, conversationId, type) => {
+  try {
+    const resourceType = type === 'video' ? 'video' : type === 'gif' ? 'image' : 'image';
+    
+    let format;
+    let transformation = [];
+
+    if (type === 'video') {
+      format = 'mp4';
+      transformation.push({ quality: 'auto' });
+    } else if (type === 'gif') {
+      format = 'gif';
+      transformation.push({ quality: 'auto' });
+    } else if (type === 'sticker') {
+      format = 'webp';
+      transformation.push({ width: 256, height: 256, crop: 'fit', quality: 'auto' });
+    } else {
+      format = 'jpg';
+      transformation.push({ quality: 'auto' });
+    }
+
+    const result = await cloudinary.uploader.upload(base64Data, {
+      folder: 'moviehub/chats',
+      public_id: `chat_${conversationId}_${Date.now()}`,
+      transformation,
+      format,
+      overwrite: true,
+      resource_type: resourceType
+    });
+
+    return result.secure_url;
+  } catch (error) {
+    console.error('Cloudinary chat media upload error:', error);
+    throw new Error('Failed to upload chat media to Cloudinary');
   }
 };
 

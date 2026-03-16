@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { useUser } from "@/contexts/UserContext"
+import { useSocket } from "@/contexts/SocketContext"
 
 const comfortaa = Comfortaa({
   subsets: ["latin"],
@@ -53,8 +54,49 @@ export default function Navigation() {
   const router = useRouter()
   const pathname = usePathname()
   const { user, isLoading, logout } = useUser()
+  const { on } = useSocket() || {}
   const [showProfilePopup, setShowProfilePopup] = useState(false)
   const profilePopupRef = useRef(null)
+
+  // Unread messages count state
+  const [unreadMsgCount, setUnreadMsgCount] = useState(0)
+
+  // Fetch unread message count
+  const fetchUnreadMsgCount = useCallback(async () => {
+    if (!user) return
+    const token = localStorage.getItem("token")
+    if (!token) return
+    try {
+      const res = await fetch("/api/messages/unread-count", {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.ok) {
+        const json = await res.json()
+        if (json.success) {
+          setUnreadMsgCount(json.count)
+        }
+      }
+    } catch {}
+  }, [user])
+
+  // Fetch count on mount and listen to sockets
+  useEffect(() => {
+    fetchUnreadMsgCount()
+  }, [fetchUnreadMsgCount])
+
+  useEffect(() => {
+    if (!on) return
+    const unsubUpdate = on("conversation:update", () => {
+      fetchUnreadMsgCount()
+    })
+    const unsubRead = on("messages:read", () => {
+      fetchUnreadMsgCount()
+    })
+    return () => {
+      unsubUpdate()
+      unsubRead()
+    }
+  }, [on, fetchUnreadMsgCount])
 
   // Search history state
   const [searchHistory, setSearchHistory] = useState([])
@@ -651,8 +693,13 @@ export default function Navigation() {
                   <Link href="/communities" className="p-2 text-foreground hover:text-primary transition-all active:scale-90 cursor-pointer" title="Communities">
                     <Users className="w-5 h-5" />
                   </Link>
-                  <Link href="/messages" className="p-2 text-foreground hover:text-primary transition-all active:scale-90 cursor-pointer" title="Messages">
-                    <Send className="w-5 h-5" />
+<Link href="/messages" className="relative p-2 text-foreground hover:text-primary transition-all active:scale-90 cursor-pointer" title="Messages">
+                      <Send className="w-5 h-5" />
+                      {unreadMsgCount > 0 && (
+                        <span className="absolute top-1 right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white shadow-sm ring-2 ring-background">
+                          {unreadMsgCount > 99 ? '99+' : unreadMsgCount}
+                        </span>
+                      )}
                   </Link>
 
                   <NotificationBell />
@@ -752,10 +799,17 @@ export default function Navigation() {
             {/* Messages */}
             <Link
               href="/messages"
-              className={`flex flex-col items-center justify-center flex-1 h-full transition-all active:scale-90 ${pathname?.startsWith('/messages') ? 'text-primary' : 'text-muted-foreground'
+              className={`relative flex flex-col items-center justify-center flex-1 h-full transition-all active:scale-90 ${pathname?.startsWith('/messages') ? 'text-primary' : 'text-muted-foreground'
                 }`}
             >
-              <Send className="w-6 h-6" strokeWidth={pathname?.startsWith('/messages') ? 2.5 : 1.5} />
+              <div className="relative">
+                <Send className="w-6 h-6" strokeWidth={pathname?.startsWith('/messages') ? 2.5 : 1.5} />
+                {unreadMsgCount > 0 && (
+                  <span className="absolute -top-1 -right-2 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white shadow-sm ring-2 ring-background">
+                    {unreadMsgCount > 99 ? '99+' : unreadMsgCount}
+                  </span>
+                )}
+              </div>
             </Link>
 
             {/* AI Chatbot */}

@@ -56,6 +56,18 @@ export const PATCH = withAuth(async (request, { params, user }) => {
         conversationId,
         userId: user._id
       });
+      
+      // Also notify our own other devices to update
+      const populatedConv = await Conversation.findById(conversationId)
+        .populate('participants', 'username fullName avatar')
+        .populate('lastMessage')
+        .lean();
+        
+      io.to(`user:${user._id}`).emit('conversation:update', populatedConv);
+      io.to(`user:${user._id}`).emit('messages:read', {
+        conversationId,
+        userId: user._id
+      });
     }
 
     return NextResponse.json({ success: true });

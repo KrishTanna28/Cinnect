@@ -13,7 +13,7 @@ import MessageThread from '@/components/messages/MessageThread';
 import NewMessageDialog from '@/components/messages/NewMessageDialog';
 
 export default function MessagesPage() {
-  const { user } = useUser();
+  const { user, isLoading } = useUser();
   const router = useRouter();
   const socket = useSocket();
   const [activeTab, setActiveTab] = useState('messages'); // 'messages' or 'requests'
@@ -26,7 +26,7 @@ export default function MessagesPage() {
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    if (!user) {
+    if (!isLoading && !user) {
       router.push('/login');
       return;
     }
@@ -37,7 +37,7 @@ export default function MessagesPage() {
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
-  }, [user, router]);
+  }, [user, isLoading, router]);
 
   useEffect(() => {
     if (user) {
@@ -114,14 +114,14 @@ export default function MessagesPage() {
     }
   );
 
-  const totalUnread = conversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
+  const totalUnread = conversations.filter(conv => (conv.unreadCount || 0) > 0).length;
   const totalRequests = requests.length;
 
   // Mobile view: show either list or thread
   if (isMobile) {
     if (selectedConversation) {
       return (
-        <div className="h-[calc(100vh-8rem)] md:h-[calc(100vh-4rem)] overflow-hidden">
+        <div className="fixed inset-x-0 top-16 bottom-14 bg-background z-20 flex flex-col overflow-hidden">
           <MessageThread
             conversation={selectedConversation}
             onBack={handleBackToList}
@@ -132,7 +132,7 @@ export default function MessagesPage() {
     }
 
     return (
-      <div className="h-[calc(100vh-8rem)] md:h-[calc(100vh-4rem)] bg-background flex flex-col overflow-hidden">
+      <div className="fixed inset-x-0 top-16 bottom-14 bg-background z-10 flex flex-col overflow-hidden">
         {/* Mobile Header */}
         <div className="border-b border-border p-4">
           <div className="flex items-center justify-between mb-4">
@@ -218,6 +218,7 @@ export default function MessagesPage() {
                 key={conv._id}
                 conversation={conv}
                 onClick={() => handleConversationClick(conv)}
+                currentUser={user}
               />
             ))
           )}
@@ -238,7 +239,7 @@ export default function MessagesPage() {
 
   // Desktop view: split layout
   return (
-    <div className="h-[calc(100vh-4rem)] bg-background flex overflow-hidden">
+    <div className="h-[calc(100dvh-4rem)] bg-background flex overflow-hidden">
       {/* Left Sidebar */}
       <div className="w-96 border-r border-border flex flex-col flex-shrink-0">
         {/* Header */}
@@ -274,7 +275,7 @@ export default function MessagesPage() {
             className={`flex-1 py-3 text-sm font-medium transition-colors ${
               activeTab === 'messages'
                 ? 'text-foreground border-b-2 border-primary'
-                : 'text-muted-foreground'
+                : 'text-muted-foreground hover:bg-primary/10'
             }`}
           >
             Messages
@@ -289,7 +290,7 @@ export default function MessagesPage() {
             className={`flex-1 py-3 text-sm font-medium transition-colors ${
               activeTab === 'requests'
                 ? 'text-foreground border-b-2 border-primary'
-                : 'text-muted-foreground'
+                : 'text-muted-foreground hover:bg-primary/10'
             }`}
           >
             Requests
@@ -320,6 +321,7 @@ export default function MessagesPage() {
                 conversation={conv}
                 onClick={() => handleConversationClick(conv)}
                 isActive={selectedConversation?._id === conv._id}
+                currentUser={user}
               />
             ))
           )}
@@ -363,10 +365,50 @@ export default function MessagesPage() {
   );
 }
 
-function ConversationItem({ conversation, onClick, isActive = false }) {
+function ConversationItem({ conversation, onClick, isActive = false, currentUser }) {
   const participant = conversation.participant;
   const lastMessage = conversation.lastMessage;
   const unreadCount = conversation.unreadCount || 0;
+
+  const renderLastMessage = () => {
+    if (!lastMessage) return 'Start a conversation';
+
+    if (unreadCount > 1) {
+      return `${unreadCount} messages`;
+    }
+
+    // Determine sender of the message
+    let isSender = false;
+    let senderId = null;
+    if (lastMessage.sender) {
+      senderId = typeof lastMessage.sender === 'object' ? lastMessage.sender._id : lastMessage.sender;
+      isSender = senderId?.toString() === currentUser?._id?.toString();
+    }
+
+    // Determine if we should show a reaction instead
+    if (lastMessage.reactions && lastMessage.reactions.length > 0) {
+      const lastReaction = lastMessage.reactions[lastMessage.reactions.length - 1];
+      const reactorId = typeof lastReaction.user === 'object' ? lastReaction.user._id : lastReaction.user;
+      
+      const isReactorMe = reactorId?.toString() === currentUser?._id?.toString();
+      const reactorName = isReactorMe ? 'You' : (participant?.fullName?.split(' ')[0] || participant?.username);
+      
+      const whoseMessage = isSender ? (isReactorMe ? 'a' : 'your') : (isReactorMe ? 'their' : 'a');
+      
+      return `${reactorName}: ${lastReaction.emoji} reacted to ${whoseMessage} message`;
+    }
+
+    const prefix = isSender ? 'You: ' : `${participant?.fullName?.split(' ')[0] || participant?.username}: `;
+    
+    let contentStr = '';
+    if (lastMessage.type === 'image') contentStr = 'Photo';
+    else if (lastMessage.type === 'video') contentStr = 'Video';
+    else if (lastMessage.type === 'gif') contentStr = 'GIF';
+    else if (lastMessage.type === 'sticker') contentStr = 'Sticker';
+    else contentStr = lastMessage.content || '';
+
+    return `${prefix}${contentStr}`;
+  };
 
   return (
     <button
@@ -395,7 +437,7 @@ function ConversationItem({ conversation, onClick, isActive = false }) {
         </div>
         <div className="flex items-center justify-between">
           <p className={`text-sm truncate ${unreadCount > 0 ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
-            {lastMessage?.content || 'Start a conversation'}
+            {renderLastMessage()}
           </p>
           {unreadCount > 0 && (
             <span className="ml-2 w-2 h-2 bg-primary rounded-full flex-shrink-0" />

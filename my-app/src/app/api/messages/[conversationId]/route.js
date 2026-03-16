@@ -3,6 +3,7 @@ import { withAuth } from '@/lib/middleware/withAuth';
 import connectDB from '@/lib/config/database';
 import Conversation from '@/lib/models/Conversation';
 import Message from '@/lib/models/Message';
+import { uploadChatMediaToCloudinary } from '@/lib/utils/cloudinaryHelper';
 
 // GET /api/messages/[conversationId] - Get messages in a conversation
 export const GET = withAuth(async (request, { params, user }) => {
@@ -72,6 +73,18 @@ export const GET = withAuth(async (request, { params, user }) => {
         conversationId,
         userId: user._id
       });
+
+      // Notify our own other devices to update
+      const populatedConv = await Conversation.findById(conversationId)
+        .populate('participants', 'username fullName avatar')
+        .populate('lastMessage')
+        .lean();
+        
+      io.to(`user:${user._id}`).emit('conversation:update', populatedConv);
+      io.to(`user:${user._id}`).emit('messages:read', {
+        conversationId,
+        userId: user._id
+      });
     }
 
     const total = await Message.countDocuments({
@@ -104,13 +117,31 @@ export const POST = withAuth(async (request, { params, user }) => {
     await connectDB();
 
     const { conversationId } = await params;
-    const { content, type = 'text', mediaUrl } = await request.json();
+    let { content, type = 'text', mediaUrl, fileData } = await request.json();
 
-    if (!content && !mediaUrl) {
+    if (!content && !mediaUrl && !fileData) {
       return NextResponse.json(
-        { success: false, message: 'Message content or media is required' },
+        { success: false, message: 'Message content or media is required' },    
         { status: 400 }
       );
+    }
+
+    if (fileData) {
+      // Base64 file size check
+      const base64Length = fileData.length - (fileData.indexOf(',') + 1);
+      const padding = (fileData.charAt(fileData.length - 2) === '=') ? 2 : ((fileData.charAt(fileData.length - 1) === '=') ? 1 : 0);
+      const sizeBytes = (base64Length * 0.75) - padding;
+      
+      if (sizeBytes > 10 * 1024 * 1024) { // 10MB limit
+        return NextResponse.json(
+          { success: false, message: 'File size exceeds 10MB limit' },
+          { status: 400 }
+        );
+      }
+
+      // Upload to Cloudinary
+      const uploadedUrl = await uploadChatMediaToCloudinary(fileData, conversationId, type);
+      mediaUrl = uploadedUrl;
     }
 
     // Verify user is participant
@@ -159,10 +190,13 @@ export const POST = withAuth(async (request, { params, user }) => {
     // Emit message via WebSocket
     const io = globalThis._io;
     if (io) {
-      io.to(`user:${otherParticipant}`).emit('message:new', {
+      const messagePayload = {
         conversationId,
         message: message.toObject()
-      });
+      };
+
+      io.to(`user:${otherParticipant}`).emit('message:new', messagePayload);
+      io.to(`user:${user._id}`).emit('message:new', messagePayload); // Sync to sender's other devices
 
       // Also emit conversation update
       const populatedConv = await Conversation.findById(conversationId)
@@ -171,6 +205,7 @@ export const POST = withAuth(async (request, { params, user }) => {
         .lean();
 
       io.to(`user:${otherParticipant}`).emit('conversation:update', populatedConv);
+      io.to(`user:${user._id}`).emit('conversation:update', populatedConv);
     }
 
     return NextResponse.json({

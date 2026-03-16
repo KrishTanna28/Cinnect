@@ -14,7 +14,8 @@ export const GET = withAuth(async (request, { user }) => {
     const type = searchParams.get('type') || 'all'; // 'all', 'messages', 'requests'
 
     let query = {
-      participants: user._id
+      participants: user._id,
+      lastMessage: { $exists: true, $ne: null }
     };
 
     // Filter by type
@@ -35,7 +36,7 @@ export const GET = withAuth(async (request, { user }) => {
       })
       .populate({
         path: 'lastMessage',
-        select: 'content type mediaUrl sender createdAt'
+        select: 'content type mediaUrl sender createdAt reactions'
       })
       .sort({ lastMessageAt: -1 })
       .lean();
