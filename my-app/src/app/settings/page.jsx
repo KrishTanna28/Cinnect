@@ -43,6 +43,7 @@ const SIDEBAR_SECTIONS = [
   { id: "edit-profile", label: "Edit Profile", icon: User, group: "account" },
   { id: "notifications", label: "Notifications", icon: Bell, group: "account" },
   { id: "privacy", label: "Account Privacy", icon: Lock, group: "privacy" },
+  { id: "blocked-users", label: "Blocked Users", icon: Shield, group: "privacy" },
   { id: "follow-requests", label: "Follow Requests", icon: UserCheck, group: "privacy" },
   { id: "appearance", label: "Appearance", icon: Palette, group: "preferences" },
 ]
@@ -85,6 +86,10 @@ export default function SettingsPage() {
   const [requestsLoading, setRequestsLoading] = useState(false)
   const [processingIds, setProcessingIds] = useState(new Set())
 
+  // Blocked users state
+  const [blockedUsers, setBlockedUsers] = useState([])
+  const [blockedLoading, setBlockedLoading] = useState(false)
+
   useEffect(() => {
     if (!isLoading && !user) {
       router.push("/login")
@@ -104,6 +109,9 @@ export default function SettingsPage() {
   useEffect(() => {
     if (settings.isPrivate && activeSection === "follow-requests") {
       fetchFollowRequests()
+    }
+    if (activeSection === "blocked-users") {
+      fetchBlockedUsers()
     }
   }, [settings.isPrivate, activeSection])
 
@@ -208,6 +216,40 @@ export default function SettingsPage() {
       toast({ title: "Error", description: "Failed to save profile.", variant: "destructive" })
     } finally {
       setProfileSaving(false)
+    }
+  }
+
+  const fetchBlockedUsers = async () => {
+    setBlockedLoading(true)
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch("/api/users/blocked", {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await response.json()
+      if (data.success) setBlockedUsers(data.users)
+    } catch (error) {
+      console.error("Error fetching blocked users:", error)
+    } finally {
+      setBlockedLoading(false)
+    }
+  }
+
+  const handleUnblockUser = async (userId) => {
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch(`/api/users/${userId}/block`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await response.json()
+      if (data.success) {
+        setBlockedUsers(prev => prev.filter(u => u._id !== userId))
+        toast({ title: "User unblocked successfully" })
+      }
+    } catch (error) {
+      console.error("Error unblocking user:", error)
+      toast({ title: "Failed to unblock user", variant: "destructive" })
     }
   }
 
@@ -346,9 +388,6 @@ export default function SettingsPage() {
         ))}
 
         {/* Privacy heading */}
-        <p className="hidden md:block px-4 pt-6 pb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          Who can see your content
-        </p>
         <div className="block md:hidden mx-2 my-3 border-t border-border" />
         {SIDEBAR_SECTIONS.filter(s => s.group === "privacy").map(section => {
           if (section.id === "follow-requests" && !settings.isPrivate) return null
@@ -653,7 +692,52 @@ export default function SettingsPage() {
                   )}
                 </div>
               )}
-
+                {/* ─── BLOCKED USERS ─── */}
+                {activeSection === "blocked-users" && (
+                  <div>
+                    <h2 className="text-xl font-bold text-foreground mb-6">Blocked Users</h2>
+                    
+                    {blockedLoading ? (
+                      <div className="flex justify-center py-10">
+                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                      </div>
+                    ) : blockedUsers.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-16 text-center">
+                        <Shield className="w-12 h-12 text-muted-foreground/30 mb-4" />
+                        <h3 className="text-lg font-medium text-foreground mb-2">No blocked users</h3>
+                        <p className="text-muted-foreground text-sm max-w-sm">
+                          When you block someone, they won't be able to find your profile or send you messages.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {blockedUsers.map(u => (
+                          <div key={u._id} className="flex items-center justify-between p-4 bg-secondary/20 rounded-xl border border-border">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="w-10 h-10 border border-border">
+                                <AvatarImage src={u.avatar} />
+                                <AvatarFallback className="bg-secondary text-foreground">
+                                  {u.username?.substring(0,2).toUpperCase() || "U"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium text-foreground text-sm">{u.fullName}</p>
+                                <p className="text-muted-foreground text-xs">@{u.username}</p>
+                              </div>
+                            </div>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleUnblockUser(u._id)}
+                            >
+                              Unblock
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               {/* ─── FOLLOW REQUESTS ─── */}
               {activeSection === "follow-requests" && (
                 <div>

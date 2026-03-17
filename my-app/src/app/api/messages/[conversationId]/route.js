@@ -4,6 +4,7 @@ import connectDB from '@/lib/config/database';
 import Conversation from '@/lib/models/Conversation';
 import Message from '@/lib/models/Message';
 import { uploadChatMediaToCloudinary } from '@/lib/utils/cloudinaryHelper';
+import User from '@/lib/models/User';
 
 // GET /api/messages/[conversationId] - Get messages in a conversation
 export const GET = withAuth(async (request, { params, user }) => {
@@ -20,7 +21,7 @@ export const GET = withAuth(async (request, { params, user }) => {
     const conversation = await Conversation.findOne({
       _id: conversationId,
       participants: user._id
-    });
+    }).populate('participants', 'blockedUsers');
 
     if (!conversation) {
       return NextResponse.json(
@@ -28,6 +29,19 @@ export const GET = withAuth(async (request, { params, user }) => {
         { status: 404 }
       );
     }
+
+    const currentUserDoc = await User.findById(user._id).select('blockedUsers');
+    const myBlockedUsers = currentUserDoc?.blockedUsers || [];
+    const otherParticipantDoc = conversation.participants.find(
+      p => p._id.toString() !== user._id.toString()
+    );
+
+    const hasBlockedMe = otherParticipantDoc?.blockedUsers?.some(
+      id => id.toString() === user._id.toString()
+    );
+    const didIBlockThem = myBlockedUsers.some(
+      id => id.toString() === otherParticipantDoc?._id.toString()
+    );
 
     // Get messages
     const messages = await Message.find({
@@ -39,6 +53,25 @@ export const GET = withAuth(async (request, { params, user }) => {
       .skip(skip)
       .limit(limit)
       .lean();
+
+    // Anonymize the other person if they blocked me
+    let processedMessages = messages;
+    if (hasBlockedMe) {
+      processedMessages = messages.map(msg => {
+        if (msg.sender && msg.sender._id.toString() !== user._id.toString()) {
+          return {
+            ...msg,
+            sender: {
+              ...msg.sender,
+              username: 'User',
+              fullName: 'User',
+              avatar: null
+            }
+          };
+        }
+        return msg;
+      });
+    }
 
     // Mark messages as read
     await Message.updateMany(
@@ -94,7 +127,7 @@ export const GET = withAuth(async (request, { params, user }) => {
 
     return NextResponse.json({
       success: true,
-      messages: messages.reverse(), // Return in chronological order
+      messages: processedMessages.reverse(), // Return in chronological order
       pagination: {
         page,
         limit,
@@ -148,12 +181,33 @@ export const POST = withAuth(async (request, { params, user }) => {
     const conversation = await Conversation.findOne({
       _id: conversationId,
       participants: user._id
-    });
+    }).populate('participants', 'blockedUsers');
 
     if (!conversation) {
       return NextResponse.json(
         { success: false, message: 'Conversation not found' },
         { status: 404 }
+      );
+    }
+
+    const currentUserDoc = await User.findById(user._id).select('blockedUsers');
+    const myBlockedUsers = currentUserDoc?.blockedUsers || [];
+    
+    const otherParticipantDoc = conversation.participants.find(
+      p => p._id.toString() !== user._id.toString()
+    );
+
+    const hasBlockedMe = otherParticipantDoc?.blockedUsers?.some(
+      id => id.toString() === user._id.toString()
+    );
+    const didIBlockThem = myBlockedUsers.some(
+      id => id.toString() === otherParticipantDoc?._id.toString()
+    );
+
+    if (hasBlockedMe || didIBlockThem) {
+      return NextResponse.json(
+        { success: false, message: 'Not available' },
+        { status: 403 }
       );
     }
 
@@ -176,14 +230,28 @@ export const POST = withAuth(async (request, { params, user }) => {
     conversation.lastMessage = message._id;
     conversation.lastMessageAt = new Date();
 
+    if (hasBlockedMe) {
+      // Send it to their requests section
+      conversation.isRequest = true;
+      conversation.requestFor = otherParticipantDoc._id;
+    }
+
+    // Re-surface conversation for anyone who had previously deleted it
+    if (conversation.deletedFor && conversation.deletedFor.length > 0) {
+      conversation.deletedFor = []; // Bring back for everyone involved
+    }
+
     // Increment unread count for other participant
-    const otherParticipant = conversation.participants.find(
-      p => p.toString() !== user._id.toString()
-    );
-    const unreadCount = conversation.unreadCount || new Map();
-    const currentCount = unreadCount.get(otherParticipant.toString()) || 0;
-    unreadCount.set(otherParticipant.toString(), currentCount + 1);
-    conversation.unreadCount = unreadCount;
+    const otherParticipantId = otherParticipantDoc._id;
+
+    const isMutedByOther = conversation.mutedBy?.some(uId => uId.toString() === otherParticipantId.toString()) || false;
+
+    if (!isMutedByOther) {
+      const unreadCount = conversation.unreadCount || new Map();
+      const currentCount = unreadCount.get(otherParticipantId.toString()) || 0;
+      unreadCount.set(otherParticipantId.toString(), currentCount + 1);
+      conversation.unreadCount = unreadCount;
+    }
 
     await conversation.save();
 
@@ -195,7 +263,7 @@ export const POST = withAuth(async (request, { params, user }) => {
         message: message.toObject()
       };
 
-      io.to(`user:${otherParticipant}`).emit('message:new', messagePayload);
+      io.to(`user:${otherParticipantId.toString()}`).emit('message:new', messagePayload);
       io.to(`user:${user._id}`).emit('message:new', messagePayload); // Sync to sender's other devices
 
       // Also emit conversation update
@@ -204,7 +272,7 @@ export const POST = withAuth(async (request, { params, user }) => {
         .populate('lastMessage')
         .lean();
 
-      io.to(`user:${otherParticipant}`).emit('conversation:update', populatedConv);
+      io.to(`user:${otherParticipantId.toString()}`).emit('conversation:update', populatedConv);
       io.to(`user:${user._id}`).emit('conversation:update', populatedConv);
     }
 
@@ -218,5 +286,64 @@ export const POST = withAuth(async (request, { params, user }) => {
       { success: false, message: 'Failed to send message' },
       { status: 500 }
     );
+  }
+});
+
+// DELETE /api/messages/[conversationId] - Delete a conversation for current user
+export const DELETE = withAuth(async (request, { params, user }) => {
+  try {
+    await connectDB();
+    const { conversationId } = await params;
+
+    const conversation = await Conversation.findOne({
+      _id: conversationId,
+      participants: user._id
+    });
+
+    if (!conversation) {
+      return NextResponse.json({ success: false, message: 'Conversation not found' }, { status: 404 });
+    }
+
+    // Mark all existing messages as deleted for this user
+    await Message.updateMany(
+      { conversation: conversationId },
+      { $addToSet: { deletedFor: user._id } }
+    );
+
+    // Hide the conversation from the user's inbox
+    if (!conversation.deletedFor) {
+      conversation.deletedFor = [];
+    }
+    if (!conversation.deletedFor.includes(user._id)) {
+      conversation.deletedFor.push(user._id);
+      await conversation.save();
+    }
+
+    // Unread count tracking cleanup logic
+    if (conversation.unreadCount) {
+       conversation.unreadCount.set(user._id.toString(), 0);
+       await conversation.save();
+    }
+
+    // Check if the conversation is deleted for everyone, if so fully delete it
+    const allParticipantsDeleted = conversation.participants.every(
+      pId => conversation.deletedFor.includes(pId) || 
+            conversation.deletedFor.some(df => df.toString() === pId.toString())
+    );
+
+    if (allParticipantsDeleted) {
+      await Message.deleteMany({ conversation: conversationId });
+      await Conversation.findByIdAndDelete(conversationId);
+    }
+
+    const io = globalThis._io;
+    if (io) {
+      io.to(`user:${user._id}`).emit('conversation:delete', { conversationId });
+    }
+
+    return NextResponse.json({ success: true, message: 'Conversation deleted' });
+  } catch (error) {
+    console.error('Error deleting conversation:', error);
+    return NextResponse.json({ success: false, message: 'Failed to delete conversation' }, { status: 500 });
   }
 });

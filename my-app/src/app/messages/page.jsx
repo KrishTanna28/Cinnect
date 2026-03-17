@@ -123,6 +123,7 @@ export default function MessagesPage() {
       return (
         <div className="fixed inset-x-0 top-16 bottom-14 bg-background z-20 flex flex-col overflow-hidden">
           <MessageThread
+            key={selectedConversation._id}
             conversation={selectedConversation}
             onBack={handleBackToList}
             onUpdate={fetchConversations}
@@ -332,6 +333,7 @@ export default function MessagesPage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {selectedConversation ? (
           <MessageThread
+            key={selectedConversation._id}
             conversation={selectedConversation}
             onBack={handleBackToList}
             onUpdate={fetchConversations}
@@ -343,7 +345,7 @@ export default function MessagesPage() {
             </div>
             <h3 className="text-2xl font-semibold mb-2">Your messages</h3>
             <p className="text-muted-foreground mb-4">
-              Send messages to a friend or a group.
+              Send messages to a friend.
             </p>
             <Button onClick={() => setShowNewMessage(true)}>
               Send message

@@ -6,9 +6,10 @@ import { useSocket } from '@/contexts/SocketContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, Send, Smile, Image as ImageIcon, Phone, Video, Info, X, Loader, Sticker, PlaySquare, ImagePlus, FileImage } from 'lucide-react';
+import { ArrowLeft, Send, Smile, Image as ImageIcon, Phone, Video, Info, X, Loader, Sticker, PlaySquare, ImagePlus, FileImage, Trash2, Ban, VolumeX } from 'lucide-react';
 import { formatDistanceToNow, format, isToday, isYesterday } from 'date-fns';
 import EmojiPicker from 'emoji-picker-react';
+import Link from 'next/link';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
 
@@ -25,7 +26,16 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
   const [selectedMediaType, setSelectedMediaType] = useState('image');
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  
+
+  // Info panel states
+  const [showInfo, setShowInfo] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isMuting, setIsMuting] = useState(false);
+  const [isBlocking, setIsBlocking] = useState(false);
+  const [showBlockConfirm, setShowBlockConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
   // Reacting to messages state
   const [reactingToMsgId, setReactingToMsgId] = useState(null);
 
@@ -95,6 +105,104 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
     };
   }, [socket, conversation, user]);
 
+  useEffect(() => {
+    if (conversation && user) {
+      setIsMuted(conversation.mutedBy?.some(id => {
+        const idStr = typeof id === 'object' ? (id._id?.toString() || id.toString()) : id.toString();
+        const userStr = typeof user._id === 'object' ? user._id.toString() : user._id.toString();
+        return idStr === userStr;
+      }) || false);
+    }
+  }, [conversation, user]);
+
+  const handleToggleMute = async () => {
+    if (isMuting) return;
+    
+    const previousState = isMuted;
+    setIsMuted(!previousState); // Optimistic UI update
+    setIsMuting(true);
+    
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/messages/${conversation._id}/mute`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        setIsMuted(data.isMuted);
+        
+        // Mutate local prop copy to prevent UI un-syncs before re-fetch happens
+        if (conversation) {
+          if (data.isMuted) {
+            if (!conversation.mutedBy) conversation.mutedBy = [];
+            conversation.mutedBy.push(user._id);
+          } else {
+            if (conversation.mutedBy) {
+              conversation.mutedBy = conversation.mutedBy.filter(id => {
+                const idStr = typeof id === 'object' ? (id._id?.toString() || id.toString()) : id.toString();
+                return idStr !== user._id.toString();
+              });
+            }
+          }
+        }
+        
+        if (onUpdate) onUpdate();
+      } else {
+        setIsMuted(previousState);
+      }
+    } catch (e) {
+      console.error(e);
+      setIsMuted(previousState);
+    } finally {
+      setIsMuting(false);
+    }
+  };
+
+  const handleBlockUser = async () => {
+    try {
+      setIsBlocking(true);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/users/${participant._id}/block`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: participant?.didIBlockThem ? 'User unblocked' : 'User blocked' });
+        onBack && onBack();
+        onUpdate && onUpdate();
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsBlocking(false);
+    }
+  };
+
+  const handleDeleteChat = async () => {
+    try {
+      setIsDeleting(true);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/messages/${conversation._id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: 'Chat deleted' });
+        onBack && onBack();
+        onUpdate && onUpdate();
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
   const fetchMessages = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -122,6 +230,7 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
     if (e) e.preventDefault();
     if (!contentToSend.trim() && !fileData) return;
 
+    setSelectedMediaType(type);
     setSending(true);
     try {
       const token = localStorage.getItem('token');
@@ -286,7 +395,8 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
   const messageGroups = groupMessagesByDate(messages);
 
   return (
-    <div className="h-full flex flex-col bg-background w-full">
+    <div className="flex flex-1 h-full w-full relative overflow-hidden bg-background">
+      <div className={`flex flex-col h-full transition-all duration-300 ${showInfo ? 'w-full hidden md:flex md:w-[calc(100%-300px)]' : 'w-full'}`}>
       {/* Header */}
       <div className="border-b border-border p-4 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
@@ -310,15 +420,18 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button size="icon" variant="ghost">
+          <button className="p-2 text-foreground hover:text-primary transition-all active:scale-90 cursor-pointer">
             <Phone className="w-5 h-5" />
-          </Button>
-          <Button size="icon" variant="ghost">
+          </button>
+          <button className="p-2 text-foreground hover:text-primary transition-all active:scale-90 cursor-pointer">
             <Video className="w-5 h-5" />
-          </Button>
-          <Button size="icon" variant="ghost">
+          </button>
+          <button 
+            className={`p-2 transition-all active:scale-90 cursor-pointer ${showInfo ? 'text-primary' : 'text-foreground hover:text-primary'}`}
+            onClick={() => setShowInfo(!showInfo)}
+          >
             <Info className="w-5 h-5" />
-          </Button>
+          </button>
         </div>
       </div>
 
@@ -492,7 +605,13 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
             <Loader className="w-3 h-3 animate-spin" /> Uploading media...
           </div>
         )}
-        <form onSubmit={(e) => handleSendMessage(e, newMessage, 'text')} className="flex items-center gap-2">
+        
+        {participant?.isBlockedByThem || participant?.didIBlockThem ? (
+          <div className="w-full text-center py-2.5 text-sm text-muted-foreground bg-secondary/30 rounded-lg border border-border">
+            You cannot reply to this conversation.
+          </div>
+        ) : (
+          <form onSubmit={(e) => handleSendMessage(e, newMessage, 'text')} className="flex items-center gap-2">
           
           <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
             <PopoverTrigger asChild>
@@ -553,7 +672,107 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
             <Send className="w-5 h-5" />
           </Button>
         </form>
-      </div>
+        )}
+    </div>
+    </div>
+
+      {/* Info Sidebar */}
+      {showInfo && (
+        <div className="absolute top-0 right-0 h-full w-full md:w-[300px] border-l border-border bg-background z-20 flex flex-col md:relative shadow-xl md:shadow-none transition-all duration-300 animate-in slide-in-from-right-8">
+          <div className="border-b border-border p-5.5 flex items-center justify-between">
+            <h3 className="font-semibold text-lg">Details</h3>
+            <button onClick={() => setShowInfo(false)} className="p-2 text-muted-foreground hover:text-foreground cursor-pointer md:hidden">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          
+          <div className="p-4 flex flex-col items-center border-b border-border">
+            {participant?.isBlockedByThem ? (
+              <>
+                <Avatar className="w-20 h-20 mb-3 cursor-default">
+                  <AvatarImage src={participant?.avatar} />
+                  <AvatarFallback className="text-2xl bg-primary/20 text-primary">U</AvatarFallback>
+                </Avatar>
+                <span className="font-semibold text-lg cursor-default">
+                  {participant?.username}
+                </span>
+                {participant?.fullName && participant.fullName !== 'User' && <p className="text-muted-foreground text-sm">@{participant?.username}</p>}
+              </>
+            ) : (
+              <>
+                <Link href={`/profile/${participant?._id}`}>
+                  <Avatar className="w-20 h-20 mb-3 hover:opacity-80 transition-opacity cursor-pointer">
+                    <AvatarImage src={participant?.avatar} />
+                    <AvatarFallback className="text-2xl bg-primary/20 text-primary">{participant?.username?.[0]?.toUpperCase() || 'U'}</AvatarFallback>
+                  </Avatar>
+                </Link>
+                <Link href={`/profile/${participant?._id}`} className="font-semibold text-lg hover:text-primary">
+                  {participant?.fullName || participant?.username}
+                </Link>
+                {participant?.fullName && <p className="text-muted-foreground text-sm">@{participant?.username}</p>}
+              </>
+            )}
+          </div>
+
+          <div className="flex-1 overflow-y-auto flex flex-col">
+            <div className="p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium flex items-center gap-2"><VolumeX className="w-4 h-4" /> Mute messages</span>
+                <button 
+                  onClick={handleToggleMute}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${isMuted ? 'bg-primary' : 'bg-secondary'}`}
+                >
+                  <span className={`inline-block h-5 w-5 transform rounded-full bg-background transition-transform duration-200 ${isMuted ? 'translate-x-[22px]' : 'translate-x-[2px]'}`} style={{boxShadow: "0 2px 4px rgba(0,0,0,0.2)"}} />
+                </button>
+              </div>
+            </div>
+              {!showDeleteConfirm ? (
+                <button 
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="w-full flex items-center justify-between p-3 rounded-lg text-sm hover:bg-secondary cursor-pointer transition-colors text-red-500 hover:text-red-400"
+                >
+                  <span className="font-medium">Delete Chat</span>
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              ) : (
+                <div className="bg-destructive/10 p-3 rounded-lg border border-destructive/30 mb-2">
+                  <p className="text-xs text-red-500 mb-3 font-medium">Delete entire conversation? This cannot be undone.</p>
+                  <div className="flex gap-2">
+                    <Button variant="destructive" size="sm" className="flex-1 h-8 text-xs" onClick={handleDeleteChat} disabled={isDeleting}>
+                      {isDeleting ? 'Deleting...' : 'Delete'}
+                    </Button>
+                    <Button variant="outline" size="sm" className="flex-1 h-8 text-xs border-white/20 hover:bg-white/10" onClick={() => setShowDeleteConfirm(false)}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>)}
+
+              {!showBlockConfirm ? (
+                <button
+                  onClick={() => setShowBlockConfirm(true)}
+                  className="w-full flex items-center justify-between p-3 rounded-lg text-sm hover:bg-secondary cursor-pointer transition-colors text-red-500 hover:text-red-400"
+                >
+                  <span className="font-medium">{participant?.didIBlockThem ? 'Unblock' : 'Block'}</span>
+                  <Ban className="w-4 h-4" />
+                </button>
+              ) : (
+                <div className="bg-destructive/10 p-3 rounded-lg border border-destructive/30 mb-2">
+                  <p className="text-xs text-red-500 mb-3 font-medium">
+                    {participant?.didIBlockThem ? `Unblock ${participant?.username}?` : `Block ${participant?.username}? They won't be able to interact with you.`}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button variant="destructive" size="sm" className="flex-1 h-8 text-xs" onClick={handleBlockUser} disabled={isBlocking}>
+                      {isBlocking ? 'Processing...' : (participant?.didIBlockThem ? 'Unblock' : 'Block')}
+                    </Button>
+                    <Button variant="outline" size="sm" className="flex-1 h-8 text-xs border-white/20 hover:bg-white/10" onClick={() => setShowBlockConfirm(false)}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+      )}
     </div>
   );
 }

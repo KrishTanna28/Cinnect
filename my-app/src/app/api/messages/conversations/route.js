@@ -28,11 +28,17 @@ export const GET = withAuth(async (request, { user }) => {
         { isRequest: true, requestFor: { $ne: user._id } }
       ];
     }
+    
+    // Do not show conversations that user has deleted
+    query.deletedFor = { $ne: user._id };
+
+    const currentUserDoc = await User.findById(user._id).select('blockedUsers').lean();
+    const myBlockedUsers = currentUserDoc?.blockedUsers || [];
 
     const conversations = await Conversation.find(query)
       .populate({
         path: 'participants',
-        select: 'username fullName avatar'
+        select: 'username fullName avatar blockedUsers'
       })
       .populate({
         path: 'lastMessage',
@@ -43,9 +49,27 @@ export const GET = withAuth(async (request, { user }) => {
 
     // Format conversations
     const formattedConversations = conversations.map(conv => {
-      const otherParticipant = conv.participants.find(
+      let otherParticipant = conv.participants.find(
         p => p._id.toString() !== user._id.toString()
       );
+
+      // Check if blocked by other participant or if we blocked them
+      const isBlockedByThem = otherParticipant && otherParticipant.blockedUsers && otherParticipant.blockedUsers.some(id => id.toString() === user._id.toString());
+      const didIBlockThem = otherParticipant && myBlockedUsers.some(id => id.toString() === otherParticipant._id.toString());
+
+      if (isBlockedByThem || didIBlockThem) {
+        // We still return the conversation but anonymize if the OTHER person blocked us.
+        // We also want to let the frontend know the block status to disable inputs
+        const anonymize = isBlockedByThem; // only hide their data if they blocked us
+        otherParticipant = {
+          _id: otherParticipant?._id || 'unknown',
+          username: anonymize ? 'User' : otherParticipant?.username,
+          fullName: anonymize ? 'User' : otherParticipant?.fullName,
+          avatar: anonymize ? null : otherParticipant?.avatar,
+          isBlockedByThem: isBlockedByThem,
+          didIBlockThem: didIBlockThem
+        };
+      }
 
       return {
         _id: conv._id,
@@ -56,6 +80,7 @@ export const GET = withAuth(async (request, { user }) => {
         unreadCount: (conv.unreadCount && typeof conv.unreadCount.get === 'function') 
           ? conv.unreadCount.get(user._id.toString()) 
           : (conv.unreadCount?.[user._id.toString()] || 0),
+        mutedBy: conv.mutedBy || [],
         createdAt: conv.createdAt
       };
     });
@@ -93,6 +118,18 @@ export const POST = withAuth(async (request, { user }) => {
       return NextResponse.json(
         { success: false, message: 'Recipient not found' },
         { status: 404 }
+      );
+    }
+
+    const currentUserDoc = await User.findById(user._id).select('blockedUsers');
+    const myBlockedUsers = currentUserDoc?.blockedUsers || [];
+    const isBlockedByThem = recipient.blockedUsers?.some(id => id.toString() === user._id.toString());
+    const didIBlockThem = myBlockedUsers.some(id => id.toString() === recipientId.toString());
+
+    if (isBlockedByThem || didIBlockThem) {
+      return NextResponse.json(
+        { success: false, message: 'Not available' },
+        { status: 403 }
       );
     }
 

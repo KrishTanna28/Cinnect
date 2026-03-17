@@ -32,6 +32,14 @@ const conversationSchema = new mongoose.Schema({
     of: Number,
     default: {}
   },
+  mutedBy: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  deletedFor: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
   createdAt: {
     type: Date,
     default: Date.now

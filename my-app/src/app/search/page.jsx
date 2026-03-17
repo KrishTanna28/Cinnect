@@ -111,7 +111,9 @@ export default function SearchPage() {
     if (!searchTerm.trim()) return
     setIsLoadingUsers(true)
     try {
-      const response = await fetch(`/api/users/search?q=${encodeURIComponent(searchTerm)}&limit=50`)
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const response = await fetch(`/api/users/search?q=${encodeURIComponent(searchTerm)}&limit=50`, { headers })
       const data = await response.json()
       if (data.success) {
         setUsers(data.users || [])

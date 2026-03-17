@@ -15,7 +15,7 @@ export const GET = withAuth(async (request, { params, user }) => {
       _id: conversationId,
       participants: user._id
     })
-      .populate('participants', 'username fullName avatar')
+      .populate('participants', 'username fullName avatar blockedUsers')
       .lean();
 
     if (!conversation) {
@@ -25,9 +25,19 @@ export const GET = withAuth(async (request, { params, user }) => {
       );
     }
 
-    const otherParticipant = conversation.participants.find(
+    let otherParticipant = conversation.participants.find(
       p => p._id.toString() !== user._id.toString()
     );
+
+    if (otherParticipant && otherParticipant.blockedUsers && otherParticipant.blockedUsers.some(id => id.toString() === user._id.toString())) {
+      otherParticipant = {
+        _id: otherParticipant._id,
+        username: 'User',
+        fullName: 'User',
+        avatar: null,
+        isBlockedByThem: true
+      };
+    }
 
     return NextResponse.json({
       success: true,
@@ -64,11 +74,31 @@ export const DELETE = withAuth(async (request, { params, user }) => {
       );
     }
 
-    // Delete all messages in conversation
-    await Message.deleteMany({ conversation: conversationId });
+    // Mark all existing messages as deleted for this user
+    await Message.updateMany(
+      { conversation: conversationId },
+      { $addToSet: { deletedFor: user._id } }
+    );
 
-    // Delete conversation
-    await Conversation.findByIdAndDelete(conversationId);
+    // Hide the conversation from the user's inbox
+    if (!conversation.deletedFor) {
+      conversation.deletedFor = [];
+    }
+    if (!conversation.deletedFor.includes(user._id)) {
+      conversation.deletedFor.push(user._id);
+      await conversation.save();
+    }
+
+    // Check if the conversation is deleted for everyone, if so fully delete it
+    const allParticipantsDeleted = conversation.participants.every(
+      pId => conversation.deletedFor.includes(pId) || 
+            conversation.deletedFor.some(df => df.toString() === pId.toString())
+    );
+
+    if (allParticipantsDeleted) {
+      await Message.deleteMany({ conversation: conversationId });
+      await Conversation.findByIdAndDelete(conversationId);
+    }
 
     return NextResponse.json({
       success: true,

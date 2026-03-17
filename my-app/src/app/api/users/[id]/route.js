@@ -30,6 +30,22 @@ export const GET = withOptionalAuth(async (request, { params, user: currentUser 
       }, { status: 404 })
     }
 
+    // Check if the user blocked the current user
+    if (currentUser && user.blockedUsers?.some(bId => bId.toString() === currentUser._id.toString())) {
+      return NextResponse.json({
+        success: false,
+        message: 'Account not available'
+      }, { status: 403 })
+    }
+
+    // Check if current user blocked this user
+    if (currentUser && currentUser.blockedUsers?.some(bId => bId.toString() === user._id.toString())) {
+      return NextResponse.json({
+        success: false,
+        message: 'Account not available'
+      }, { status: 403 })
+    }
+
     // Calculate follow relationships
     const isOwnProfile = currentUser && currentUser._id.toString() === user._id.toString()
     const isFollowing = currentUser

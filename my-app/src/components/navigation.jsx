@@ -126,6 +126,9 @@ export default function Navigation() {
 
     setIsSearching(true)
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
       const [moviesRes, communitiesRes, postsRes, peopleRes] = await Promise.allSettled([
         // Movies & TV from TMDB (multi search)
         fetch(`/api/movies/search/multi?q=${encodeURIComponent(query)}&page=1`).then(r => r.json()),
@@ -134,7 +137,7 @@ export default function Navigation() {
         // Posts
         fetch(`/api/communities/posts?search=${encodeURIComponent(query)}&limit=5`).then(r => r.json()),
         // People/Users
-        fetch(`/api/users/search?q=${encodeURIComponent(query)}&limit=5`).then(r => r.json())
+        fetch(`/api/users/search?q=${encodeURIComponent(query)}&limit=5`, { headers }).then(r => r.json())
       ])
 
       // Separate celebrities (persons) from movies/TV
@@ -725,21 +728,21 @@ export default function Navigation() {
                     <DropdownMenuContent align="end" className="w-56">
                       <DropdownMenuLabel>
                         <div className="flex flex-col space-y-1">
-                          <p className="text-sm font-medium">{user.fullName || user.username}</p>
-                          <p className="text-xs text-muted-foreground">{user.email}</p>
+                          <p className="text-sm font-medium">{user.fullName}</p>
+                          <p className="text-xs text-muted-foreground">{user.username}</p>
                         </div>
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => router.push('/profile')}>
+                      <DropdownMenuItem className="cursor-pointer" onClick={() => router.push('/profile')}>
                         <User className="mr-2 h-4 w-4" />
                         <span>Profile</span>
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => router.push('/settings')}>
+                      <DropdownMenuItem className="cursor-pointer" onClick={() => router.push('/settings')}>
                         <Settings className="mr-2 h-4 w-4" />
                         <span>Settings</span>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                      <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer">
                         <LogOut className="mr-2 h-4 w-4" />
                         <span>Logout</span>
                       </DropdownMenuItem>

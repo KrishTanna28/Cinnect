@@ -270,6 +270,10 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }],
+  blockedUsers: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
   friends: [{
     userId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -683,6 +687,11 @@ userSchema.methods.clearOTP = function() {
   this.otp.attempts = 0;
 };
 
-const User = mongoose.models.User || mongoose.model('User', userSchema);
+// Force delete the model cache to ensure latest schema is loaded if it already exists
+if (mongoose.models.User) {
+  delete mongoose.models.User;
+}
+
+const User = mongoose.model('User', userSchema);
 
 export default User;

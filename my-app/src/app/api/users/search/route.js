@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { withAuth } from '@/lib/middleware/withAuth';
+import { withOptionalAuth } from '@/lib/middleware/withAuth';
 import connectDB from '@/lib/config/database';
 import User from '@/lib/models/User';
 
 // GET /api/users/search - Search users by username or full name
-export const GET = withAuth(async (request, { user }) => {
+export const GET = withOptionalAuth(async (request, { user }) => {
   try {
     await connectDB();
 
@@ -19,14 +19,28 @@ export const GET = withAuth(async (request, { user }) => {
       });
     }
 
-    // Search users by username or full name
-    const users = await User.find({
-      _id: { $ne: user._id }, // Exclude current user
+    const filter = {
       $or: [
         { username: { $regex: query, $options: 'i' } },
         { fullName: { $regex: query, $options: 'i' } }
       ]
-    })
+    };
+
+    if (user) {
+      // Exclude current user
+      // Also exclude users who blocked the current user
+      // And exclude users that the current user has blocked
+      const userDoc = await User.findById(user._id).select('blockedUsers');
+      const blockedByMe = userDoc?.blockedUsers || [];
+      
+      filter.$and = [
+        { _id: { $nin: [...blockedByMe, user._id] } },
+        { blockedUsers: { $ne: user._id } }
+      ];
+    }
+
+    // Search users by username or full name
+    const users = await User.find(filter)
       .select('username fullName avatar')
       .limit(limit)
       .lean();

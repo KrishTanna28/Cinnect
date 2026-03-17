@@ -42,6 +42,15 @@ export const GET = withOptionalAuth(async (request, { params, user: currentUser 
       ]
     }
 
+    if (currentUser) {
+      const currentUserDoc = await User.findById(currentUser._id).select('blockedUsers').lean();
+      const myBlockedUsers = currentUserDoc?.blockedUsers || [];
+      query.$and = [
+        { _id: { $nin: [...myBlockedUsers, currentUser._id] } },
+        { blockedUsers: { $ne: currentUser._id } }
+      ];
+    }
+
     const total = await User.countDocuments(query)
     const following = await User.find(query)
       .select('username fullName avatar level')
