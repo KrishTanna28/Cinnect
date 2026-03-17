@@ -18,22 +18,26 @@ export const GET = withAuth(async (request, { user }) => {
       lastMessage: { $exists: true, $ne: null }
     };
 
+    const currentUserDoc = await User.findById(user._id).select('blockedUsers isPrivate').lean();
+    const myBlockedUsers = currentUserDoc?.blockedUsers || [];
+    const isUserPrivate = currentUserDoc?.isPrivate || false;
+
     // Filter by type
     if (type === 'requests') {
       query.isRequest = true;
       query.requestFor = user._id;
     } else if (type === 'messages') {
-      query.$or = [
-        { isRequest: false },
-        { isRequest: true, requestFor: { $ne: user._id } }
-      ];
+      if (isUserPrivate) {
+        query.$or = [
+          { isRequest: false },
+          { isRequest: true, requestFor: { $ne: user._id } }
+        ];
+      }
+      // If !isUserPrivate, public user sees all conversations (including requests to them) in the messages tab
     }
     
     // Do not show conversations that user has deleted
     query.deletedFor = { $ne: user._id };
-
-    const currentUserDoc = await User.findById(user._id).select('blockedUsers').lean();
-    const myBlockedUsers = currentUserDoc?.blockedUsers || [];
 
     const conversations = await Conversation.find(query)
       .populate({
@@ -76,7 +80,7 @@ export const GET = withAuth(async (request, { user }) => {
         participant: otherParticipant,
         lastMessage: conv.lastMessage,
         lastMessageAt: conv.lastMessageAt,
-        isRequest: conv.isRequest && conv.requestFor?.toString() === user._id.toString(),
+        isRequest: isUserPrivate ? (conv.isRequest && conv.requestFor?.toString() === user._id.toString()) : false,
         unreadCount: (conv.unreadCount && typeof conv.unreadCount.get === 'function') 
           ? conv.unreadCount.get(user._id.toString()) 
           : (conv.unreadCount?.[user._id.toString()] || 0),
@@ -141,9 +145,24 @@ export const POST = withAuth(async (request, { user }) => {
       .populate('lastMessage');
 
     if (conversation) {
+      let otherParticipant = conversation.participants.find(
+        p => p._id.toString() !== user._id.toString()
+      );
+      
       return NextResponse.json({
         success: true,
-        conversation,
+        conversation: {
+          _id: conversation._id,
+          participant: otherParticipant,
+          lastMessage: conversation.lastMessage,
+          lastMessageAt: conversation.lastMessageAt,
+          isRequest: currentUserDoc.isPrivate ? (conversation.isRequest && conversation.requestFor?.toString() === user._id.toString()) : false,
+          unreadCount: (conversation.unreadCount && typeof conversation.unreadCount.get === 'function') 
+            ? conversation.unreadCount.get(user._id.toString()) 
+            : (conversation.unreadCount?.[user._id.toString()] || 0),
+          mutedBy: conversation.mutedBy || [],
+          createdAt: conversation.createdAt
+        },
         isNew: false
       });
     }
@@ -153,19 +172,35 @@ export const POST = withAuth(async (request, { user }) => {
       follower => follower.toString() === user._id.toString()
     );
 
+    // Only make it a request if the recipient is private AND the sender doesn't follow the recipient
+    const shouldBeRequest = recipient.isPrivate && !isFollowing;
+
     // Create new conversation
     conversation = await Conversation.create({
       participants: [user._id, recipientId],
-      isRequest: !isFollowing,
-      requestFor: !isFollowing ? recipientId : null,
+      isRequest: shouldBeRequest,
+      requestFor: shouldBeRequest ? recipientId : null,
       unreadCount: new Map()
     });
 
     conversation = await conversation.populate('participants', 'username fullName avatar');
+    
+    let newOtherParticipant = conversation.participants.find(
+        p => p._id.toString() !== user._id.toString()
+    );
 
     return NextResponse.json({
       success: true,
-      conversation,
+      conversation: {
+          _id: conversation._id,
+          participant: newOtherParticipant,
+          lastMessage: conversation.lastMessage,
+          lastMessageAt: conversation.lastMessageAt,
+          isRequest: false, // The newly created conversation is a request sent BY them, so it's not a request FOR them
+          unreadCount: 0,
+          mutedBy: [],
+          createdAt: conversation.createdAt
+      },
       isNew: true
     });
   } catch (error) {

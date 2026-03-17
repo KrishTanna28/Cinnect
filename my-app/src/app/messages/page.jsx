@@ -88,6 +88,14 @@ export default function MessagesPage() {
       if (requestsData.success) {
         setRequests(requestsData.conversations);
       }
+
+      // Update selected conversation if it exists
+      setSelectedConversation(prev => {
+        if (!prev) return prev;
+        const msgConv = messagesData.conversations?.find(c => c._id === prev._id);
+        const reqConv = requestsData.conversations?.find(c => c._id === prev._id);
+        return msgConv || reqConv || prev;
+      });
     } catch (error) {
       console.error('Error fetching conversations:', error);
     } finally {
@@ -177,21 +185,23 @@ export default function MessagesPage() {
               </span>
             )}
           </button>
-          <button
-            onClick={() => setActiveTab('requests')}
-            className={`flex-1 py-3 text-sm font-medium transition-colors ${
-              activeTab === 'requests'
-                ? 'text-foreground border-b-2 border-primary'
-                : 'text-muted-foreground'
-            }`}
-          >
-            Requests
-            {totalRequests > 0 && (
-              <span className="ml-2 px-2 py-0.5 bg-primary text-primary-foreground rounded-full text-xs">
-                {totalRequests}
-              </span>
-            )}
-          </button>
+          {user?.isPrivate && (
+            <button
+              onClick={() => setActiveTab('requests')}
+              className={`flex-1 py-3 text-sm font-medium transition-colors ${
+                activeTab === 'requests'
+                  ? 'text-foreground border-b-2 border-primary'
+                  : 'text-muted-foreground'
+              }`}
+            >
+              Requests
+              {totalRequests > 0 && (
+                <span className="ml-2 px-2 py-0.5 bg-primary text-primary-foreground rounded-full text-xs">
+                  {totalRequests}
+                </span>
+              )}
+            </button>
+          )}
         </div>
 
         {/* Conversation List */}
@@ -286,21 +296,22 @@ export default function MessagesPage() {
               </span>
             )}
           </button>
-          <button
-            onClick={() => setActiveTab('requests')}
-            className={`flex-1 py-3 text-sm font-medium transition-colors ${
-              activeTab === 'requests'
-                ? 'text-foreground border-b-2 border-primary'
-                : 'text-muted-foreground hover:bg-primary/10'
-            }`}
-          >
-            Requests
-            {totalRequests > 0 && (
+          {user?.isPrivate && (
+            <button
+              onClick={() => setActiveTab('requests')}
+              className={`flex-1 py-3 text-sm font-medium transition-colors ${
+                activeTab === 'requests'
+                  ? 'text-foreground border-b-2 border-primary'
+                  : 'text-muted-foreground hover:bg-primary/10'
+              }`}
+            >
+              Requests
+              {totalRequests > 0 && (
               <span className="ml-2 px-2 py-0.5 bg-primary text-primary-foreground rounded-full text-xs">
                 {totalRequests}
               </span>
             )}
-          </button>
+          </button>)}
         </div>
 
         {/* Conversation List - Independent Scrollbar */}

@@ -1,23 +1,205 @@
 "use client"
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { useSocket } from '@/contexts/SocketContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, Send, Smile, Image as ImageIcon, Phone, Video, Info, X, Loader, Sticker, PlaySquare, ImagePlus, FileImage, Trash2, Ban, VolumeX } from 'lucide-react';
+import { ArrowLeft, Send, Smile, Image as ImageIcon, Phone, Video, Info, X, Loader, Sticker, PlaySquare, ImagePlus, FileImage, Trash2, Ban, VolumeX, Play, Pause, Volume2, RotateCcw } from 'lucide-react';
 import { formatDistanceToNow, format, isToday, isYesterday } from 'date-fns';
 import EmojiPicker from 'emoji-picker-react';
 import Link from 'next/link';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
 
+const isOnlyEmojis = (str) => {
+  if (!str || typeof str !== 'string') return false;
+  const stripped = str.replace(/\s/g, '');
+  if (!stripped) return false;
+  // Match emojis, zero width joiners, variation selectors, and emoji components
+  const emojiRegex = /^(\p{Emoji_Presentation}|\p{Extended_Pictographic}|\p{Emoji_Component}|\u200d|\ufe0f)+$/u;
+  return emojiRegex.test(stripped);
+};
+
+function CustomVideoPlayer({ url, className = "", videoClassName = "" }) {
+  const videoRef = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [showControlsOverlay, setShowControlsOverlay] = useState(true);
+  const controlsTimeoutRef = useRef(null);
+
+  const formatTime = (time) => {
+    if (isNaN(time)) return "0:00";
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const handleVideoClick = (e) => {
+    e.stopPropagation();
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        videoRef.current.play().catch(() => {});
+        setIsPlaying(true);
+      }
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
+  };
+
+  const handleLoadedMetadata = () => {
+    if (videoRef.current) setDuration(videoRef.current.duration);
+  };
+
+  const handleSeek = (e) => {
+    e.stopPropagation();
+    if (videoRef.current) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const percentage = clickX / rect.width;
+      const newTime = percentage * duration;
+      videoRef.current.currentTime = newTime;
+      setCurrentTime(newTime);
+    }
+  };
+
+  const handleRestart = (e) => {
+    e.stopPropagation();
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.play().catch(() => {});
+      setIsPlaying(true);
+    }
+  };
+
+  const handlePlayPause = (e) => {
+    e.stopPropagation();
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        videoRef.current.play().catch(() => {});
+        setIsPlaying(true);
+      }
+    }
+  };
+
+  const handleMuteToggle = (e) => {
+    e.stopPropagation();
+    if (videoRef.current) {
+      videoRef.current.muted = !isMuted;
+      setIsMuted(!isMuted);
+    }
+  };
+
+  const handleMouseMove = () => {
+    setShowControlsOverlay(true);
+    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    if (isPlaying) {
+      controlsTimeoutRef.current = setTimeout(() => {
+        setShowControlsOverlay(false);
+      }, 3000);
+    }
+  };
+
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  return (
+    <div 
+      className={`relative group w-fit ${className}`}
+      onClick={handleVideoClick}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={() => isPlaying && setShowControlsOverlay(false)}
+    >
+      <video
+        ref={videoRef}
+        src={url}
+        className={`w-full h-full ${videoClassName}`}
+        loop
+        muted={isMuted}
+        playsInline
+        preload="metadata"
+        onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={handleLoadedMetadata}
+      />
+      
+      {!isPlaying && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/30 pointer-events-none">
+          <div className="p-3 bg-black/60 rounded-full">
+            <Play className="w-6 h-6 text-white fill-white" />
+          </div>
+        </div>
+      )}
+
+      <div 
+        className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent pt-6 pb-2 px-2 transition-opacity duration-300 ${
+          showControlsOverlay || !isPlaying ? 'opacity-100' : 'opacity-0'
+        }`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div 
+          className="w-full h-1 bg-white/30 rounded-full mb-2 cursor-pointer group/progress"
+          onClick={handleSeek}
+        >
+          <div 
+            className="h-full bg-primary rounded-full relative transition-all"
+            style={{ width: `${progress}%` }}
+          >
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 bg-primary rounded-full opacity-0 group-hover/progress:opacity-100 transition-opacity" />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handlePlayPause}
+              className="p-1 text-white hover:text-primary transition-all active:scale-90 cursor-pointer"
+            >
+              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-white" />}
+            </button>
+            <button
+              onClick={handleMuteToggle}
+              className="p-1 text-white hover:text-primary transition-all active:scale-90 cursor-pointer"
+            >
+              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </button>
+            <span className="text-white text-[10px] ml-1">
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleRestart}
+              className="p-1 text-white hover:text-primary transition-all active:scale-90 cursor-pointer"
+            >
+              <RotateCcw className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function MessageThread({ conversation, onBack, onUpdate }) {
   const { user } = useUser();
   const socket = useSocket();
   const { toast } = useToast();
   const [messages, setMessages] = useState([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const messagesContainerRef = useRef(null);
+  const autoScrollOnLayout = useRef(false);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -43,10 +225,21 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
   const participant = conversation.participant;
 
   useEffect(() => {
-    if (conversation) {
-      fetchMessages();
+      // Use just the conversation ID as dependency to prevent infinite loops when onUpdate replaces the whole object
+      if (conversation?._id) {
+        setPage(1);
+        setMessages([]);
+        setHasMore(true);
+        setLoading(true);
+        fetchMessages(1, true);
+      }
+    }, [conversation?._id]);
+  useLayoutEffect(() => {
+    if (autoScrollOnLayout.current && messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+      autoScrollOnLayout.current = false;
     }
-  }, [conversation]);
+  }, [messages]);
 
   // Listen for real-time messages
   useEffect(() => {
@@ -203,26 +396,60 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
     }
   };
 
-  const fetchMessages = async () => {
+  const fetchMessages = async (pageNum = 1, isInitial = false) => {
     try {
+      if (!isInitial) setIsLoadingMore(true);
       const token = localStorage.getItem('token');
-      const res = await fetch(`/api/messages/${conversation._id}`, {
+      const res = await fetch(`/api/messages/${conversation._id}?page=${pageNum}&limit=50`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
 
       if (data.success) {
-        setMessages(data.messages);
-        scrollToBottom();
-        // Notify parent to refresh conversation list so unread counts disappear immediately
-        if (conversation.unreadCount > 0 && onUpdate) {
-          onUpdate();
+        if (pageNum === 1) {
+          setPage(1);
+          autoScrollOnLayout.current = true;
+          setMessages(data.messages);
+          if (conversation.unreadCount > 0 && onUpdate) {
+            onUpdate();
+          }
+        } else {
+          // preserve scroll position
+          if (messagesContainerRef.current) {
+             const scrollHeightBefore = messagesContainerRef.current.scrollHeight;
+             setMessages(prev => {
+                const newMsgs = data.messages.filter(nm => !prev.some(pm => pm._id === nm._id));
+                return [...newMsgs, ...prev];
+             });
+             // Use minimal delay to allow DOM to update
+             setTimeout(() => {
+                if (messagesContainerRef.current) {
+                  messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight - scrollHeightBefore;
+                }
+             }, 0);
+          } else {
+             setMessages(prev => {
+                const newMsgs = data.messages.filter(nm => !prev.some(pm => pm._id === nm._id));
+                return [...newMsgs, ...prev];
+             });
+          }
         }
+        setHasMore(data.pagination.page < data.pagination.pages);
       }
     } catch (error) {
       console.error('Error fetching messages:', error);
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
+      setIsLoadingMore(false);
+    }
+  };
+
+  const handleScroll = (e) => {
+    // Adding a buffer of 10px from the top just in case
+    if (e.target.scrollTop < 10 && !isLoadingMore && hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchMessages(nextPage, false);
     }
   };
 
@@ -368,9 +595,9 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
     }
   };
 
-  const scrollToBottom = () => {
+  const scrollToBottom = (behavior = 'smooth') => {
     setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      messagesEndRef.current?.scrollIntoView({ behavior });
     }, 100);
   };
 
@@ -453,7 +680,11 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
       )}
 
       {/* Messages - Independent Scrollbar */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4">
+      <div 
+        ref={messagesContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto overflow-x-hidden p-4"
+      >
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -476,6 +707,11 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
           </div>
         ) : (
           <div className="space-y-6">
+            {isLoadingMore && (
+              <div className="flex justify-center py-2">
+                <Loader className="w-5 h-5 animate-spin text-muted-foreground" />
+              </div>
+            )}
             {Object.entries(messageGroups).map(([date, msgs]) => (
               <div key={date}>
                 <div className="flex items-center justify-center mb-4">
@@ -532,7 +768,7 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
                                 onPointerLeave={handlePointerUp}
                                 onContextMenu={handleContextMenu}
                                 className={`relative cursor-pointer ${
-                                  msg.type !== 'text' && !msg.content
+                                  (msg.type !== 'text' && !msg.content) || (msg.type === 'text' && isOnlyEmojis(msg.content))
                                     ? '' // Only media, no padding/background
                                     : `px-4 py-2 rounded-2xl ${
                                         isOwn
@@ -543,20 +779,32 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
                               >
                                 {/* Media Rendering */}
                                 {msg.type === 'image' && (
-                                  <img src={msg.mediaUrl} alt="Image" className={`max-w-full mb-1 object-cover max-h-64 ${msg.content ? 'rounded-md' : 'rounded-2xl'}`} />
+                                  <img src={msg.mediaUrl} alt="Image" className={`max-w-full mb-1 object-cover max-h-64 ${msg.content && !isOnlyEmojis(msg.content) ? 'rounded-md' : 'rounded-2xl'}`} />
                                 )}
                                 {msg.type === 'gif' && (
-                                    <img src={msg.mediaUrl} alt="GIF" className={`max-w-full mb-1 object-cover max-h-64 ${msg.content ? 'rounded-md' : 'rounded-2xl'}`} />
+                                    <img src={msg.mediaUrl} alt="GIF" className={`max-w-full mb-1 object-cover max-h-64 ${msg.content && !isOnlyEmojis(msg.content) ? 'rounded-md' : 'rounded-2xl'}`} />
                                 )}
                                 {msg.type === 'video' && (
-                                  <video src={msg.mediaUrl} controls className={`max-w-full mb-1 object-cover max-h-64 ${msg.content ? 'rounded-md' : 'rounded-2xl'}`} />
+                                  <CustomVideoPlayer 
+                                    url={msg.mediaUrl} 
+                                    className={`max-w-full mb-1 flex items-center justify-center bg-black overflow-hidden ${msg.content && !isOnlyEmojis(msg.content) ? 'rounded-md' : 'rounded-2xl'}`} 
+                                    videoClassName="max-h-64 object-contain"
+                                  />
                                 )}
                                 {msg.type === 'sticker' && (
                                   <img src={msg.mediaUrl} alt="Sticker" className="w-32 h-32 object-contain bg-transparent mb-1 drop-shadow-sm" />
                                 )}
 
                                 {/* Text content */}
-                                {msg.content && <p className="text-sm break-words whitespace-pre-wrap">{msg.content}</p>}
+                                {msg.content && (
+                                  <p className={`break-words whitespace-pre-wrap ${
+                                    isOnlyEmojis(msg.content) 
+                                      ? 'text-5xl bg-transparent p-0 leading-none drop-shadow-sm' 
+                                      : 'text-sm'
+                                  }`}>
+                                    {msg.content}
+                                  </p>
+                                )}
 
                                 {/* Reactions Display */}
                                 {hasReactions && (

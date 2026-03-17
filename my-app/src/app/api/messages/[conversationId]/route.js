@@ -21,7 +21,7 @@ export const GET = withAuth(async (request, { params, user }) => {
     const conversation = await Conversation.findOne({
       _id: conversationId,
       participants: user._id
-    }).populate('participants', 'blockedUsers');
+    }).populate('participants', 'blockedUsers isPrivate followers');
 
     if (!conversation) {
       return NextResponse.json(
@@ -181,7 +181,7 @@ export const POST = withAuth(async (request, { params, user }) => {
     const conversation = await Conversation.findOne({
       _id: conversationId,
       participants: user._id
-    }).populate('participants', 'blockedUsers');
+    }).populate('participants', 'blockedUsers isPrivate followers');
 
     if (!conversation) {
       return NextResponse.json(
@@ -238,6 +238,15 @@ export const POST = withAuth(async (request, { params, user }) => {
 
     // Re-surface conversation for anyone who had previously deleted it
     if (conversation.deletedFor && conversation.deletedFor.length > 0) {
+      if (conversation.deletedFor.some(id => id.toString() === otherParticipantDoc._id.toString())) {
+        const isFollowing = otherParticipantDoc.followers?.some(
+          follower => follower.toString() === user._id.toString()
+        );
+        if (otherParticipantDoc.isPrivate && !isFollowing) {
+          conversation.isRequest = true;
+          conversation.requestFor = otherParticipantDoc._id;
+        }
+      }
       conversation.deletedFor = []; // Bring back for everyone involved
     }
 
