@@ -804,7 +804,7 @@ export default function PostDetailPage() {
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => router.push(`/communities/${params.slug}/posts/${post._id}/edit`)}>
                     <Pencil className="w-4 h-4" />
-                    Edit Post
+                    Edit
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={handleDelete}
@@ -815,7 +815,7 @@ export default function PostDetailPage() {
                     ) : (
                       <Trash2 className="w-4 h-4" />
                     )}
-                    {deleting ? "Deleting..." : "Delete Post"}
+                    {deleting ? "Deleting..." : "Delete"}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

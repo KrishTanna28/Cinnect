@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server'
 import Post from '@/lib/models/Post.js'
-import { withAuth } from '@/lib/middleware/withAuth.js'
+import { withAuth, withOptionalAuth } from '@/lib/middleware/withAuth.js'
 import connectDB from '@/lib/config/database.js'
 import { deleteMultipleImagesFromCloudinary } from '@/lib/utils/cloudinaryHelper.js'
-import Community from '@/lib/models/Community'
+import Community from '@/lib/models/Community.js'
 
 await connectDB()
 
 // GET /api/posts/[id] - Get single post
-export async function GET(request, { params }) {
+export const GET = withOptionalAuth(async (request, { params, user }) => {
   try {
     const { id } = await params
     const { searchParams } = new URL(request.url)
@@ -17,13 +17,24 @@ export async function GET(request, { params }) {
 
     const post = await Post.findById(id)
       .populate('user', 'username avatar fullName')
-      .populate('community', 'name slug icon')
+      .populate('community')
 
     if (!post) {
       return NextResponse.json(
         { success: false, message: 'Post not found' },
         { status: 404 }
       )
+    }
+
+    // Check private community access
+    if (post.community && post.community.isPrivate) {
+      const isMember = user ? post.community.members.some(mId => mId.toString() === user._id.toString()) : false
+      if (!isMember) {
+        return NextResponse.json(
+          { success: false, message: 'This post belongs to a private community you are not a member of' },
+          { status: 403 }
+        )
+      }
     }
 
     await post.incrementViews()
@@ -38,10 +49,19 @@ export async function GET(request, { params }) {
     await Post.populate(paginatedComments, { path: 'user', select: 'username avatar fullName' })
     await Post.populate(paginatedComments, { path: 'replies.user', select: 'username avatar fullName' })
 
+    // Map community back to populated fields expected by frontend
+    const postObj = post.toObject()
+    postObj.community = {
+      _id: post.community._id,
+      name: post.community.name,
+      slug: post.community.slug,
+      icon: post.community.icon
+    }
+
     return NextResponse.json({
       success: true,
       data: {
-        ...post.toObject(),
+        ...postObj,
         comments: paginatedComments,
         totalComments
       }
@@ -56,7 +76,7 @@ export async function GET(request, { params }) {
       { status: 500 }
     )
   }
-}
+})
 
 // POST /api/posts/[id] - Like/dislike post
 export const POST = withAuth(async (request, { user, params }) => {
@@ -64,12 +84,22 @@ export const POST = withAuth(async (request, { user, params }) => {
     const { id } = await params
     const { action } = await request.json()
 
-    const post = await Post.findById(id)
+    const post = await Post.findById(id).populate('community')
     if (!post) {
       return NextResponse.json(
         { success: false, message: 'Post not found' },
         { status: 404 }
       )
+    }
+
+    if (post.community && post.community.isPrivate) {
+      const isMember = post.community.members.some(mId => mId.toString() === user._id.toString())
+      if (!isMember) {
+        return NextResponse.json(
+          { success: false, message: 'Must be a member to interact with posts in a private community' },
+          { status: 403 }
+        )
+      }
     }
 
     const userId = user._id?.toString()

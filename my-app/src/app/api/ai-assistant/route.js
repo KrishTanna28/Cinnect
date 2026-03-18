@@ -950,6 +950,8 @@ async function executeTool(name, args) {
       await connectDB();
       const community = await Community.findOne({ slug: args.slug }).lean();
       if (!community) return JSON.stringify({ error: "Community not found" });
+      if (community.isPrivate) return JSON.stringify({ error: "Cannot retrieve posts from a private community" });
+
       const limit = Math.min(args.limit || 5, 10);
       const posts = await Post.find({ community: community._id, isApproved: true })
         .populate("user", "username fullName")

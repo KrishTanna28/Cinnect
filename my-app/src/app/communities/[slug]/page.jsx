@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Users, FileText, Plus, Clock, ThumbsUp, MessageCircle, Pin, Lock, Film, Tv, User as UserIcon, Sparkles, Trash2, UserCheck, UserX, Bell, Pencil, MoreVertical, ThumbsDown, Newspaper, X, Check, ExternalLink, AlertTriangle, ShieldAlert } from "lucide-react"
+import { Users, FileText, Plus, Clock, ThumbsUp, MessageCircle, Pin, Lock, Film, Tv, User as UserIcon, Sparkles, Trash2, UserPlus, UserX, UserTick, Bell, Pencil, MoreVertical, ThumbsDown, Newspaper, X, Check, ExternalLink, AlertTriangle, ShieldAlert, UserMinus, Info } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { useUser } from "@/contexts/UserContext"
 import { useToast } from "@/hooks/use-toast"
@@ -34,6 +35,7 @@ export default function CommunityPage() {
   const [deleting, setDeleting] = useState(false)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
+  const [showMobileInfo, setShowMobileInfo] = useState(false)
   
   // News state
   const [news, setNews] = useState([])
@@ -130,6 +132,7 @@ export default function CommunityPage() {
 
   const fetchNews = async () => {
     if (!community?.name) return
+    if (community.isPrivate && !isMember && !isCreator) return
     setLoadingNews(true)
     
     try {
@@ -696,6 +699,184 @@ export default function CommunityPage() {
 
   const CategoryIcon = categoryIcons[community.category] || Sparkles
 
+  const renderCommunityInfo = () => (
+    <div className="space-y-4">
+      {/* Community Stats Card */}
+      <div className="bg-secondary/30 border border-border rounded-lg p-4">
+        <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+          <Users className="w-4 h-4 text-primary" />
+          Community Info
+        </h3>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Members</span>
+            <span className="text-sm text-muted-foreground">{formatNumber(community.memberCount)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Posts</span>
+            <span className="text-sm text-muted-foreground">{formatNumber(community.postCount)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Category</span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded text-xs font-medium">
+              <CategoryIcon className="w-3 h-3" />
+              {community.category}
+            </span>
+          </div>
+          {community.isPrivate && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Privacy</span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-secondary text-foreground rounded text-xs">
+                <Lock className="w-3 h-3" />
+                Private
+              </span>
+            </div>
+          )}
+          {community.createdAt && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Created</span>
+              <span className="text-sm text-muted-foreground">{formatDate(community.createdAt)}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* About Section - Editable */}
+      <div className="bg-secondary/30 border border-border rounded-lg p-4">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="font-semibold text-foreground flex items-center gap-2">
+            <FileText className="w-4 h-4 text-primary" />
+            About
+          </h3>
+          {isCreator && !editingAbout && (
+            <button 
+              onClick={() => setEditingAbout(true)}
+              className="p-1 cursor-pointer transition-all active:scale-90 hover:text-primary"
+            >
+              <Pencil className="w-4 h-4 text-muted-foreground hover:text-primary" />
+            </button>
+          )}
+        </div>
+        {editingAbout ? (
+          <div className="space-y-2">
+            <textarea
+              value={aboutText}
+              onChange={(e) => setAboutText(e.target.value)}
+              className="w-full p-2 bg-input border border-border rounded-lg text-sm text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+              rows={4}
+              maxLength={500}
+            />
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">{aboutText.length}/500</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setEditingAbout(false); setAboutText(community.description || '') }}
+                  className="p-1.5 transition-all active:scale-90 cursor-pointer"
+                >
+                  <X className="w-4 h-4 text-muted-foreground hover:text-primary" />
+                </button>
+                <button
+                  onClick={handleSaveAbout}
+                  disabled={savingAbout}
+                  className="p-1.5 transition-all active:scale-90 cursor-pointer"
+                >
+                  {savingAbout ? (
+                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4 text-muted-foreground hover:text-primary" />
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">{community.description || 'No description available'}</p>
+        )}
+      </div>
+
+      {/* Rules Section - Editable */}
+      <div className="bg-secondary/30 border border-border rounded-lg p-4">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="font-semibold text-foreground flex items-center gap-2">
+            <FileText className="w-4 h-4 text-primary" />
+            Community Rules
+          </h3>
+          {isCreator && !editingRules && (
+            <button 
+              onClick={() => setEditingRules(true)}
+              className="p-1 cursor-pointer transition-all active:scale-90 hover:text-primary"
+            >
+              <Pencil className="w-4 h-4 text-muted-foreground hover:text-primary" />
+            </button>
+          )}
+        </div>
+        {editingRules ? (
+          <div className="space-y-3">
+            {rulesText.map((rule, index) => (
+              <div key={index} className="flex items-center gap-2 p-2 bg-secondary/30 rounded-lg">
+                <span className="text-primary font-semibold text-sm">{index + 1}.</span>
+                <input
+                  type="text"
+                  value={rule.title}
+                  onChange={(e) => updateRule(index, e.target.value)}
+                  placeholder="Enter rule"
+                  className="flex-1 p-1.5 bg-input border border-border rounded text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <button
+                  onClick={() => removeRule(index)}
+                  className="p-1.5 transition-all active:scale-90 cursor-pointer"
+                >
+                  <X className="w-4 h-4 text-muted-foreground hover:text-primary" />
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={addRule}
+              className="w-full p-2 border border-dashed border-border rounded-lg text-sm text-muted-foreground hover:border-primary hover:text-primary transition-all active:scale-95 cursor-pointer"
+            >
+              <Plus className="w-4 h-4 inline mr-1" />
+              Add Rule
+            </button>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => { setEditingRules(false); setRulesText(community.rules || []) }}
+                className="p-1.5 transition-all active:scale-90 cursor-pointer"
+                >
+                  <X className="w-4 h-4 text-muted-foreground hover:text-primary" />
+              </button>
+              <button
+                onClick={handleSaveRules}
+                disabled={savingRules}
+                className="p-1.5 transition-all active:scale-90 cursor-pointer"
+              >
+                {savingRules ? (
+                  <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4 text-muted-foreground hover:text-primary" />
+                )}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <ul className="text-sm text-muted-foreground space-y-2">
+            {(community.rules && community.rules.length > 0) ? (
+              community.rules.map((rule, index) => (
+                <li key={index} className="flex items-start gap-2">
+                  <span className="text-muted-foreground font-semibold">{index + 1}.</span>
+                  <span className="text-muted-foreground">{rule.title}</span>
+                </li>
+              ))
+            ) : (
+              <>
+                <li className="text-muted-foreground">No rules have been set for this community.</li>
+              </>
+            )}
+          </ul>
+        )}
+      </div>
+    </div>
+  )
+
   return (
     <main className="min-h-screen bg-background -mt-16 overflow-y-auto">
       {/* Banner - Extended behind navbar */}
@@ -736,7 +917,6 @@ export default function CommunityPage() {
                 {/* Badges */}
                 <div className="flex items-center gap-1.5 flex-shrink-0">
                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-primary/10 text-primary rounded text-xs font-medium">
-                    <CategoryIcon className="w-3 h-3" />
                     {community.category}
                   </span>
                   {community.isPrivate && (
@@ -749,86 +929,124 @@ export default function CommunityPage() {
 
                 {/* Actions */}
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {(isMember || isCreator) && (
-                    <Button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        router.push(`/communities/${params.slug}/new-post`);
-                      }}
-                      size="sm"
-                      className="gap-1.5 cursor-pointer hidden sm:flex"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Create Post
-                    </Button>
-                  )}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button className="cursor-pointer p-1.5 transition-all active:scale-90">
-                        <MoreVertical className="w-5 h-5 hover:text-primary"/>
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {(isMember || isCreator) && (
-                        <DropdownMenuItem 
-                          onSelect={(e) => {
-                            e.preventDefault();
-                            router.push(`/communities/${params.slug}/new-post`);
-                          }}
-                          className="sm:hidden"
-                        >
-                          <Plus className="w-4 h-4" />
-                          Create Post
-                        </DropdownMenuItem>
-                      )}
-                      {!isCreator && (
-                        <DropdownMenuItem
-                          onSelect={(e) => {
-                            e.preventDefault();
-                            handleJoinLeave(e);
-                          }}
-                        >
-                          {isMember ? (
-                            <UserX className="w-4 h-4" />
-                          ) : hasPendingRequest ? (
-                            <UserX className="w-4 h-4" />
-                          ) : (
-                            <UserCheck className="w-4 h-4" />
-                          )}
-                          {isMember ? "Leave Community" :
-                            hasPendingRequest ? "Cancel Request" :
-                              community.isPrivate ? "Request to Join" : "Join Community"}
-                        </DropdownMenuItem>
-                      )}
-                      {isCreator && (
-                        <>
+                  <div className="hidden sm:flex items-center gap-2">
+                    {!isCreator && (
+                      <Button
+                        variant={isMember || hasPendingRequest ? "outline" : "default"}
+                        size="sm"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleJoinLeave(e);
+                        }}
+                        className="gap-1.5 cursor-pointer"
+                      >
+                        {isMember ? (
+                          <><UserX className="w-4 h-4" /> Leave</>
+                        ) : hasPendingRequest ? (
+                          <><Clock className="w-4 h-4" /> Requested</>
+                        ) : (
+                          <><UserPlus className="w-4 h-4" /> {community.isPrivate ? "Request" : "Join"}</>
+                        )}
+                      </Button>
+                    )}
+                    {(isMember || isCreator) && (
+                      <Button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          router.push(`/communities/${params.slug}/new-post`);
+                        }}
+                        size="sm"
+                        className="gap-1.5 cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Create
+                      </Button>
+                    )}
+                  </div>
+                  
+                  {/* Dropdown for Creator Actions (Desktop) OR All Actions (Mobile) */}
+                  <div className={isCreator ? "block" : "sm:hidden block"}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="cursor-pointer p-1.5 transition-all active:scale-90">
+                          <MoreVertical className="w-5 h-5 hover:text-primary"/>
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {(isMember || isCreator) && (
                           <DropdownMenuItem 
                             onSelect={(e) => {
                               e.preventDefault();
-                              router.push(`/communities/${params.slug}/edit`);
+                              router.push(`/communities/${params.slug}/new-post`);
                             }}
+                            className="sm:hidden cursor-pointer"
                           >
-                            <Pencil className="w-4 h-4" />
-                            Edit Community
+                            <Plus className="w-4 h-4" />
+                            Create
                           </DropdownMenuItem>
+                        )}
+                        {!isCreator && (
                           <DropdownMenuItem
                             onSelect={(e) => {
                               e.preventDefault();
-                              handleDeleteCommunity(e);
+                              handleJoinLeave(e);
                             }}
-                            disabled={deleting}
+                            className="sm:hidden cursor-pointer"
                           >
-                            {deleting ? (
-                              <div className="w-4 h-4 border-2 border-border border-t-transparent rounded-full animate-spin"></div>
+                            {isMember ? (
+                              <UserX className="w-4 h-4" />
+                            ) : hasPendingRequest ? (
+                              <Clock className="w-4 h-4" />
                             ) : (
-                              <Trash2 className="w-4 h-4" />
+                              <UserPlus className="w-4 h-4" />
                             )}
-                            {deleting ? "Deleting..." : "Delete Community"}
+                            {isMember ? "Leave" :
+                              hasPendingRequest ? "Requested" :
+                                community.isPrivate ? "Request" : "Join"}
                           </DropdownMenuItem>
-                        </>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                        )}
+                        {isCreator && (
+                          <>
+                            <DropdownMenuItem 
+                              className="cursor-pointer"
+                              onSelect={(e) => {
+                                e.preventDefault();
+                                router.push(`/communities/${params.slug}/edit`);
+                              }}
+                            >
+                              <Pencil className="w-4 h-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="cursor-pointer"
+                              onSelect={(e) => {
+                                e.preventDefault();
+                                handleDeleteCommunity(e);
+                              }}
+                              disabled={deleting}
+                            >
+                              {deleting ? (
+                                <div className="w-4 h-4 border-2 border-border border-t-transparent rounded-full animate-spin"></div>
+                              ) : (
+                                <Trash2 className="w-4 h-4" />
+                              )}
+                              {deleting ? "Deleting..." : "Delete"}
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                        <DropdownMenuItem 
+                          onSelect={(e) => {
+                            e.preventDefault();
+                            setShowMobileInfo(true);
+                          }}
+                          className="lg:hidden cursor-pointer"
+                        >
+                          <Info className="w-4 h-4" />
+                          Info
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
               </div>
 
@@ -849,185 +1067,36 @@ export default function CommunityPage() {
       <div ref={stickyAreaRef} className="sticky top-16 h-[calc(100vh-4rem)] overflow-hidden w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 flex gap-6">
           {/* Left Sidebar - Community Info (Hidden on mobile) */}
           <aside ref={leftSidebarRef} className="hidden lg:block w-72 lg:w-80 flex-shrink-0 overflow-y-auto overscroll-contain scrollbar-thin py-6">
-            <div className="space-y-4">
-              {/* Community Stats Card */}
-              <div className="bg-secondary/30 border border-border rounded-lg p-4">
-                <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-                  <Users className="w-4 h-4 text-primary" />
-                  Community Info
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Members</span>
-                    <span className="text-sm text-muted-foreground">{formatNumber(community.memberCount)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Posts</span>
-                    <span className="text-sm text-muted-foreground">{formatNumber(community.postCount)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Category</span>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded text-xs font-medium">
-                      <CategoryIcon className="w-3 h-3" />
-                      {community.category}
-                    </span>
-                  </div>
-                  {community.isPrivate && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Privacy</span>
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-secondary text-foreground rounded text-xs">
-                        <Lock className="w-3 h-3" />
-                        Private
-                      </span>
-                    </div>
-                  )}
-                  {community.createdAt && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Created</span>
-                      <span className="text-sm text-muted-foreground">{formatDate(community.createdAt)}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* About Section - Editable */}
-              <div className="bg-secondary/30 border border-border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-foreground flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-primary" />
-                    About
-                  </h3>
-                  {isCreator && !editingAbout && (
-                    <button 
-                      onClick={() => setEditingAbout(true)}
-                      className="p-1 cursor-pointer transition-all active:scale-90 hover:text-primary"
-                    >
-                      <Pencil className="w-4 h-4 text-muted-foreground hover:text-primary" />
-                    </button>
-                  )}
-                </div>
-                {editingAbout ? (
-                  <div className="space-y-2">
-                    <textarea
-                      value={aboutText}
-                      onChange={(e) => setAboutText(e.target.value)}
-                      className="w-full p-2 bg-input border border-border rounded-lg text-sm text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary"
-                      rows={4}
-                      maxLength={500}
-                    />
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">{aboutText.length}/500</span>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => { setEditingAbout(false); setAboutText(community.description || '') }}
-                          className="p-1.5 transition-all active:scale-90 cursor-pointer"
-                        >
-                          <X className="w-4 h-4 text-muted-foreground hover:text-primary" />
-                        </button>
-                        <button
-                          onClick={handleSaveAbout}
-                          disabled={savingAbout}
-                          className="p-1.5 transition-all active:scale-90 cursor-pointer"
-                        >
-                          {savingAbout ? (
-                            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                          ) : (
-                            <Check className="w-4 h-4 text-muted-foreground hover:text-primary" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">{community.description || 'No description available'}</p>
-                )}
-              </div>
-
-              {/* Rules Section - Editable */}
-              <div className="bg-secondary/30 border border-border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-foreground flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-primary" />
-                    Community Rules
-                  </h3>
-                  {isCreator && !editingRules && (
-                    <button 
-                      onClick={() => setEditingRules(true)}
-                      className="p-1 cursor-pointer transition-all active:scale-90 hover:text-primary"
-                    >
-                      <Pencil className="w-4 h-4 text-muted-foreground hover:text-primary" />
-                    </button>
-                  )}
-                </div>
-                {editingRules ? (
-                  <div className="space-y-3">
-                    {rulesText.map((rule, index) => (
-                      <div key={index} className="flex items-center gap-2 p-2 bg-secondary/30 rounded-lg">
-                        <span className="text-primary font-semibold text-sm">{index + 1}.</span>
-                        <input
-                          type="text"
-                          value={rule.title}
-                          onChange={(e) => updateRule(index, e.target.value)}
-                          placeholder="Enter rule"
-                          className="flex-1 p-1.5 bg-input border border-border rounded text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                        />
-                        <button
-                          onClick={() => removeRule(index)}
-                          className="p-1.5 transition-all active:scale-90 cursor-pointer"
-                        >
-                          <X className="w-4 h-4 text-muted-foreground hover:text-primary" />
-                        </button>
-                      </div>
-                    ))}
-                    <button
-                      onClick={addRule}
-                      className="w-full p-2 border border-dashed border-border rounded-lg text-sm text-muted-foreground hover:border-primary hover:text-primary transition-all active:scale-95 cursor-pointer"
-                    >
-                      <Plus className="w-4 h-4 inline mr-1" />
-                      Add Rule
-                    </button>
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => { setEditingRules(false); setRulesText(community.rules || []) }}
-                        className="p-1.5 transition-all active:scale-90 cursor-pointer"
-                        >
-                          <X className="w-4 h-4 text-muted-foreground hover:text-primary" />
-                      </button>
-                      <button
-                        onClick={handleSaveRules}
-                        disabled={savingRules}
-                        className="p-1.5 transition-all active:scale-90 cursor-pointer"
-                      >
-                        {savingRules ? (
-                          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <Check className="w-4 h-4 text-muted-foreground hover:text-primary" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <ul className="text-sm text-muted-foreground space-y-2">
-                    {(community.rules && community.rules.length > 0) ? (
-                      community.rules.map((rule, index) => (
-                        <li key={index} className="flex items-start gap-2">
-                          <span className="text-muted-foreground font-semibold">{index + 1}.</span>
-                          <span className="text-muted-foreground">{rule.title}</span>
-                        </li>
-                      ))
-                    ) : (
-                      <>
-                        <li className="text-muted-foreground">No rules have been set for this community.</li>
-                      </>
-                    )}
-                  </ul>
-                )}
-              </div>
-            </div>
+            {renderCommunityInfo()}
           </aside>
 
           {/* Center - Posts Section */}
           <div ref={centerColumnRef} className="flex-1 min-w-0 flex flex-col min-h-0 py-6">
+            {community.isPrivate && !isMember && !isCreator ? (
+              <div className="flex-1 flex items-center justify-center py-12 px-4">
+                <div className="text-center max-w-md bg-secondary/30 p-8 rounded-lg border border-border w-full">
+                  <div className="w-16 h-16 bg-background rounded-full flex items-center justify-center mx-auto mb-4 border border-border shadow-sm">
+                    <Lock className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-xl font-bold text-foreground mb-2">This community is private</h3>
+                  <p className="text-muted-foreground mb-6">
+                    You need to join this community to view its posts and participate in discussions.
+                  </p>
+                  {!hasPendingRequest ? (
+                    <Button onClick={(e) => { e.preventDefault(); handleJoinLeave(e); }} className="w-full sm:w-auto cursor-pointer gap-2">
+                      <UserPlus className="w-4 h-4" />
+                      Request to Join
+                    </Button>
+                  ) : (
+                    <Button variant="outline" onClick={(e) => { e.preventDefault(); handleJoinLeave(e); }} className="w-full sm:w-auto cursor-pointer gap-2">
+                      <Clock className="w-4 h-4" />
+                      Requested
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <>
             {/* Join Requests Section - Only visible to creator */}
             {isCreator && community.pendingRequests && community.pendingRequests.length > 0 && (
               <div className="mb-6 bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 md:p-6">
@@ -1068,7 +1137,7 @@ export default function CommunityPage() {
                           {processingRequest === request.user._id ? (
                             <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin"></div>
                           ) : (
-                            <UserCheck className="w-4 h-4" />
+                            <UserPlus className="w-4 h-4" />
                           )}
                           {processingRequest === request.user._id ? 'Processing...' : 'Approve'}
                         </Button>
@@ -1082,7 +1151,7 @@ export default function CommunityPage() {
                           {processingRequest === request.user._id ? (
                             <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
                           ) : (
-                            <UserX className="w-4 h-4" />
+                            <Clock className="w-4 h-4" />
                           )}
                           {processingRequest === request.user._id ? 'Processing...' : 'Reject'}
                         </Button>
@@ -1117,7 +1186,7 @@ export default function CommunityPage() {
                   <Link href={`/communities/${params.slug}/new-post`}>
                     <Button className="cursor-pointer">
                       <Plus className="w-4 h-4 mr-2" />
-                      Create Post
+                      Create
                     </Button>
                   </Link>
                 )}
@@ -1213,84 +1282,106 @@ export default function CommunityPage() {
               </div>
             )}
             </div>
+              </>
+            )}
           </div>
 
           {/* Right Sidebar - Latest News (Hidden on mobile and small tablets) */}
           <aside ref={rightSidebarRef} className="hidden lg:block w-80 xl:w-96 flex-shrink-0 flex flex-col min-h-0 py-6">
             <div className="flex flex-col flex-1 min-h-0">
               {/* News Section */}
-              <div className="bg-secondary/30 border border-border rounded-lg overflow-hidden flex flex-col flex-1 min-h-0">
-                <div className="p-4 border-b border-border flex-shrink-0">
-                  <h3 className="font-semibold text-foreground flex items-center gap-2">
-                    <Newspaper className="w-4 h-4 text-primary" />
-                    Latest News
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Related to {community.relatedEntityName || community.name}
-                  </p>
+              {community.isPrivate && !isMember && !isCreator ? (
+                <div className="bg-secondary/30 border border-border rounded-lg p-8 flex flex-col items-center justify-center text-center h-full">
+                  <Lock className="w-12 h-12 text-muted-foreground mb-4" />
+                  <h3 className="font-semibold text-foreground mb-2">News Hidden</h3>
+                  <p className="text-sm text-muted-foreground">Join this community to view related news and updates.</p>
                 </div>
-                
-                {loadingNews ? (
-                  <div className="p-8 flex justify-center">
-                    <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <div className="bg-secondary/30 border border-border rounded-lg overflow-hidden flex flex-col flex-1 min-h-0">
+                  <div className="p-4 border-b border-border flex-shrink-0">
+                    <h3 className="font-semibold text-foreground flex items-center gap-2">
+                      <Newspaper className="w-4 h-4 text-primary" />
+                      Latest News
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Related to {community.relatedEntityName || community.name}
+                    </p>
                   </div>
-                ) : news.length === 0 ? (
-                  <div className="p-8 text-center">
-                    <Newspaper className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                    <p className="text-sm text-muted-foreground">No recent news found</p>
-                    <p className="text-xs text-muted-foreground mt-1">Check back later for updates</p>
-                  </div>
-                ) : (
-                  <div 
-                    ref={newsContainerRef}
-                    className="overflow-y-scroll scrollbar-news" style={{ maxHeight: 'calc(100vh - 14rem)' }}
-                  >
-                    <div className="space-y-0">
-                      {news.map((article, index) => (
-                        <a
-                          key={index}
-                          href={article.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block border-b border-border last:border-b-0 hover:bg-secondary/50 transition-colors"
-                        >
-                          <div className="p-4">
-                            {article.urlToImage && (
-                              <div className="w-full h-32 bg-secondary rounded-lg overflow-hidden mb-3">
-                                <img
-                                  src={article.urlToImage}
-                                  alt={article.title}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => { e.target.style.display = 'none' }}
-                                />
-                              </div>
-                            )}
-                            <h4 className="font-medium text-sm text-foreground line-clamp-2 hover:text-primary transition-colors">
-                              {article.title}
-                            </h4>
-                            {article.description && (
-                              <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
-                                {article.description}
-                              </p>
-                            )}
-                            <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
-                              <span className="line-clamp-1">{article.source?.name || 'News'}</span>
-                              <span>{new Date(article.publishedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>
-                            </div>
-                            <div className="flex items-center gap-1 mt-2 text-xs text-primary">
-                              <ExternalLink className="w-3 h-3" />
-                              <span>Read more</span>
-                            </div>
-                          </div>
-                        </a>
-                      ))}
+                  
+                  {loadingNews ? (
+                    <div className="p-8 flex justify-center">
+                      <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin"></div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  ) : news.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <Newspaper className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                      <p className="text-sm text-muted-foreground">No recent news found</p>
+                      <p className="text-xs text-muted-foreground mt-1">Check back later for updates</p>
+                    </div>
+                  ) : (
+                    <div 
+                      ref={newsContainerRef}
+                      className="overflow-y-scroll scrollbar-news" style={{ maxHeight: 'calc(100vh - 14rem)' }}
+                    >
+                      <div className="space-y-0">
+                        {news.map((article, index) => (
+                          <a
+                            key={index}
+                            href={article.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block border-b border-border last:border-b-0 hover:bg-secondary/50 transition-colors"
+                          >
+                            <div className="p-4">
+                              {article.urlToImage && (
+                                <div className="w-full h-32 bg-secondary rounded-lg overflow-hidden mb-3">
+                                  <img
+                                    src={article.urlToImage}
+                                    alt={article.title}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => { e.target.style.display = 'none' }}
+                                  />
+                                </div>
+                              )}
+                              <h4 className="font-medium text-sm text-foreground line-clamp-2 hover:text-primary transition-colors">
+                                {article.title}
+                              </h4>
+                              {article.description && (
+                                <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
+                                  {article.description}
+                                </p>
+                              )}
+                              <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
+                                <span className="line-clamp-1">{article.source?.name || 'News'}</span>
+                                <span>{new Date(article.publishedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>
+                              </div>
+                              <div className="flex items-center gap-1 mt-2 text-xs text-primary">
+                                <ExternalLink className="w-3 h-3" />
+                                <span>Read more</span>
+                              </div>
+                            </div>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </aside>
       </div>
+
+      {/* Mobile Community Info Dialog */}
+      <Dialog open={showMobileInfo} onOpenChange={setShowMobileInfo}>
+        <DialogContent className="sm:max-w-md w-[95vw] h-[90vh] sm:h-auto max-h-[90vh] overflow-y-auto bg-background/95 backdrop-blur-xl border-border rounded-xl !duration-0 data-[state=open]:!animate-none data-[state=closed]:!animate-none">
+          <DialogHeader>
+            <DialogTitle>Community Info</DialogTitle>
+          </DialogHeader>
+          <div className="mt-4">
+            {renderCommunityInfo()}
+          </div>
+        </DialogContent>
+      </Dialog>
     </main>
   )
 }

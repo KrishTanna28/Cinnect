@@ -100,7 +100,9 @@ export default function CommunitiesPage() {
   const fetchRecommendedCommunities = async () => {
     setCommunitiesLoading(true)
     try {
-      const response = await fetch('/api/communities?sort=popular&limit=10')
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
+      const response = await fetch('/api/communities?sort=popular&limit=10', { headers })
       const data = await response.json()
       if (data.success) {
         setRecommendedCommunities(data.data)
@@ -115,7 +117,9 @@ export default function CommunitiesPage() {
   const fetchRecentPosts = async () => {
     setRecentPostsLoading(true)
     try {
-      const response = await fetch('/api/communities/posts?sort=recent&limit=10')
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
+      const response = await fetch('/api/communities/posts?sort=recent&limit=10', { headers })
       const data = await response.json()
       if (data.success) {
         setRecentPosts(data.data)
@@ -150,7 +154,10 @@ export default function CommunitiesPage() {
       params.append('page', pageNum.toString())
       params.append('limit', '20')
 
-      const response = await fetch(`/api/communities/posts?${params}`)
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
+
+      const response = await fetch(`/api/communities/posts?${params}`, { headers })
       const data = await response.json()
 
       if (data.success) {

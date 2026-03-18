@@ -4,11 +4,12 @@ import Community from '@/lib/models/Community.js'
 import User from '@/lib/models/User.js'
 import connectDB from '@/lib/config/database.js'
 import { buildFuzzyMongoQuery } from '@/lib/utils/fuzzySearch.js'
+import { withOptionalAuth } from '@/lib/middleware/withAuth.js'
 
 await connectDB()
 
 // GET /api/communities/posts - Get all posts across all communities
-export async function GET(request) {
+export const GET = withOptionalAuth(async (request, { user }) => {
   try {
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
@@ -21,6 +22,17 @@ export async function GET(request) {
     let communityQuery = { isActive: true }
     if (category && category !== 'all') {
       communityQuery.category = category
+    }
+
+    if (user) {
+      // User can see public communities or private ones they are members of
+      communityQuery.$or = [
+        { isPrivate: { $ne: true } },
+        { members: user._id }
+      ]
+    } else {
+      // Unauthenticated users can only see public communities
+      communityQuery.isPrivate = { $ne: true }
     }
 
     const communityIds = await Community.find(communityQuery).distinct('_id')
@@ -179,4 +191,4 @@ export async function GET(request) {
       { status: 500 }
     )
   }
-}
+})

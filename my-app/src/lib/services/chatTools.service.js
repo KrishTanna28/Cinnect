@@ -51,8 +51,21 @@ export async function getTrendingPosts(limit = 5) {
 
   const safeLimit = Math.min(Math.max(limit, 1), 10);
 
+  // Exclude private communities
+  const Community = (await import('@/lib/models/Community.js')).default;
+  const publicCommunityIds = await Community.find({ 
+    isActive: true, 
+    isPrivate: { $ne: true } 
+  }).distinct('_id');
+
   const posts = await Post.aggregate([
-    { $match: { isApproved: true, isFlagged: { $ne: true } } },
+    { 
+      $match: { 
+        isApproved: true, 
+        isFlagged: { $ne: true },
+        community: { $in: publicCommunityIds }
+      } 
+    },
     {
       $addFields: {
         likesCount: { $size: { $ifNull: ["$likes", []] } },
@@ -120,11 +133,19 @@ export async function searchPostsByTopic(topic, limit = 5) {
   const safeLimit = Math.min(Math.max(limit, 1), 10);
   const regex = new RegExp(topic, "i");
 
+  // Exclude private communities
+  const Community = (await import('@/lib/models/Community.js')).default;
+  const publicCommunityIds = await Community.find({ 
+    isActive: true, 
+    isPrivate: { $ne: true } 
+  }).distinct('_id');
+
   const posts = await Post.aggregate([
     {
       $match: {
         isApproved: true,
         isFlagged: { $ne: true },
+        community: { $in: publicCommunityIds },
         $or: [{ title: regex }, { content: regex }],
       },
     },

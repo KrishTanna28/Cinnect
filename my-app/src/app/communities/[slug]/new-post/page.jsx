@@ -449,7 +449,7 @@ export default function NewPostPage() {
               disabled={submitting || !title.trim() || (!content.trim() && imagePreviews.length === 0 && videoPreviews.length === 0)}
               className="flex-1 sm:flex-initial cursor-pointer"
             >
-              {submitting ? 'Posting...' : 'Create Post'}
+              {submitting ? 'Posting...' : 'Create'}
             </Button>
           </div>
         </form>

@@ -20,12 +20,22 @@ export const POST = withAuth(async (request, { user, params }) => {
       )
     }
 
-    const post = await Post.findById(id)
+    const post = await Post.findById(id).populate('community')
     if (!post) {
       return NextResponse.json(
         { success: false, message: 'Post not found' },
         { status: 404 }
       )
+    }
+
+    if (post.community && post.community.isPrivate) {
+      const isMember = post.community.members.some(mId => mId.toString() === user._id.toString())
+      if (!isMember) {
+        return NextResponse.json(
+          { success: false, message: 'Must be a member to comment in a private community' },
+          { status: 403 }
+        )
+      }
     }
 
     if (post.isLocked) {

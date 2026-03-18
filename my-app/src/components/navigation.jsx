@@ -169,7 +169,7 @@ export default function Navigation() {
         // Communities
         fetch(`/api/communities/search?q=${encodeURIComponent(query)}&limit=5`).then(r => r.json()),
         // Posts
-        fetch(`/api/communities/posts?search=${encodeURIComponent(query)}&limit=5`).then(r => r.json()),
+        fetch(`/api/communities/posts?search=${encodeURIComponent(query)}&limit=5`, { headers }).then(r => r.json()),
         // People/Users
         fetch(`/api/users/search?q=${encodeURIComponent(query)}&limit=5`, { headers }).then(r => r.json())
       ])

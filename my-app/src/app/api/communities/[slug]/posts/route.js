@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import Post from '@/lib/models/Post.js'
 import Community from '@/lib/models/Community.js'
-import { withAuth } from '@/lib/middleware/withAuth.js'
+import { withAuth, withOptionalAuth } from '@/lib/middleware/withAuth.js'
 import connectDB from '@/lib/config/database.js'
 import { uploadPostImagesToCloudinary, uploadPostVideosToCloudinary } from '@/lib/utils/cloudinaryHelper.js'
 import { generateEmbedding } from '@/lib/services/embedding.service.js'
@@ -11,7 +11,7 @@ import { checkAdultContentAccess, getAdultContentFilter } from '@/lib/middleware
 await connectDB()
 
 // GET /api/communities/[slug]/posts - Get posts in community
-export async function GET(request, { params }) {
+export const GET = withOptionalAuth(async (request, { params, user }) => {
   try {
     const { slug } = await params
     const { searchParams } = new URL(request.url)
@@ -25,6 +25,18 @@ export async function GET(request, { params }) {
         { success: false, message: 'Community not found' },
         { status: 404 }
       )
+    }
+
+    if (community.isPrivate) {
+      const isMember = user ? community.members.some(id => id.toString() === user._id.toString()) : false
+      if (!isMember) {
+        return NextResponse.json({
+          success: true,
+          data: [],
+          isPrivateHidden: true,
+          pagination: { page, limit, total: 0, pages: 0 }
+        })
+      }
     }
 
     // Check if user should see adult content
@@ -157,7 +169,7 @@ export async function GET(request, { params }) {
       { status: 500 }
     )
   }
-}
+})
 
 // POST /api/communities/[slug]/posts - Create post in community
 export const POST = withAuth(async (request, { user, params }) => {
