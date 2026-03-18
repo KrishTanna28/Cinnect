@@ -45,7 +45,6 @@ const SIDEBAR_SECTIONS = [
   { id: "privacy", label: "Account Privacy", icon: Lock, group: "privacy" },
   { id: "blocked-users", label: "Blocked Users", icon: Shield, group: "privacy" },
   { id: "follow-requests", label: "Follow Requests", icon: UserCheck, group: "privacy" },
-  { id: "appearance", label: "Appearance", icon: Palette, group: "preferences" },
 ]
 
 export default function SettingsPage() {
@@ -412,27 +411,6 @@ export default function SettingsPage() {
             </button>
           )
         })}
-
-        {/* Preferences heading */}
-        <p className="hidden md:block px-4 pt-6 pb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          Preferences
-        </p>
-        <div className="block md:hidden mx-2 my-3 border-t border-border" />
-        {SIDEBAR_SECTIONS.filter(s => s.group === "preferences").map(section => (
-          <button
-            key={section.id}
-            onClick={() => setActiveSection(section.id)}
-            title={section.label}
-            className={`w-full flex items-center justify-center md:justify-start gap-3 px-2 md:px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
-              activeSection === section.id
-                ? "bg-secondary/60 text-foreground border-l-2 border-primary"
-                : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
-            }`}
-          >
-            <section.icon className="w-5 h-5 flex-shrink-0" />
-            <span className="hidden md:block">{section.label}</span>
-          </button>
-        ))}
       </div>
 
       {/* Logout at bottom */}
@@ -824,55 +802,6 @@ export default function SettingsPage() {
                   )}
                 </div>
               )}
-
-              {/* ─── APPEARANCE ─── */}
-              {activeSection === "appearance" && (
-                <div>
-                  <h2 className="text-xl font-bold text-foreground mb-6">Appearance</h2>
-
-                  <div className="space-y-3">
-                    <button
-                      onClick={() => updateSettings("theme", "dark")}
-                      className={`w-full flex items-center gap-4 p-5 rounded-xl border transition-colors cursor-pointer ${
-                        settings.theme === "dark"
-                          ? "bg-primary/10 border-primary"
-                          : "bg-secondary/20 border-border hover:border-primary/50"
-                      }`}
-                    >
-                      <Moon className="w-5 h-5 text-primary" />
-                      <div className="flex-1 text-left">
-                        <h3 className="font-medium text-foreground text-sm">Dark Mode</h3>
-                        <p className="text-xs text-muted-foreground">A darker theme that's easy on the eyes</p>
-                      </div>
-                      {settings.theme === "dark" && (
-                        <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                          <div className="w-2 h-2 rounded-full bg-primary-foreground" />
-                        </div>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => updateSettings("theme", "light")}
-                      className={`w-full flex items-center gap-4 p-5 rounded-xl border transition-colors cursor-pointer ${
-                        settings.theme === "light"
-                          ? "bg-primary/10 border-primary"
-                          : "bg-secondary/20 border-border hover:border-primary/50"
-                      }`}
-                    >
-                      <Sun className="w-5 h-5 text-primary" />
-                      <div className="flex-1 text-left">
-                        <h3 className="font-medium text-foreground text-sm">Light Mode</h3>
-                        <p className="text-xs text-muted-foreground">A brighter theme for well-lit environments</p>
-                      </div>
-                      {settings.theme === "light" && (
-                        <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                          <div className="w-2 h-2 rounded-full bg-primary-foreground" />
-                        </div>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              )}
-
             </div>
           </div>
         </div>

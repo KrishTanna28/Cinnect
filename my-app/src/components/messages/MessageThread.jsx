@@ -6,7 +6,7 @@ import { useSocket } from '@/contexts/SocketContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, Send, Smile, Image as ImageIcon, Phone, Video, Info, X, Loader, Sticker, PlaySquare, ImagePlus, FileImage, Trash2, Ban, VolumeX, Play, Pause, Volume2, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Send, Smile, Image as ImageIcon, Phone, Video, Info, X, Sticker, PlaySquare, ImagePlus, FileImage, Trash2, Ban, VolumeX, Play, Pause, Volume2, RotateCcw } from 'lucide-react';
 import { formatDistanceToNow, format, isToday, isYesterday } from 'date-fns';
 import EmojiPicker from 'emoji-picker-react';
 import Link from 'next/link';
@@ -220,6 +220,16 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
 
   // Reacting to messages state
   const [reactingToMsgId, setReactingToMsgId] = useState(null);
+
+  // Set global active conversation so navigation top bar knows when not to alert
+  useEffect(() => {
+    if (conversation?._id) {
+      window.activeConversationId = conversation._id;
+    }
+    return () => {
+      window.activeConversationId = null;
+    };
+  }, [conversation?._id]);
 
   const messagesEndRef = useRef(null);
   const participant = conversation.participant;
@@ -709,7 +719,7 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
           <div className="space-y-6">
             {isLoadingMore && (
               <div className="flex justify-center py-2">
-                <Loader className="w-5 h-5 animate-spin text-muted-foreground" />
+                      <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
               </div>
             )}
             {Object.entries(messageGroups).map(([date, msgs]) => (
@@ -850,7 +860,7 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
       <div className="border-t border-border p-4 flex-shrink-0 relative">
         {sending && selectedMediaType !== 'text' && (
           <div className="absolute -top-10 left-4 text-xs text-muted-foreground flex items-center gap-2 bg-card p-2 rounded-lg border border-border shadow-sm">
-            <Loader className="w-3 h-3 animate-spin" /> Uploading media...
+                      <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
           </div>
         )}
         

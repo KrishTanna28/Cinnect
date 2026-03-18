@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { useUser } from "@/contexts/UserContext"
 import { useSocket } from "@/contexts/SocketContext"
+import { useToast } from "@/hooks/use-toast"
 
 const comfortaa = Comfortaa({
   subsets: ["latin"],
@@ -54,7 +55,8 @@ export default function Navigation() {
   const router = useRouter()
   const pathname = usePathname()
   const { user, isLoading, logout } = useUser()
-  const { on } = useSocket() || {}
+  const { on, socket } = useSocket() || {}
+  const { toast } = useToast()
   const [showProfilePopup, setShowProfilePopup] = useState(false)
   const profilePopupRef = useRef(null)
 
@@ -92,11 +94,31 @@ export default function Navigation() {
     const unsubRead = on("messages:read", () => {
       fetchUnreadMsgCount()
     })
+    const unsubNewMsg = on("message:new", (data) => {
+      fetchUnreadMsgCount();
+      
+      if (!data || !data.message) return;
+      
+      const msg = data.message;
+      const conversationId = data.conversationId || msg.conversationId || msg.conversation;
+      const isCurrentChatOpen = window.activeConversationId === conversationId;
+      const senderId = msg.sender?._id || msg.sender;
+      const isMe = senderId === user?._id;
+      
+      if (!isCurrentChatOpen && !isMe) {
+        toast({
+          title: `New message from ${msg.sender?.username || msg.sender?.fullName || "Someone"}`,
+          description: msg.content || (msg.mediaUrl ? "Sent an attachment" : "Sent a message"),
+          duration: 3000,
+        });
+      }
+    })
     return () => {
       unsubUpdate()
       unsubRead()
+      unsubNewMsg()
     }
-  }, [on, fetchUnreadMsgCount])
+  }, [on, fetchUnreadMsgCount, user?._id, toast])
 
   // Search history state
   const [searchHistory, setSearchHistory] = useState([])
