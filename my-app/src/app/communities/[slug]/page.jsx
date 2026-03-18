@@ -1169,7 +1169,7 @@ export default function CommunityPage() {
                 onChange={(e) => setSortBy(e.target.value)}
                 className="px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
               >
-                <option value="recent">Most Recent</option>
+                <option value="recent">Recent</option>
                 <option value="top">Top Rated</option>
                 <option value="hot">Hot</option>
               </select>

@@ -22,7 +22,7 @@ const categories = [
 ]
 
 const sortOptions = [
-  { id: 'recent', label: 'Most Recent' },
+  { id: 'recent', label: 'Recent' },
   { id: 'popular', label: 'Most Popular' },
   { id: 'hot', label: 'Trending' }
 ]

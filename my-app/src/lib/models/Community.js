@@ -203,11 +203,23 @@ communitySchema.methods.hasJoinRequest = function(userId) {
   return this.pendingRequests.some(req => req.user.toString() === userId?.toString());
 };
 
-communitySchema.methods.approveJoinRequest =  async function(userId) {
-  this.removeJoinRequest(userId);
-  this.addMember(userId);
+communitySchema.methods.approveJoinRequest = async function(userId) {
+  // Avoid multiple saves by modifying the document directly before saving once
+  this.pendingRequests = this.pendingRequests.filter(
+    req => req.user.toString() !== userId?.toString()
+  );
+  if (!this.members.includes(userId)) {
+    this.members.push(userId);
+    this.memberCount = this.members.length;
+  }
   return await this.save();
 };
+
+// Next.js hot-reload cache bypass for Mongoose models
+if (mongoose.models.Community) {
+  // Update the existing model's schema methods to use the latest ones during HMR
+  Object.assign(mongoose.models.Community.schema.methods, communitySchema.methods);
+}
 
 const Community = mongoose.models.Community || mongoose.model('Community', communitySchema);
 

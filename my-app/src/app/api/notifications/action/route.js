@@ -14,6 +14,7 @@ export const POST = withAuth(async (request, { user }) => {
     // action = 'accept' | 'reject'
 
     if (!notificationId || !['accept', 'reject'].includes(action)) {
+      console.log('400 Error: missing notificationId or invalid action', { notificationId, action });
       return NextResponse.json(
         { success: false, message: 'notificationId and action (accept|reject) are required' },
         { status: 400 }
@@ -26,6 +27,7 @@ export const POST = withAuth(async (request, { user }) => {
     });
 
     if (!notification) {
+      console.log('404 Error: Notification not found', { notificationId, userId: user._id });
       return NextResponse.json(
         { success: false, message: 'Notification not found' },
         { status: 404 }
@@ -33,6 +35,7 @@ export const POST = withAuth(async (request, { user }) => {
     }
 
     if (notification.actionTaken) {
+      console.log('400 Error: Action already taken', { notificationId });
       return NextResponse.json(
         { success: false, message: 'Action already taken on this notification' },
         { status: 400 }
@@ -73,8 +76,7 @@ export const POST = withAuth(async (request, { user }) => {
         if (action === 'accept') {
           await community.approveJoinRequest(requestingUserId);
         } else {
-          community.removeJoinRequest(requestingUserId);
-          await community.save();
+          await community.removeJoinRequest(requestingUserId);
         }
       }
     }
