@@ -73,6 +73,27 @@ export const GET = withOptionalAuth(async (request, { params, user: currentUser 
     const diffTime = Math.abs(now - new Date(memberSince))
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
+    // Check if this profile's detailed content should be visible
+    const canViewFullProfile = isOwnProfile || !user.isPrivate || isFollowing
+
+    // Mutual followers computation
+    let mutualFollowersPreview = []
+    let totalMutuals = 0
+
+    if (currentUser && !isOwnProfile) {
+      const myFollowingStr = currentUser.following?.map(id => id.toString()) || []
+      const theirFollowersStr = user.followers?.map(id => id.toString()) || []
+      
+      const mutualIds = theirFollowersStr.filter(id => myFollowingStr.includes(id))
+      totalMutuals = mutualIds.length
+      
+      if (totalMutuals > 0) {
+        mutualFollowersPreview = await User.find({ _id: { $in: mutualIds.slice(0, 3) } })
+          .select('_id username avatar')
+          .lean()
+      }
+    }
+
     // Basic profile data (always visible)
     const publicProfile = {
       _id: user._id,
@@ -88,12 +109,13 @@ export const GET = withOptionalAuth(async (request, { params, user: currentUser 
       isFollowedBy,
       followersCount,
       followingCount,
+      mutuals: {
+        preview: mutualFollowersPreview,
+        total: totalMutuals,
+      },
       level: user.level || 1,
       points: user.points || 0,
     }
-
-    // Check if this profile's detailed content should be visible
-    const canViewFullProfile = isOwnProfile || !user.isPrivate || isFollowing
 
     if (!canViewFullProfile) {
       // Private profile - return limited info

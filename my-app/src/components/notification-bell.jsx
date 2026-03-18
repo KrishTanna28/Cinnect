@@ -236,7 +236,7 @@ export default function NotificationBell() {
       {/* Bell button */}
       <button
         onClick={toggleDropdown}
-        className="relative p-2 text-foreground hover:text-primary transition-all active:scale-90 cursor-pointer"
+        className={`relative p-2 transition-all active:scale-90 cursor-pointer ${open ? 'text-primary' : 'text-foreground hover:text-primary'}`}
         title="Notifications"
       >
         <Bell className="w-5 h-5" />
@@ -249,7 +249,7 @@ export default function NotificationBell() {
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 max-h-[70vh] bg-background border border-border rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute left-0 right-auto sm:left-auto sm:right-0 top-full mt-2 w-80 sm:w-96 max-h-[70vh] bg-background border border-border rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-secondary/30">
             <h3 className="text-sm font-semibold text-foreground">Notifications</h3>

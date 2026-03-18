@@ -7,7 +7,7 @@ import { useSocket } from '@/contexts/SocketContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Search, Edit, ArrowLeft } from 'lucide-react';
+import { Search, Edit, ArrowLeft, VolumeX } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import MessageThread from '@/components/messages/MessageThread';
 import NewMessageDialog from '@/components/messages/NewMessageDialog';
@@ -439,9 +439,14 @@ function ConversationItem({ conversation, onClick, isActive = false, currentUser
 
       <div className="flex-1 min-w-0 text-left">
         <div className="flex items-center justify-between mb-1">
-          <p className={`text-sm truncate ${unreadCount > 0 ? 'font-bold' : 'font-medium'}`}>
-            {participant?.username}
-          </p>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <p className={`text-sm truncate ${unreadCount > 0 ? 'font-bold' : 'font-medium'}`}>
+              {participant?.username}
+            </p>
+            {conversation?.mutedBy?.some(id => id.toString() === currentUser?._id?.toString()) && (
+              <VolumeX className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" title="Muted" />
+            )}
+          </div>
           {lastMessage && (
             <span className="text-xs text-muted-foreground ml-2">
               {formatDistanceToNow(new Date(lastMessage.createdAt), { addSuffix: false })}

@@ -301,18 +301,26 @@ export default function PublicProfilePage({ params }) {
                 <div className="flex items-center gap-6 mb-3 justify-center sm:justify-start">
                   <div className="text-center">
                     <p className="text-lg font-bold text-foreground">{profile.stats?.totalReviews || 0}</p>
-                    <p className="text-xs text-muted-foreground">Posts</p>
+                    <p className="text-xs text-muted-foreground">Reviews</p>
                   </div>
                   <button
-                    onClick={() => { setFollowModalTab("followers"); setShowFollowModal(true) }}
-                    className="text-center cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => {
+                      if (isLocked) return;
+                      setFollowModalTab("followers"); 
+                      setShowFollowModal(true);
+                    }}
+                    className={`text-center transition-opacity ${isLocked ? '' : 'cursor-pointer hover:opacity-80'}`}
                   >
                     <p className="text-lg font-bold text-foreground">{followersCount}</p>
                     <p className="text-xs text-muted-foreground">Followers</p>
                   </button>
                   <button
-                    onClick={() => { setFollowModalTab("following"); setShowFollowModal(true) }}
-                    className="text-center cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => {
+                      if (isLocked) return;
+                      setFollowModalTab("following"); 
+                      setShowFollowModal(true);
+                    }}
+                    className={`text-center transition-opacity ${isLocked ? '' : 'cursor-pointer hover:opacity-80'}`}
                   >
                     <p className="text-lg font-bold text-foreground">{followingCount}</p>
                     <p className="text-xs text-muted-foreground">Following</p>
@@ -320,7 +328,40 @@ export default function PublicProfilePage({ params }) {
                 </div>
 
                 <p className="text-muted-foreground text-sm">Level {profile.level || 1} • {totalPoints || 0} Points</p>
-                {profile.bio && <p className="text-muted-foreground mt-2 max-w-2xl text-sm">{profile.bio}</p>}
+                {profile.bio && <p className="text-muted-foreground mt-2 max-w-2xl text-sm justify-center sm:justify-start">{profile.bio}</p>}
+                
+                {/* Mutual Followers Preview */}
+                {!profile.isOwnProfile && profile.mutuals?.total > 0 && (
+                  <button
+                    onClick={() => { setFollowModalTab("mutuals"); setShowFollowModal(true) }}
+                    className="flex items-center gap-2 cursor-pointer group w-fit mt-3 mx-auto sm:mx-0"
+                  >
+                    <div className="flex -space-x-2">
+                      {profile.mutuals.preview.map((f) => (
+                        <Avatar key={f._id} className="w-6 h-6 border-2 border-background">
+                          <AvatarImage src={f.avatar} alt={f.username} />
+                          <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-bold">
+                            {f.username?.charAt(0).toUpperCase() || 'U'}
+                          </AvatarFallback>
+                        </Avatar>
+                      ))}
+                    </div>
+                    <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors text-left">
+                      Followed by{" "}
+                      <span className="font-semibold text-foreground">
+                        {profile.mutuals.preview[0].username}
+                      </span>
+                      {profile.mutuals.total - 1 > 0 && (
+                        <>
+                          {" "}and{" "}
+                          <span className="font-semibold text-foreground">
+                            {profile.mutuals.total - 1} other{(profile.mutuals.total - 1) > 1 ? "s" : ""}
+                          </span>
+                        </>
+                      )}
+                    </p>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -364,13 +405,14 @@ export default function PublicProfilePage({ params }) {
         initialTab={followModalTab}
         followersCount={followersCount}
         followingCount={followingCount}
+        isLocked={isLocked}
       />
 
       {/* Private Profile Lock Screen */}
       {isLocked ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="w-24 h-24 rounded-full border-2 border-muted-foreground/30 flex items-center justify-center mb-6">
-            <Lock className="w-10 h-10 text-muted-foreground" />
+        <div className="flex flex-col items-center justify-center py-24 px-4 text-center">
+          <div className="w-24 h-24 bg-secondary/50 rounded-full flex items-center justify-center mb-6">
+            <Lock className="w-12 h-12 text-muted-foreground" />
           </div>
           <h2 className="text-xl font-bold text-foreground mb-2">
             This Account is Private

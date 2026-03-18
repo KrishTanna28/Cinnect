@@ -5,6 +5,7 @@ import Conversation from '@/lib/models/Conversation';
 import Message from '@/lib/models/Message';
 import { uploadChatMediaToCloudinary } from '@/lib/utils/cloudinaryHelper';
 import User from '@/lib/models/User';
+import { emitUnreadCountUpdate } from '@/lib/utils/messages';
 
 // GET /api/messages/[conversationId] - Get messages in a conversation
 export const GET = withAuth(async (request, { params, user }) => {
@@ -118,6 +119,9 @@ export const GET = withAuth(async (request, { params, user }) => {
         conversationId,
         userId: user._id
       });
+
+      // Update the unread count in real-time
+      emitUnreadCountUpdate(io, user._id.toString());
     }
 
     const total = await Message.countDocuments({
@@ -253,14 +257,10 @@ export const POST = withAuth(async (request, { params, user }) => {
     // Increment unread count for other participant
     const otherParticipantId = otherParticipantDoc._id;
 
-    const isMutedByOther = conversation.mutedBy?.some(uId => uId.toString() === otherParticipantId.toString()) || false;
-
-    if (!isMutedByOther) {
-      const unreadCount = conversation.unreadCount || new Map();
-      const currentCount = unreadCount.get(otherParticipantId.toString()) || 0;
-      unreadCount.set(otherParticipantId.toString(), currentCount + 1);
-      conversation.unreadCount = unreadCount;
-    }
+    const unreadCount = conversation.unreadCount || new Map();
+    const currentCount = unreadCount.get(otherParticipantId.toString()) || 0;
+    unreadCount.set(otherParticipantId.toString(), currentCount + 1);
+    conversation.unreadCount = unreadCount;
 
     await conversation.save();
 
@@ -269,7 +269,8 @@ export const POST = withAuth(async (request, { params, user }) => {
     if (io) {
       const messagePayload = {
         conversationId,
-        message: message.toObject()
+        message: message.toObject(),
+        mutedBy: conversation.mutedBy || []
       };
 
       io.to(`user:${otherParticipantId.toString()}`).emit('message:new', messagePayload);
@@ -283,6 +284,9 @@ export const POST = withAuth(async (request, { params, user }) => {
 
       io.to(`user:${otherParticipantId.toString()}`).emit('conversation:update', populatedConv);
       io.to(`user:${user._id}`).emit('conversation:update', populatedConv);
+
+      // Update the unread count in real-time
+      emitUnreadCountUpdate(io, otherParticipantId.toString());
     }
 
     return NextResponse.json({
@@ -348,6 +352,9 @@ export const DELETE = withAuth(async (request, { params, user }) => {
     const io = globalThis._io;
     if (io) {
       io.to(`user:${user._id}`).emit('conversation:delete', { conversationId });
+      
+      // Update the unread count in real-time
+      emitUnreadCountUpdate(io, user._id.toString());
     }
 
     return NextResponse.json({ success: true, message: 'Conversation deleted' });

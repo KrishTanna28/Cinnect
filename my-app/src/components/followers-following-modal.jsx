@@ -31,7 +31,8 @@ export default function FollowersFollowingModal({
   userId,
   initialTab = "followers",
   followersCount = 0,
-  followingCount = 0
+  followingCount = 0,
+  isLocked = false
 }) {
   const [activeTab, setActiveTab] = useState(initialTab)
   const [users, setUsers] = useState([])
@@ -69,11 +70,12 @@ export default function FollowersFollowingModal({
       const headers = {}
       if (token) headers["Authorization"] = `Bearer ${token}`
 
-      const endpoint = activeTab === "followers" ? "followers" : "following"
+      const endpoint = activeTab === "following" ? "following" : "followers"
       const params = new URLSearchParams({
         page: pageNum.toString(),
         limit: "20",
-        ...(search && { search })
+        ...(search && { search }),
+        ...(activeTab === "mutuals" && { mutualsOnly: "true" })
       })
 
       const response = await fetch(
@@ -202,32 +204,51 @@ export default function FollowersFollowingModal({
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex gap-0 flex-1">
-            <button
-              onClick={() => setActiveTab("followers")}
-              className={`flex-1 py-2 text-center font-semibold text-sm transition-colors cursor-pointer relative ${
-                activeTab === "followers"
-                  ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Followers
-              {activeTab === "followers" && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab("following")}
-              className={`flex-1 py-2 text-center font-semibold text-sm transition-colors cursor-pointer relative ${
-                activeTab === "following"
-                  ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Following
-              {activeTab === "following" && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
-              )}
-            </button>
+            {!isLocked && (
+              <>
+                <button
+                  onClick={() => setActiveTab("followers")}
+                  className={`flex-1 py-2 text-center font-semibold text-sm transition-colors cursor-pointer relative ${
+                    activeTab === "followers"
+                      ? "text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Followers
+                  {activeTab === "followers" && (
+                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
+                  )}
+                </button>
+                <button
+                  onClick={() => setActiveTab("following")}
+                  className={`flex-1 py-2 text-center font-semibold text-sm transition-colors cursor-pointer relative ${
+                    activeTab === "following"
+                      ? "text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Following
+                  {activeTab === "following" && (
+                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
+                  )}
+                </button>
+              </>
+            )}
+            {currentUser && currentUser._id !== userId && (
+              <button
+                onClick={() => setActiveTab("mutuals")}
+                className={`flex-1 py-2 text-center font-semibold text-sm transition-colors cursor-pointer relative ${
+                  activeTab === "mutuals"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Mutuals
+                {activeTab === "mutuals" && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
+                )}
+              </button>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -269,6 +290,8 @@ export default function FollowersFollowingModal({
                   ? "No users found"
                   : activeTab === "followers"
                   ? "No followers yet"
+                  : activeTab === "mutuals"
+                  ? "No mutuals yet"
                   : "Not following anyone yet"}
               </p>
             </div>

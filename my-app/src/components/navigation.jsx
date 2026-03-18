@@ -94,9 +94,12 @@ export default function Navigation() {
     const unsubRead = on("messages:read", () => {
       fetchUnreadMsgCount()
     })
+    const unsubUnreadCount = on("unread-count:update", (data) => {
+      if (typeof data.count === "number") {
+        setUnreadMsgCount(data.count)
+      }
+    })
     const unsubNewMsg = on("message:new", (data) => {
-      fetchUnreadMsgCount();
-      
       if (!data || !data.message) return;
       
       const msg = data.message;
@@ -105,17 +108,29 @@ export default function Navigation() {
       const senderId = msg.sender?._id || msg.sender;
       const isMe = senderId === user?._id;
       
+      // Check if current user muted this conversation
+      const isMuted = data.mutedBy?.some(id => id.toString() === user?._id) || false;
+      
       if (!isCurrentChatOpen && !isMe) {
-        toast({
-          title: `New message from ${msg.sender?.username || msg.sender?.fullName || "Someone"}`,
-          description: msg.content || (msg.mediaUrl ? "Sent an attachment" : "Sent a message"),
-          duration: 3000,
-        });
+        // Optimistic real-time update using web sockets (though unread-count:update will sync it from server)
+        setUnreadMsgCount(prev => prev + 1);
+        
+        if (!isMuted) {
+          toast({
+            title: `New message from ${msg.sender?.username || msg.sender?.fullName || "Someone"}`,
+            description: msg.content || (msg.mediaUrl ? "Sent an attachment" : "Sent a message"),
+            duration: 3000,
+          });
+        }
       }
+      
+      // Still fetch in background to ensure database sync
+      fetchUnreadMsgCount();
     })
     return () => {
       unsubUpdate()
       unsubRead()
+      unsubUnreadCount()
       unsubNewMsg()
     }
   }, [on, fetchUnreadMsgCount, user?._id, toast])
@@ -380,14 +395,27 @@ export default function Navigation() {
       >
         <div className="w-full px-4 sm:px-6">
           <div className="relative flex items-center justify-between h-16">
-            {/* Mobile: invisible spacer left | centered logo | bell right */}
-            <div className="sm:hidden w-8 flex-shrink-0" />
+            {/* Mobile: bell left | centered logo | messages right */}
+            {(!isLoading && user) ? (
+              <div className="sm:hidden flex items-center">
+                <NotificationBell />
+              </div>
+            ) : (
+              <div className="sm:hidden w-8 flex-shrink-0" />
+            )}
             <Link href="/" className={`sm:hidden absolute left-1/2 -translate-x-1/2 ${comfortaa.className} font-bold text-2xl text-primary`} style={{ textShadow: hasBackground ? 'none' : '0 2px 4px rgba(0,0,0,0.8)' }}>
               cinnect
             </Link>
             {!isLoading && user && (
-              <div className="sm:hidden ml-auto">
-                <NotificationBell />
+              <div className="sm:hidden ml-auto flex items-center">
+                <Link href="/messages" className={`relative p-2 transition-all active:scale-90 cursor-pointer ${pathname?.startsWith('/messages') ? 'text-primary' : 'text-foreground hover:text-primary'}`} title="Messages">
+                  <Send className="w-5 h-5" />
+                  {unreadMsgCount > 0 && (
+                    <span className="absolute top-1 right-1 flex h-3 min-w-[12px] items-center justify-center rounded-full bg-red-500 px-0.5 text-[8px] font-bold text-white shadow-sm ring-2 ring-background">
+                      {unreadMsgCount > 99 ? '99+' : unreadMsgCount}
+                    </span>
+                  )}
+                </Link>
               </div>
             )}
             {!isLoading && !user && (
@@ -709,16 +737,16 @@ export default function Navigation() {
               {!isLoading && user && (
                 <>
                   {/* Navigation Icons */}
-                  <Link href="/" className="p-2 text-foreground hover:text-primary transition-all active:scale-90 cursor-pointer" title="Home">
+                  <Link href="/" className={`p-2 transition-all active:scale-90 cursor-pointer ${pathname === '/' ? 'text-primary' : 'text-foreground hover:text-primary'}`} title="Home">
                     <Home className="w-5 h-5" />
                   </Link>
-                  <Link href="/browse" className="p-2 text-foreground hover:text-primary transition-all active:scale-90 cursor-pointer" title="Browse">
+                  <Link href="/browse" className={`p-2 transition-all active:scale-90 cursor-pointer ${pathname === '/browse' ? 'text-primary' : 'text-foreground hover:text-primary'}`} title="Browse">
                     <Compass className="w-5 h-5" />
                   </Link>
-                  <Link href="/communities" className="p-2 text-foreground hover:text-primary transition-all active:scale-90 cursor-pointer" title="Communities">
+                  <Link href="/communities" className={`p-2 transition-all active:scale-90 cursor-pointer ${pathname?.startsWith('/communities') ? 'text-primary' : 'text-foreground hover:text-primary'}`} title="Communities">
                     <Users className="w-5 h-5" />
                   </Link>
-<Link href="/messages" className="relative p-2 text-foreground hover:text-primary transition-all active:scale-90 cursor-pointer" title="Messages">
+                  <Link href="/messages" className={`relative p-2 transition-all active:scale-90 cursor-pointer ${pathname?.startsWith('/messages') ? 'text-primary' : 'text-foreground hover:text-primary'}`} title="Messages">
                       <Send className="w-5 h-5" />
                       {unreadMsgCount > 0 && (
                         <span className="absolute top-1 right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white shadow-sm ring-2 ring-background">
@@ -797,7 +825,7 @@ export default function Navigation() {
             {/* Home */}
             <Link
               href="/"
-              className={`flex flex-col items-center justify-center flex-1 h-full transition-all active:scale-90 ${pathname === '/' ? 'text-primary' : 'text-muted-foreground'
+              className={`flex flex-col items-center justify-center flex-1 h-full transition-all active:scale-90 ${pathname === '/' ? 'text-primary' : 'text-muted-foreground hover:text-primary'
                 }`}
             >
               <Home className="w-6 h-6" strokeWidth={pathname === '/' ? 2.5 : 1.5} />
@@ -806,7 +834,7 @@ export default function Navigation() {
             {/* Browse */}
             <Link
               href="/browse"
-              className={`flex flex-col items-center justify-center flex-1 h-full transition-all active:scale-90 ${pathname === '/browse' ? 'text-primary' : 'text-muted-foreground'
+              className={`flex flex-col items-center justify-center flex-1 h-full transition-all active:scale-90 ${pathname === '/browse' ? 'text-primary' : 'text-muted-foreground hover:text-primary'
                 }`}
             >
               <Compass className="w-6 h-6" strokeWidth={pathname === '/browse' ? 2.5 : 1.5} />
@@ -815,26 +843,10 @@ export default function Navigation() {
             {/* Communities */}
             <Link
               href="/communities"
-              className={`flex flex-col items-center justify-center flex-1 h-full transition-all active:scale-90 ${pathname?.startsWith('/communities') ? 'text-primary' : 'text-muted-foreground'
+              className={`flex flex-col items-center justify-center flex-1 h-full transition-all active:scale-90 ${pathname?.startsWith('/communities') ? 'text-primary' : 'text-muted-foreground hover:text-primary'
                 }`}
             >
               <Users className="w-6 h-6" strokeWidth={pathname?.startsWith('/communities') ? 2.5 : 1.5} />
-            </Link>
-
-            {/* Messages */}
-            <Link
-              href="/messages"
-              className={`relative flex flex-col items-center justify-center flex-1 h-full transition-all active:scale-90 ${pathname?.startsWith('/messages') ? 'text-primary' : 'text-muted-foreground'
-                }`}
-            >
-              <div className="relative">
-                <Send className="w-6 h-6" strokeWidth={pathname?.startsWith('/messages') ? 2.5 : 1.5} />
-                {unreadMsgCount > 0 && (
-                  <span className="absolute -top-1 -right-2 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white shadow-sm ring-2 ring-background">
-                    {unreadMsgCount > 99 ? '99+' : unreadMsgCount}
-                  </span>
-                )}
-              </div>
             </Link>
 
             {/* AI Chatbot */}

@@ -657,12 +657,6 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
         </div>
 
         <div className="flex items-center gap-2">
-          <button className="p-2 text-foreground hover:text-primary transition-all active:scale-90 cursor-pointer">
-            <Phone className="w-5 h-5" />
-          </button>
-          <button className="p-2 text-foreground hover:text-primary transition-all active:scale-90 cursor-pointer">
-            <Video className="w-5 h-5" />
-          </button>
           <button 
             className={`p-2 transition-all active:scale-90 cursor-pointer ${showInfo ? 'text-primary' : 'text-foreground hover:text-primary'}`}
             onClick={() => setShowInfo(!showInfo)}

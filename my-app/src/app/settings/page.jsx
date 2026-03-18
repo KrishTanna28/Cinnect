@@ -19,7 +19,9 @@ import {
   Moon,
   Save,
   Trash2,
-  ImagePlus
+  ImagePlus,
+  Menu,
+  X
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -54,6 +56,7 @@ export default function SettingsPage() {
   const fileInputRef = useRef(null)
 
   const [activeSection, setActiveSection] = useState("edit-profile")
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
 
   const [settings, setSettings] = useState({
     isPrivate: false,
@@ -367,22 +370,33 @@ export default function SettingsPage() {
   }
 
   const sidebarContent = (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-background relative">
+      {/* Mobile close button top-right (only visible on mobile when sidebar is open) */}
+      <button 
+        onClick={() => setIsMobileSidebarOpen(false)} 
+        className="md:hidden absolute top-3 right-3 p-2 text-muted-foreground hover:text-foreground cursor-pointer z-50"
+      >
+        <X className="w-5 h-5" />
+      </button>
+
       {/* Groups */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto mt-12 md:mt-0">
         {SIDEBAR_SECTIONS.filter(s => s.group === "account").map(section => (
           <button
             key={section.id}
-            onClick={() => setActiveSection(section.id)}
+            onClick={() => {
+              setActiveSection(section.id)
+              setIsMobileSidebarOpen(false)
+            }}
             title={section.label}
-            className={`w-full flex items-center justify-center md:justify-start gap-3 px-2 md:px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
+            className={`w-full flex items-center justify-start gap-3 px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
               activeSection === section.id
                 ? "bg-secondary/60 text-foreground border-l-2 border-primary"
                 : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
             }`}
           >
             <section.icon className="w-5 h-5 flex-shrink-0" />
-            <span className="hidden md:block">{section.label}</span>
+            <span>{section.label}</span>
           </button>
         ))}
 
@@ -393,16 +407,19 @@ export default function SettingsPage() {
           return (
             <button
               key={section.id}
-              onClick={() => setActiveSection(section.id)}
+              onClick={() => {
+                setActiveSection(section.id)
+                setIsMobileSidebarOpen(false)
+              }}
               title={section.label}
-              className={`w-full flex items-center justify-center md:justify-start gap-3 px-2 md:px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
+              className={`w-full flex items-center justify-start gap-3 px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
                 activeSection === section.id
                   ? "bg-secondary/60 text-foreground border-l-2 border-primary"
                   : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
               }`}
             >
               <section.icon className="w-5 h-5 flex-shrink-0" />
-              <span className="hidden md:block">{section.label}</span>
+              <span>{section.label}</span>
               {section.id === "follow-requests" && followRequests.length > 0 && (
                 <span className="md:ml-auto px-1.5 py-0.5 bg-red-500 text-white rounded-full text-[10px] font-bold">
                   {followRequests.length}
@@ -414,30 +431,57 @@ export default function SettingsPage() {
       </div>
 
       {/* Logout at bottom */}
-      <div className="border-t border-border p-2 md:p-4">
+      <div className="border-t border-border p-4">
         <button
           onClick={handleLogout}
           title="Log Out"
-          className="w-full flex items-center justify-center md:justify-start gap-3 px-2 md:px-3 py-2.5 text-sm font-medium text-destructive hover:bg-secondary/30 rounded-lg transition-colors cursor-pointer"
+          className="w-full flex items-center justify-start gap-3 px-3 py-2.5 text-sm font-medium text-destructive hover:bg-secondary/30 rounded-lg transition-colors cursor-pointer"
         >
           <LogOut className="w-5 h-5 flex-shrink-0" />
-          <span className="hidden md:block">Log Out</span>
+          <span>Log Out</span>
         </button>
       </div>
     </div>
   )
 
   return (
-    <main className="bg-background h-[calc(100vh-64px)] overflow-hidden pb-16 md:pb-0">
+    <main className="bg-background h-[calc(100vh-64px)] overflow-hidden pb-16 md:pb-0 relative">
         <div className="flex flex-row h-full">
 
-          {/* Sidebar — always visible: icon-only on mobile, full on desktop */}
-          <aside className="flex flex-col flex-shrink-0 w-14 md:w-64 border-r border-border h-full overflow-y-auto overflow-x-hidden">
+          {/* Sidebar — desktop */}
+          <aside className="hidden md:flex flex-col flex-shrink-0 w-64 border-r border-border h-full overflow-y-auto overflow-x-hidden">
+            {sidebarContent}
+          </aside>
+
+          {/* Sidebar Overlay — mobile */}
+          {isMobileSidebarOpen && (
+            <div 
+              className="fixed inset-0 z-40 bg-black/50 md:hidden transition-opacity"
+              onClick={() => setIsMobileSidebarOpen(false)}
+            />
+          )}
+
+          {/* Sliding Sidebar — mobile */}
+          <aside 
+            className={`fixed inset-y-0 left-0 z-50 w-[50vw] bg-background border-r border-border transform transition-transform duration-300 ease-in-out md:hidden h-full ${
+              isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+            }`}
+          >
             {sidebarContent}
           </aside>
 
           {/* Main Content */}
           <div className="flex-1 h-full overflow-y-auto">
+            {/* Mobile Header / Menu Toggle */}
+            <div className="md:hidden flex items-center justify-between px-6 py-4 border-b border-border bg-background sticky top-0 z-30">
+               <button 
+                  onClick={() => setIsMobileSidebarOpen(true)} 
+                  className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer"
+               >
+                  <Menu className="w-5 h-5 flex-shrink-0" />
+               </button>
+            </div>
+
             <div className="max-w-3xl mx-auto px-6 py-6">
 
               {/* ─── EDIT PROFILE ─── */}
@@ -476,7 +520,7 @@ export default function SettingsPage() {
                             Change photo
                           </DropdownMenuItem>
                           {((user.avatar && user.avatar !== 'https://via.placeholder.com/150') || avatarPreview || avatarFile) && !removeAvatar && (
-                            <DropdownMenuItem onClick={handleRemoveAvatar} className="cursor-pointer text-destructive focus:text-destructive">
+                            <DropdownMenuItem onClick={handleRemoveAvatar} className="cursor-pointer">
                               <Trash2 className="w-4 h-4 mr-2" />
                               Remove photo
                             </DropdownMenuItem>

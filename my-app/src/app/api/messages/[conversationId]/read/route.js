@@ -3,6 +3,7 @@ import { withAuth } from '@/lib/middleware/withAuth';
 import connectDB from '@/lib/config/database';
 import Conversation from '@/lib/models/Conversation';
 import Message from '@/lib/models/Message';
+import { emitUnreadCountUpdate } from '@/lib/utils/messages';
 
 // PATCH /api/messages/[conversationId]/read - Mark messages as read
 export const PATCH = withAuth(async (request, { params, user }) => {
@@ -68,6 +69,9 @@ export const PATCH = withAuth(async (request, { params, user }) => {
         conversationId,
         userId: user._id
       });
+
+      // Update the unread count in real-time
+      emitUnreadCountUpdate(io, user._id.toString());
     }
 
     return NextResponse.json({ success: true });
