@@ -11,6 +11,7 @@ import useInfiniteScroll from "@/hooks/useInfiniteScroll"
 import PostMediaPreview from "@/components/post-media-preview"
 import { CommunitiesFeedSkeleton } from "@/components/skeletons"
 import { shouldFilterAdultContent } from "@/lib/utils/ageUtils"
+import { CategoryBadge } from "@/components/category-badge"
 
 const categories = [
   { id: 'all', label: 'All Posts' },
@@ -557,19 +558,27 @@ export default function CommunitiesPage() {
                               </div>
 
                               {/* Post Title */}
-                              <h3 className="text-lg font-semibold text-foreground mb-2 line-clamp-2 hover:text-primary transition-colors">
-                                {post.spoiler && (
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 mr-2 bg-destructive/20 text-destructive rounded text-xs font-semibold align-middle">
-                                    <AlertTriangle className="w-3 h-3" />
-                                    SPOILER
-                                  </span>
-                                )}
-                                {post.adult_content && (
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 mr-2 bg-orange-500/20 text-orange-400 rounded text-xs font-semibold align-middle">
-                                    <ShieldAlert className="w-3 h-3" />
-                                    18+
-                                  </span>
-                                )}
+                              <h3 className="text-lg font-semibold text-foreground mb-2 line-clamp-2 hover:text-primary transition-colors leading-tight">
+                                <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                                  <CategoryBadge 
+                                    category={post.category} 
+                                    customCategory={post.custom_category} 
+                                    categoryColor={post.category_color} 
+                                    className="text-[10px] px-1.5 py-0"
+                                  />
+                                  {post.spoiler && (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-destructive/20 text-destructive rounded text-[10px] font-semibold">
+                                      <AlertTriangle className="w-2.5 h-2.5" />
+                                      SPOILER
+                                    </span>
+                                  )}
+                                  {post.adult_content && (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-orange-500/20 text-orange-400 rounded text-[10px] font-semibold">
+                                      <ShieldAlert className="w-2.5 h-2.5" />
+                                      18+
+                                    </span>
+                                  )}
+                                </div>
                                 {post.title}
                               </h3>
 
@@ -696,25 +705,27 @@ export default function CommunitiesPage() {
                                 </span>
                               </div>
 
-                              {/* Spoiler Tag */}
-                              {post.spoiler && (
-                                <div className="flex items-center gap-1 mb-1">
-                                  <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400">
-                                    <AlertTriangle className="w-3 h-3" />
+                              {/* Title */}
+                              <div className="flex flex-wrap items-center gap-1 mb-1">
+                                <CategoryBadge 
+                                  category={post.category} 
+                                  customCategory={post.custom_category} 
+                                  categoryColor={post.category_color} 
+                                  className="text-[9px] px-1.5 py-0 h-4"
+                                />
+                                {post.spoiler && (
+                                  <span className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0 h-4 rounded bg-destructive/20 text-destructive font-semibold">
+                                    <AlertTriangle className="w-2.5 h-2.5" />
                                     SPOILER
                                   </span>
-                                </div>
-                              )}
-                              {post.adult_content && (
-                                <div className="flex items-center gap-1 mb-1">
-                                  <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400">
-                                    <ShieldAlert className="w-3 h-3" />
+                                )}
+                                {post.adult_content && (
+                                  <span className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0 h-4 rounded bg-orange-500/20 text-orange-400 font-semibold">
+                                    <ShieldAlert className="w-2.5 h-2.5" />
                                     18+
                                   </span>
-                                </div>
-                              )}
-
-                              {/* Title */}
+                                )}
+                              </div>
                               <h4 className="text-sm text-foreground line-clamp-2 leading-snug">
                                 {post.title}
                               </h4>

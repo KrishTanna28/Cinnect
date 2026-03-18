@@ -10,11 +10,15 @@ import { useUser } from "@/contexts/UserContext"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 import { PostFormSkeleton } from "@/components/skeletons"
+import { CategorySelector } from "@/components/category-selector"
+import { FLAT_CATEGORIES } from "@/lib/config/categories"
 
 export default function NewPostPage() {
   const [title, setTitle] = useState("")
   const [content, setContent] = useState("")
   const [spoiler, setSpoiler] = useState(false)
+  const [category, setCategory] = useState("")
+  const [customCategory, setCustomCategory] = useState("")
   const [imagePreviews, setImagePreviews] = useState([])
   const [videoPreviews, setVideoPreviews] = useState([])
   const [submitting, setSubmitting] = useState(false)
@@ -149,6 +153,24 @@ export default function NewPostPage() {
       return
     }
 
+    if (!category) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a category",
+        variant: "destructive"
+      })
+      return
+    }
+
+    if (category === "other" && !customCategory.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a custom category name",
+        variant: "destructive"
+      })
+      return
+    }
+
     if (!content.trim() && imagePreviews.length === 0 && videoPreviews.length === 0) {
       toast({
         title: "Validation Error",
@@ -183,6 +205,8 @@ export default function NewPostPage() {
       }
 
       const token = localStorage.getItem('token')
+      const selectedCat = FLAT_CATEGORIES.find(c => c.id === category);
+      
       const response = await fetch(`/api/communities/${params.slug}/posts`, {
         method: 'POST',
         headers: {
@@ -192,6 +216,9 @@ export default function NewPostPage() {
         body: JSON.stringify({
           title,
           content,
+          category,
+          custom_category: category === "other" ? customCategory.trim() : null,
+          category_color: selectedCat ? selectedCat.color : "gray",
           spoiler: finalSpoiler,
           images: imagePreviews,
           videos: videoPreviews.map(v => v.data)
@@ -249,6 +276,16 @@ export default function NewPostPage() {
               className="text-base"
             />
             <p className="text-xs text-muted-foreground mt-1">{title.length}/500 characters</p>
+          </div>
+
+          {/* Category Selector */}
+          <div className="mb-4">
+            <CategorySelector
+              value={category}
+              onChange={setCategory}
+              customValue={customCategory}
+              onCustomChange={setCustomCategory}
+            />
           </div>
 
           {/* Content */}
@@ -392,7 +429,7 @@ export default function NewPostPage() {
             <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
               <li>Be respectful to other members</li>
               <li>Stay on topic related to {community.name}</li>
-              <li>No spam or self-promotion without permission</li>
+              <li>No spam or self-promotion</li>
               <li>No hate speech, harassment, or illegal content</li>
             </ul>
           </div>

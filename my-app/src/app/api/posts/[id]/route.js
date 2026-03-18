@@ -176,7 +176,7 @@ export const DELETE = withAuth(async (request, { user, params }) => {
 export const PUT = withAuth(async (request, { user, params }) => {
   try {
     const { id } = await params
-    const { title, content, images } = await request.json()
+    const { title, content, images, category, custom_category, category_color } = await request.json()
     
     const post = await Post.findById(id).populate('community')
     if (!post) {
@@ -199,6 +199,9 @@ export const PUT = withAuth(async (request, { user, params }) => {
     if (title !== undefined) post.title = title
     if (content !== undefined) post.content = content
     if (images !== undefined) post.images = images
+    if (category !== undefined) post.category = category
+    if (custom_category !== undefined) post.custom_category = custom_category
+    if (category_color !== undefined) post.category_color = category_color
 
     await post.save()
 

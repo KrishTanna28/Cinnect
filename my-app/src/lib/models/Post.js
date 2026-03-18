@@ -78,12 +78,29 @@ const commentSchema = new mongoose.Schema({
 }, { _id: true });
 
 const postSchema = new mongoose.Schema({
-  // Community Reference
+  // References
   community: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Community',
     required: true,
     index: true
+  },
+  
+  // Categorization
+  category: {
+    type: String,
+    required: [false, 'Category is required'],
+    index: true
+  },
+  custom_category: {
+    type: String,
+    default: null,
+    trim: true,
+    maxlength: [100, 'Custom category cannot exceed 100 characters']
+  },
+  category_color: {
+    type: String,
+    default: 'gray'
   },
   
   // Post Content
@@ -329,6 +346,10 @@ postSchema.methods.dislikeReply = function(commentId, replyId, userId) {
   return this.save();
 };
 
-const Post = mongoose.models.Post || mongoose.model('Post', postSchema);
+if (mongoose.models.Post) {
+  delete mongoose.models.Post;
+}
+
+const Post = mongoose.model('Post', postSchema);
 
 export default Post;

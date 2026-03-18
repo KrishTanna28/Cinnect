@@ -91,8 +91,8 @@ export default function ClipsSection({ isModalOpen, setIsModalOpen, videos, movi
                   
                   {/* Loading overlay to hide YouTube UI */}
                   {!videoLoaded[video.id] && (
-                    <div className="absolute inset-0 bg-secondary/50 animate-pulse z-20" />
-                  )}
+  <div className="absolute inset-0 bg-black/10 z-20" />
+)}
                 </>
               )}
               
@@ -106,7 +106,9 @@ export default function ClipsSection({ isModalOpen, setIsModalOpen, videos, movi
               )} */}
 
               {/* Video Info */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col items-start justify-end p-4 transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent 
+flex flex-col items-start justify-end p-4 transition-all duration-300 
+group-hover:from-black/0 group-hover:via-black/0 group-hover:to-transparent">
                 <p className="text-white font-semibold text-sm line-clamp-2 mb-1 transition-all duration-300 group-hover:text-primary">
                   {video.name}
                 </p>

@@ -12,6 +12,7 @@ import Link from "next/link"
 import PostMediaPreview from "@/components/post-media-preview"
 import { CommunityDetailSkeleton } from "@/components/skeletons"
 import { shouldFilterAdultContent } from "@/lib/utils/ageUtils"
+import { CategoryBadge } from "@/components/category-badge"
 
 const categoryIcons = {
   general: Sparkles,
@@ -1152,22 +1153,29 @@ export default function CommunityPage() {
                             </span>
                           </div>
 
-                          <h3 className="text-lg font-semibold text-foreground mb-2 line-clamp-2">
-                            {post.spoiler && (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 mr-2 bg-destructive/20 text-destructive rounded text-xs font-semibold align-middle">
-                                <AlertTriangle className="w-3 h-3" />
-                                SPOILER
-                              </span>
-                            )}
-                            {post.adult_content && (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 mr-2 bg-orange-500/20 text-orange-400 rounded text-xs font-semibold align-middle">
-                                <ShieldAlert className="w-3 h-3" />
-                                18+
-                              </span>
-                            )}
+                          <h3 className="text-lg font-semibold text-foreground mb-2 line-clamp-2 leading-tight">
+                            <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                              <CategoryBadge 
+                                category={post.category} 
+                                customCategory={post.custom_category} 
+                                categoryColor={post.category_color} 
+                                className="text-[10px] px-1.5 py-0"
+                              />
+                              {post.spoiler && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-destructive/20 text-destructive rounded text-[10px] font-semibold">
+                                  <AlertTriangle className="w-2.5 h-2.5" />
+                                  SPOILER
+                                </span>
+                              )}
+                              {post.adult_content && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-orange-500/20 text-orange-400 rounded text-[10px] font-semibold">
+                                  <ShieldAlert className="w-2.5 h-2.5" />
+                                  18+
+                                </span>
+                              )}
+                            </div>
                             {post.title}
                           </h3>
-
                           {/* Post Media Preview */}
                           <PostMediaPreview images={post.images} videos={post.videos} />
 

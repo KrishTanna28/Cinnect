@@ -126,15 +126,11 @@ export default function VideosGrid({
                     }, 800)
                   }}
                 />
-
-                {!videoLoaded[video.id || video.key] && (
-                  <div className="absolute inset-0 bg-secondary/50 animate-pulse z-20" />
-                )}
               </>
             )}
 
             {/* Video Info */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col items-start justify-end p-4 transition-all duration-300">
+            <div className="absolute inset-0 flex flex-col items-start justify-end p-4">
               <p className="text-white font-semibold text-sm line-clamp-2 mb-1 transition-all duration-300 group-hover/video:text-primary">
                 {decodeHTMLEntities(video.name)}
               </p>

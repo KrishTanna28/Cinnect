@@ -11,10 +11,14 @@ import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 import { fetchPosts } from "@/lib/communities/posts.js"
 import { PostFormSkeleton } from "@/components/skeletons"
+import { CategorySelector } from "@/components/category-selector"
+import { FLAT_CATEGORIES } from "@/lib/config/categories"
 
 export default function EditPostPage() {
   const [title, setTitle] = useState("")
   const [content, setContent] = useState("")
+  const [category, setCategory] = useState("")
+  const [customCategory, setCustomCategory] = useState("")
   const [imagePreviews, setImagePreviews] = useState([])
   const [submitting, setSubmitting] = useState(false)
   const [community, setCommunity] = useState(null)
@@ -72,6 +76,8 @@ export default function EditPostPage() {
       setPost(postContent)
       setTitle(postContent.title || "")
       setContent(postContent.content || "")
+      setCategory(postContent.category || "")
+      setCustomCategory(postContent.custom_category || "")
       setImagePreviews(postContent.images || [])
 
       // Fetch community
@@ -132,6 +138,24 @@ export default function EditPostPage() {
       return
     }
 
+    if (!category) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a category",
+        variant: "destructive"
+      })
+      return
+    }
+
+    if (category === "other" && !customCategory.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a custom category name",
+        variant: "destructive"
+      })
+      return
+    }
+
     if (!content.trim() && imagePreviews.length === 0) {
       toast({
         title: "Validation Error",
@@ -144,6 +168,8 @@ export default function EditPostPage() {
     setSubmitting(true)
     try {
       const token = localStorage.getItem('token')
+      const selectedCat = FLAT_CATEGORIES.find(c => c.id === category)
+
       const response = await fetch(`/api/posts/${params.id}`, {
         method: 'PUT',
         headers: {
@@ -153,6 +179,9 @@ export default function EditPostPage() {
         body: JSON.stringify({
           title,
           content,
+          category,
+          custom_category: category === "other" ? customCategory.trim() : null,
+          category_color: selectedCat ? selectedCat.color : "gray",
           images: imagePreviews
         })
       })
@@ -208,6 +237,16 @@ export default function EditPostPage() {
               className="text-base"
             />
             <p className="text-xs text-muted-foreground mt-1">{title.length}/500 characters</p>
+          </div>
+
+          {/* Category Selector */}
+          <div className="mb-4">
+            <CategorySelector
+              value={category}
+              onChange={setCategory}
+              customValue={customCategory}
+              onCustomChange={setCustomCategory}
+            />
           </div>
 
           {/* Content */}
@@ -282,7 +321,7 @@ export default function EditPostPage() {
             <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
               <li>Be respectful to other members</li>
               <li>Stay on topic related to {community.name}</li>
-              <li>No spam or self-promotion without permission</li>
+              <li>No spam or self-promotion</li>
               <li>No hate speech, harassment, or illegal content</li>
             </ul>
           </div>

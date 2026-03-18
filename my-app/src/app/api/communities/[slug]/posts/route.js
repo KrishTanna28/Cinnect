@@ -164,11 +164,18 @@ export const POST = withAuth(async (request, { user, params }) => {
   try {
     const { slug } = await params
     const body = await request.json()
-    const { title, content, images, videos, spoiler } = body
+    const { title, content, images, videos, spoiler, category, custom_category, category_color } = body
 
     if (!title) {
       return NextResponse.json(
         { success: false, message: 'Title is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!category) {
+      return NextResponse.json(
+        { success: false, message: 'Category is required' },
         { status: 400 }
       )
     }
@@ -194,6 +201,9 @@ export const POST = withAuth(async (request, { user, params }) => {
       community: community._id,
       title,
       content,
+      category,
+      custom_category: custom_category || null,
+      category_color: category_color || 'gray',
       spoiler: spoiler || false,
       images: [],
       videos: [],
@@ -202,7 +212,8 @@ export const POST = withAuth(async (request, { user, params }) => {
 
     // Generate embedding for RAG (non-blocking — don't fail the request)
     try {
-      const embeddingText = `${title}. ${content || ''}`;
+      const catText = category === 'other' ? custom_category : category;
+      const embeddingText = `[Category: ${catText}] ${title}. ${content || ''}`;
       post.embedding = await generateEmbedding(embeddingText);
       await post.save();
     } catch (embErr) {

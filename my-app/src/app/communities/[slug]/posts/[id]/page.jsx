@@ -13,6 +13,7 @@ import { fetchPosts } from "@/lib/communities/posts.js"
 import PostMediaGallery from "@/components/post-media-gallery"
 import { PostDetailSkeleton } from "@/components/skeletons"
 import { shouldFilterAdultContent } from "@/lib/utils/ageUtils"
+import { CategoryBadge } from "@/components/category-badge"
 
 export default function PostDetailPage() {
   const [post, setPost] = useState(null)
@@ -823,18 +824,27 @@ export default function PostDetailPage() {
 
           {/* Title */}
           <div className="relative">
-            {post.spoiler && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 mb-2 bg-destructive/20 text-destructive rounded text-xs font-semibold">
-                <AlertTriangle className="w-3 h-3" />
-                SPOILER
-              </span>
-            )}
-            {post.adult_content && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 mb-2 ml-1 bg-orange-500/20 text-orange-400 rounded text-xs font-semibold">
-                <ShieldAlert className="w-3 h-3" />
-                18+ CONTENT
-              </span>
-            )}
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              {post.category && (
+              <CategoryBadge 
+                category={post.category} 
+                customCategory={post.custom_category} 
+                categoryColor={post.category_color} 
+              />
+              )}
+              {post.spoiler && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-destructive/20 text-destructive rounded text-xs font-semibold">
+                  <AlertTriangle className="w-3 h-3" />
+                  SPOILER
+                </span>
+              )}
+              {post.adult_content && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-500/20 text-orange-400 rounded text-xs font-semibold">
+                  <ShieldAlert className="w-3 h-3" />
+                  18+ CONTENT
+                </span>
+              )}
+            </div>
             <h1 className={`text-xl font-bold text-foreground mb-4 transition-all ${(shouldBlurPost || shouldBlurAdult) ? 'blur-md select-none' : ''}`}>{post.title}</h1>
           </div>
 

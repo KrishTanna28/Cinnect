@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import Community from '@/lib/models/Community.js'
 import { withAuth } from '@/lib/middleware/withAuth.js'
 import connectDB from '@/lib/config/database.js'
+import { uploadCommunityBannerToCloudinary, uploadCommunityIconToCloudinary } from '@/lib/utils/cloudinaryHelper.js'
 
 await connectDB()
 
@@ -10,7 +11,7 @@ export const PATCH = withAuth(async (request, { user, params }) => {
   try {
     const { slug } = await params
     const body = await request.json()
-    const { description, rules } = body
+    const { description, rules, banner, icon, isPrivate } = body
 
     const community = await Community.findOne({ slug })
 
@@ -52,6 +53,26 @@ export const PATCH = withAuth(async (request, { user, params }) => {
         
         community.rules = validRules
       }
+    }
+
+    if (banner !== undefined) {
+      if (banner && banner.startsWith('data:image')) {
+        community.banner = await uploadCommunityBannerToCloudinary(banner);
+      } else {
+        community.banner = banner;
+      }
+    }
+    
+    if (icon !== undefined) {
+      if (icon && icon.startsWith('data:image')) {
+        community.icon = await uploadCommunityIconToCloudinary(icon);
+      } else {
+        community.icon = icon;
+      }
+    }
+
+    if (isPrivate !== undefined) {
+      community.isPrivate = isPrivate;
     }
 
     await community.save()

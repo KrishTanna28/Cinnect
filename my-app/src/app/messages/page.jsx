@@ -25,6 +25,31 @@ export default function MessagesPage() {
   const [showNewMessage, setShowNewMessage] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
+  // Swipe logic
+  const [touchStart, setTouchStart] = useState(null);
+  const [touchEnd, setTouchEnd] = useState(null);
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e) => setTouchEnd(e.targetTouches[0].clientX);
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe && activeTab === 'messages' && user?.isPrivate) {
+      setActiveTab('requests');
+    } else if (isRightSwipe && activeTab === 'requests') {
+      setActiveTab('messages');
+    }
+  };
+
   useEffect(() => {
     if (!isLoading && !user) {
       router.push('/login');
@@ -141,7 +166,12 @@ export default function MessagesPage() {
     }
 
     return (
-      <div className="fixed inset-x-0 top-16 bottom-14 bg-background z-10 flex flex-col overflow-hidden">
+      <div 
+        className="fixed inset-x-0 top-16 bottom-14 bg-background z-10 flex flex-col overflow-hidden"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
         {/* Mobile Header */}
         <div className="border-b border-border p-4">
           <div className="flex items-center justify-between mb-4">
@@ -217,7 +247,7 @@ export default function MessagesPage() {
               </div>
               <h3 className="text-lg font-semibold mb-2">Your messages</h3>
               <p className="text-muted-foreground text-sm mb-4">
-                Send private photos and messages to a friend or group.
+                Send messages to a friend.
               </p>
               <Button onClick={() => setShowNewMessage(true)}>
                 Send message
@@ -252,7 +282,12 @@ export default function MessagesPage() {
   return (
     <div className="h-[calc(100dvh-4rem)] bg-background flex overflow-hidden">
       {/* Left Sidebar */}
-      <div className="w-96 border-r border-border flex flex-col flex-shrink-0">
+      <div 
+        className="w-96 border-r border-border flex flex-col flex-shrink-0"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
         {/* Header */}
         <div className="border-b border-border p-4 flex-shrink-0">
           <div className="flex items-center justify-between mb-4">
