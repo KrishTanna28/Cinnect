@@ -57,6 +57,11 @@ export function SocketProvider({ children }) {
 
     socketRef.current = socket
 
+    // Attach any listeners that were registered before the socket connected
+    listenersRef.current.forEach(({ event, handler }) => {
+      socket.on(event, handler)
+    })
+
     return () => {
       socket.disconnect()
       socketRef.current = null
@@ -68,10 +73,19 @@ export function SocketProvider({ children }) {
    * Subscribe to a socket event. Returns an unsubscribe function.
    */
   const on = useCallback((event, handler) => {
-    const socket = socketRef.current
-    if (!socket) return () => {}
-    socket.on(event, handler)
-    return () => socket.off(event, handler)
+    const listener = { event, handler }
+    listenersRef.current.add(listener)
+
+    if (socketRef.current) {
+      socketRef.current.on(event, handler)
+    }
+
+    return () => {
+      listenersRef.current.delete(listener)
+      if (socketRef.current) {
+        socketRef.current.off(event, handler)
+      }
+    }
   }, [])
 
   /**

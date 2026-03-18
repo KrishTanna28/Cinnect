@@ -7,7 +7,7 @@ export const emitUnreadCountUpdate = async (io, userIdStr) => {
     let totalUnread = 0;
     for (const conv of allUserConvs) {
       const count = conv.unreadCount?.[userIdStr] || 0;
-      if (count > 0) totalUnread += Number(count);
+      if (count > 0) totalUnread++;
     }
     io.to(`user:${userIdStr}`).emit('unread-count:update', { count: totalUnread });
   } catch (err) {

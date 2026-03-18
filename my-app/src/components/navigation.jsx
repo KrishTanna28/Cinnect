@@ -112,9 +112,6 @@ export default function Navigation() {
       const isMuted = data.mutedBy?.some(id => id.toString() === user?._id) || false;
       
       if (!isCurrentChatOpen && !isMe) {
-        // Optimistic real-time update using web sockets (though unread-count:update will sync it from server)
-        setUnreadMsgCount(prev => prev + 1);
-        
         if (!isMuted) {
           toast({
             title: `New message from ${msg.sender?.username || msg.sender?.fullName || "Someone"}`,
