@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, ThumbsUp, ThumbsDown, MessageCircle, Eye, Pin, Lock, Trash2, Send, Pencil, MoreVertical, Cross2, X, AlertTriangle, ShieldAlert } from "lucide-react"
+import { ArrowLeft, ThumbsUp, ThumbsDown, MessageCircle, Eye, Pin, Lock, Trash2, Send, Pencil, MoreVertical, Cross2, X, AlertTriangle, ShieldAlert, EyeOff } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -744,7 +744,15 @@ export default function PostDetailPage() {
   }
 
   const revealSpoiler = (id) => {
-    setRevealedSpoilers(prev => new Set([...prev, id]))
+    setRevealedSpoilers(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(id)) {
+        newSet.delete(id)
+      } else {
+        newSet.add(id)
+      }
+      return newSet
+    })
   }
 
   return (
@@ -835,11 +843,26 @@ export default function PostDetailPage() {
               />
               )}
               {post.spoiler && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-destructive/20 text-destructive rounded text-xs font-semibold">
-                  <AlertTriangle className="w-3 h-3" />
-                  SPOILER
-                </span>
-              )}
+                  isOwnPost ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-destructive/20 text-destructive rounded text-xs font-semibold">
+                      <AlertTriangle className="w-3 h-3" />
+                      SPOILER
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => revealSpoiler(post._id)}
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold cursor-pointer transition-colors ${
+                        postSpoilerRevealed 
+                          ? "bg-destructive/10 text-destructive hover:bg-destructive/20"
+                          : "bg-destructive/20 text-destructive hover:bg-destructive/30"
+                      }`}
+                      title={postSpoilerRevealed ? "Hide spoiler" : "Contains spoilers"}
+                    >
+                      {postSpoilerRevealed ? <EyeOff className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
+                      SPOILER {postSpoilerRevealed && <span className="opacity-70">(Revealed)</span>}
+                    </button>
+                  )
+                )}
               {post.adult_content && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-500/20 text-orange-400 rounded text-xs font-semibold">
                   <ShieldAlert className="w-3 h-3" />
@@ -1024,11 +1047,22 @@ export default function PostDetailPage() {
                         {new Date(comment.createdAt).toLocaleDateString()}
                       </span>
                       {comment.spoiler && (
-                        <span className="px-1.5 py-0.5 bg-destructive/20 text-destructive rounded text-xs font-semibold flex items-center gap-1">
-                          <AlertTriangle className="w-2.5 h-2.5" />
-                          SPOILER
-                        </span>
-                      )}
+                            isOwnComment ? (
+                              <span className="px-1.5 py-0.5 bg-destructive/20 text-destructive rounded text-xs font-semibold flex items-center gap-1">
+                                <AlertTriangle className="w-2.5 h-2.5" />
+                                SPOILER
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => revealSpoiler(comment._id)}
+                                className="px-1.5 py-0.5 bg-destructive/20 hover:bg-destructive/30 text-destructive rounded text-xs font-semibold flex items-center gap-1 transition-colors"
+                                title={commentSpoilerRevealed ? "Hide spoiler" : "Contains spoilers"}
+                              >
+                                {commentSpoilerRevealed ? <EyeOff className="w-2.5 h-2.5" /> : <AlertTriangle className="w-2.5 h-2.5" />}
+                                SPOILER {commentSpoilerRevealed && <span className="opacity-70">(Revealed)</span>}
+                              </button>
+                            )
+                          )}
                       {comment.adult_content && (
                         <span className="px-1.5 py-0.5 bg-orange-500/20 text-orange-400 rounded text-xs font-semibold flex items-center gap-1">
                           <ShieldAlert className="w-2.5 h-2.5" />
@@ -1197,11 +1231,22 @@ export default function PostDetailPage() {
                                   {new Date(reply.createdAt).toLocaleDateString()}
                                 </span>
                                 {reply.spoiler && (
-                                  <span className="px-1.5 py-0.5 bg-destructive/20 text-destructive rounded text-xs font-semibold flex items-center gap-1">
-                                    <AlertTriangle className="w-2.5 h-2.5" />
-                                    SPOILER
-                                  </span>
-                                )}
+                                      isOwnReply ? (
+                                        <span className="px-1.5 py-0.5 bg-destructive/20 text-destructive rounded text-xs font-semibold flex items-center gap-1">
+                                          <AlertTriangle className="w-2.5 h-2.5" />
+                                          SPOILER
+                                        </span>
+                                      ) : (
+                                        <button
+                                          onClick={() => revealSpoiler(reply._id)}
+                                          className="px-1.5 py-0.5 bg-destructive/20 hover:bg-destructive/30 text-destructive rounded text-xs font-semibold flex items-center gap-1 transition-colors"
+                                          title={replySpoilerRevealed ? "Hide spoiler" : "Contains spoilers"}
+                                        >
+                                          {replySpoilerRevealed ? <EyeOff className="w-2.5 h-2.5" /> : <AlertTriangle className="w-2.5 h-2.5" />}
+                                          SPOILER {replySpoilerRevealed && <span className="opacity-70">(Revealed)</span>}
+                                        </button>
+                                      )
+                                    )}
                               </div>
 
                               <div className="relative">

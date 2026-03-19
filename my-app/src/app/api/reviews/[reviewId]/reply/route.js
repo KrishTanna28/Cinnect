@@ -29,8 +29,27 @@ export const POST = withAuth(async (request, { user, params }) => {
       )
     }
 
+    // Server-side spoiler detection if not explicitly checked
+    let finalSpoiler = spoiler || false;
+    if (!finalSpoiler) {
+      try {
+        const detectRes = await fetch(new URL('/api/spoiler-detect', request.url).toString(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: content })
+        });
+        const detectData = await detectRes.json();
+        if (detectData.success && detectData.data?.isSpoiler) {
+          finalSpoiler = true;
+          console.log(`[Backend Spoiler Detection] Reply flagged as spoiler: ${(detectData.data.confidence * 100).toFixed(1)}%`);
+        }
+      } catch (err) {
+        console.error('Backend spoiler detection failed for reply:', err);
+      }
+    }
+
     // Add reply using model method
-    await review.addReply(user._id, content, spoiler || false)
+    await review.addReply(user._id, content, finalSpoiler)
 
     // Run adult content text moderation on the reply (non-blocking)
     try {

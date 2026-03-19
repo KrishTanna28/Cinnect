@@ -63,6 +63,24 @@ export const PUT = withAuth(async (request, { user, params }) => {
     if (content) review.content = content
     if (spoiler !== undefined) review.spoiler = spoiler
 
+    // Server-side spoiler detection if not explicitly checked during update
+    if (review.spoiler === false && (title || content)) {
+      try {
+        const detectRes = await fetch(new URL('/api/spoiler-detect', request.url).toString(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: `${review.title}. ${review.content}` })
+        });
+        const detectData = await detectRes.json();
+        if (detectData.success && detectData.data?.isSpoiler) {
+          review.spoiler = true;
+          console.log(`[Backend Spoiler Detection] Updated review flagged as spoiler: ${(detectData.data.confidence * 100).toFixed(1)}%`);
+        }
+      } catch (err) {
+        console.error('Backend spoiler detection failed for review update:', err);
+      }
+    }
+
     await review.save()
     await review.populate('user', 'username avatar fullName')
 

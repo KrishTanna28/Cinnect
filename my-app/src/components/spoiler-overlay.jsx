@@ -29,10 +29,21 @@ export default function SpoilerOverlay({
     <div className={`relative ${className}`}>
       {/* Spoiler Badge */}
       {isSpoiler && (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 mb-2 bg-destructive/20 text-destructive rounded text-xs font-semibold">
-          <AlertTriangle className="w-3 h-3" />
-          {label}
-        </span>
+        isOwnContent ? (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 mb-2 bg-destructive/20 text-destructive rounded text-xs font-semibold">
+            <AlertTriangle className="w-3 h-3" />
+            {label}
+          </span>
+        ) : (
+          <button
+            onClick={() => setRevealed(!revealed)}
+            className="inline-flex items-center gap-1 px-2 py-0.5 mb-2 bg-destructive/20 hover:bg-destructive/30 text-destructive rounded text-xs font-semibold cursor-pointer transition-colors"
+            title={revealed ? "Hide spoiler" : "Contains spoilers"}
+          >
+            {revealed ? <EyeOff className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
+            {label} {revealed && <span className="opacity-70">(Revealed)</span>}
+          </button>
+        )
       )}
 
       {/* Content with conditional blur */}

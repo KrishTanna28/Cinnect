@@ -12,6 +12,7 @@ export async function GET(request) {
     const mediaId = searchParams.get('mediaId')
     const mediaType = searchParams.get('mediaType')
     const userId = searchParams.get('userId')
+    const sortBy = searchParams.get('sortBy') || 'recent'
     const limit = parseInt(searchParams.get('limit')) || 10
     const page = parseInt(searchParams.get('page')) || 1
     const skip = (page - 1) * limit
@@ -26,17 +27,57 @@ export async function GET(request) {
     const adultFilter = getAdultContentFilter(shouldFilterAdult)
     Object.assign(query, adultFilter)
 
-    const reviews = await Review.find(query)
-      .populate('user', 'username avatar fullName')
-      .populate({
-        path: 'replies.user',
-        select: 'username avatar fullName'
-      })
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .skip(skip)
-
     const total = await Review.countDocuments(query)
+    let reviews = []
+
+    if (sortBy === 'popular') {
+      // Calculate a hot score combining engagement (likes, replies, dislikes) and recency (1 point per day)
+      const pipeline = [
+        { $match: query },
+        {
+          $addFields: {
+            popularityScore: {
+              $add: [
+                { $size: { $ifNull: ['$likes', []] } },
+                { $multiply: [{ $size: { $ifNull: ['$replies', []] } }, 2] },
+                { $multiply: [{ $size: { $ifNull: ['$dislikes', []] } }, -1] },
+                { $divide: [{ $toLong: { $ifNull: ['$createdAt', new Date()] } }, 86400000] } 
+              ]
+            }
+          }
+        },
+        { $sort: { popularityScore: -1, createdAt: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+        { $project: { _id: 1 } }
+      ]
+
+      const aggregatedIds = await Review.aggregate(pipeline)
+      const ids = aggregatedIds.map(doc => doc._id)
+
+      const unsortedReviews = await Review.find({ _id: { $in: ids } })
+        .populate('user', 'username avatar fullName')
+        .populate({
+          path: 'replies.user',
+          select: 'username avatar fullName'
+        })
+      
+      // Re-sort the populated documents into the aggregation order
+      reviews = ids.map(id => unsortedReviews.find(r => r._id.equals(id))).filter(Boolean)
+    } else {
+      // highest_rated or recent
+      const sortOption = (sortBy === 'highest_rated' || sortBy === 'rating') ? { rating: -1, createdAt: -1 } : { createdAt: -1 }
+      
+      reviews = await Review.find(query)
+        .populate('user', 'username avatar fullName')
+        .populate({
+          path: 'replies.user',
+          select: 'username avatar fullName'
+        })
+        .sort(sortOption)
+        .limit(limit)
+        .skip(skip)
+    }
 
     return NextResponse.json({
       success: true,
@@ -66,7 +107,8 @@ export const POST = withAuth(async (request, { user }) => {
     const body = await request.json()
     const { mediaId, mediaType, mediaTitle, rating, title, content, spoiler } = body
 
-    if (!mediaId || !mediaType || !mediaTitle || !rating || !title || !content) {
+    if (!mediaId || !mediaType || !mediaTitle || rating === undefined || rating === null || !title || !content) {
+      console.log('Missing fields in review creation:', { mediaId, mediaType, mediaTitle, rating, title, content })
       return NextResponse.json(
         { success: false, message: 'Missing required fields' },
         { status: 400 }
@@ -87,6 +129,25 @@ export const POST = withAuth(async (request, { user }) => {
       )
     }
 
+    // Server-side spoiler detection if not explicitly checked by user
+    let finalSpoiler = spoiler || false;
+    if (!finalSpoiler) {
+      try {
+        const detectRes = await fetch(new URL('/api/spoiler-detect', request.url).toString(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: `${title}. ${content}` })
+        });
+        const detectData = await detectRes.json();
+        if (detectData.success && detectData.data?.isSpoiler) {
+          finalSpoiler = true;
+          console.log(`[Backend Spoiler Detection] Review flagged as spoiler: ${(detectData.data.confidence * 100).toFixed(1)}%`);
+        }
+      } catch (err) {
+        console.error('Backend spoiler detection failed:', err);
+      }
+    }
+
     const review = new Review({
       mediaId,
       mediaType,
@@ -95,7 +156,7 @@ export const POST = withAuth(async (request, { user }) => {
       rating,
       title,
       content,
-      spoiler: spoiler || false
+      spoiler: finalSpoiler
     })
 
     // Run adult content text moderation (non-blocking)

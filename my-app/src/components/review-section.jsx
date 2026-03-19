@@ -95,9 +95,9 @@ export default function ReviewSection({ reviews, movieTitle }) {
               </div>
             </div>
 
-            <p className="text-foreground mb-4 leading-relaxed">{review.text}</p>
+            <p className="text-foreground mb-4 leading-relaxed break-words">{review.text}</p>
 
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-4">
               <button
                 onClick={() => toggleLike(review.id)}
                 className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-all active:scale-95 cursor-pointer"

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { ThumbsUp, ThumbsDown, MessageCircle, AlertTriangle, ArrowLeft, Star, Send, Plus, Edit2, Trash2, Minus, Pencil, MoreVertical } from "lucide-react"
+import { ThumbsUp, ThumbsDown, MessageCircle, AlertTriangle, ArrowLeft, Star, Send, Plus, Edit2, Trash2, Minus, Pencil, MoreVertical, EyeOff } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -777,11 +777,34 @@ export default function ReviewsPage({ params }) {
                         {new Date(review.createdAt).toLocaleDateString()}
                       </span>
                       {review.spoiler && (
-                        <span className="px-2 py-0.5 bg-destructive/20 text-destructive rounded text-xs flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3" />
-                          Spoiler
-                        </span>
-                      )}
+                          isOwnReview ? (
+                            <span className="px-2 py-0.5 bg-destructive/20 text-destructive rounded text-xs font-semibold flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" />
+                              SPOILER
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                const newRevealed = new Set(revealedSpoilers);
+                                if (newRevealed.has(review._id)) {
+                                  newRevealed.delete(review._id);
+                                } else {
+                                  newRevealed.add(review._id);
+                                }
+                                setRevealedSpoilers(newRevealed);
+                              }}
+                              className={`px-2 py-0.5 rounded text-xs flex items-center gap-1 cursor-pointer transition-colors ${
+                                isSpoilerRevealed
+                                  ? "bg-destructive/10 text-destructive hover:bg-destructive/20"
+                                  : "bg-destructive/20 text-destructive hover:bg-destructive/30"
+                              }`}
+                              title={isSpoilerRevealed ? "Hide spoiler" : "Contains spoilers"}
+                            >
+                              {isSpoilerRevealed ? <EyeOff className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
+                              SPOILER {isSpoilerRevealed && <span className="opacity-70">(Revealed)</span>}
+                            </button>
+                          )
+                        )}
                     </div>
 
                     <div className="flex items-center gap-1 mb-2">
@@ -997,11 +1020,34 @@ export default function ReviewsPage({ params }) {
                               {new Date(reply.createdAt).toLocaleDateString()}
                             </span>
                             {reply.spoiler && (
-                              <span className="px-1.5 py-0.5 bg-destructive/20 text-destructive rounded text-xs font-semibold flex items-center gap-1">
-                                <AlertTriangle className="w-2.5 h-2.5" />
-                                SPOILER
-                              </span>
-                            )}
+                                  isOwnReply ? (
+                                    <span className="px-1.5 py-0.5 bg-destructive/20 text-destructive rounded text-xs font-semibold flex items-center gap-1">
+                                      <AlertTriangle className="w-2.5 h-2.5" />
+                                      SPOILER
+                                    </span>
+                                  ) : (
+                                    <button
+                                      onClick={() => {
+                                        const newRevealed = new Set(revealedSpoilers);
+                                        if (newRevealed.has(reply._id)) {
+                                          newRevealed.delete(reply._id);
+                                        } else {
+                                          newRevealed.add(reply._id);
+                                        }
+                                        setRevealedSpoilers(newRevealed);
+                                      }}
+                                      className={`px-1.5 py-0.5 rounded text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors ${
+                                        replySpoilerRevealed
+                                          ? "bg-destructive/10 text-destructive hover:bg-destructive/20"
+                                          : "bg-destructive/20 text-destructive hover:bg-destructive/30"
+                                      }`}
+                                      title={replySpoilerRevealed ? "Hide spoiler" : "Contains spoilers"}
+                                    >
+                                      {replySpoilerRevealed ? <EyeOff className="w-2.5 h-2.5" /> : <AlertTriangle className="w-2.5 h-2.5" />}
+                                      SPOILER {replySpoilerRevealed && <span className="opacity-70">(Revealed)</span>}
+                                    </button>
+                                  )
+                                )}
                           </div>
                           <div className="relative">
                             <p className={`text-sm text-foreground transition-all ${shouldBlurReply ? 'blur-md select-none' : ''}`}>{reply.content}</p>
