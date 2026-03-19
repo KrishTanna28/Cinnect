@@ -47,7 +47,7 @@ export const MOVIE_CATEGORIES = [
     items: [
       { id: "debates_general", label: "Debates" },
       { id: "first_impressions", label: "First Impressions" },
-      { id: "general_discussion", label: "General Discussion" },
+      { id: "general", label: "General" },
       { id: "hot_takes", label: "Hot Takes" },
       { id: "initial_reactions", label: "Initial Reactions" },
       { id: "movie_comparisons", label: "Movie Comparisons" },

@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server'
 import Community from '@/lib/models/Community.js'
-import { withAuth } from '@/lib/middleware/withAuth.js'
+import User from '@/lib/models/User.js'
+import { withAuth, withOptionalAuth } from '@/lib/middleware/withAuth.js'
 import connectDB from '@/lib/config/database.js'
 import { uploadCommunityBannerToCloudinary, uploadCommunityIconToCloudinary } from '@/lib/utils/cloudinaryHelper.js'
 
 await connectDB()
 
 // GET /api/communities - Get all communities
-export async function GET(request) {
+export const GET = withOptionalAuth(async (request, { user }) => {
   try {
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
@@ -52,9 +53,52 @@ export async function GET(request) {
       Community.countDocuments(query)
     ])
 
+    let modifiedCommunities = communities;
+    if (user && user.following && user.following.length > 0) {
+      const followingIds = user.following.map(id => id.toString());
+      
+      const mutualIdSet = new Set();
+      communities.forEach(c => {
+        const mIds = c.members?.map(id => id.toString()) || [];
+        followingIds.forEach(fid => {
+          if (mIds.includes(fid)) mutualIdSet.add(fid);
+        });
+      });
+      
+      let mutualsMap = {};
+      if (mutualIdSet.size > 0) {
+        const mutuals = await User.find({ _id: { $in: Array.from(mutualIdSet) } })
+          .select('username avatar fullName')
+          .lean();
+        mutuals.forEach(m => mutualsMap[m._id.toString()] = m);
+      }
+      
+      modifiedCommunities = communities.map(c => {
+        const mIds = c.members?.map(id => id.toString()) || [];
+        const mutualsInCommunity = followingIds
+           .filter(fid => mIds.includes(fid))
+           .map(fid => mutualsMap[fid])
+           .filter(Boolean);
+        
+        // Remove full members array to save bandwidth
+        const { members, ...rest } = c;
+        
+        return {
+          ...rest,
+          mutuals: mutualsInCommunity
+        };
+      });
+    } else {
+      // Clean members array for non-authenticated users or users with no friends
+      modifiedCommunities = communities.map(c => {
+        const { members, ...rest } = c;
+        return rest;
+      });
+    }
+
     return NextResponse.json({
       success: true,
-      data: communities,
+      data: modifiedCommunities,
       pagination: {
         page,
         limit,
@@ -72,7 +116,7 @@ export async function GET(request) {
       { status: 500 }
     )
   }
-}
+})
 
 // POST /api/communities - Create new community
 export const POST = withAuth(async (request, { user }) => {

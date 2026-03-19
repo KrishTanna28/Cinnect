@@ -7,6 +7,7 @@ import { toast } from "@/hooks/use-toast"
 import { getTVDetails } from "@/lib/movies"
 import ReviewSection from "@/components/review-section"
 import CastSection from "@/components/cast-section"
+import CrewSection from "@/components/crew-section"
 import ClipsSection from "@/components/clips-section"
 import VideoPlayerModal from "@/components/video-player-modal"
 import Link from "next/link"
@@ -721,6 +722,11 @@ export default function TVDetailsPage({ params }) {
           {/* Cast Section */}
           {tvShow.cast && tvShow.cast.length > 0 && (
             <CastSection cast={tvShow.cast} />
+          )}
+
+          {/* Crew Section */}
+          {tvShow.crew && tvShow.crew.length > 0 && (
+            <CrewSection crew={tvShow.crew} />
           )}
 
           {/* Clips Section */}

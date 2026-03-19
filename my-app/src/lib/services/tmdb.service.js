@@ -478,7 +478,7 @@ export function formatMovieDetails(movie) {
         character: person.character,
         profilePath: getImageUrl(person.profile_path, 'w185'),
       })),
-      crew: movie.credits?.crew?.slice(0, 10).map((person) => ({
+      crew: movie.credits?.crew?.slice(0, 50).map((person) => ({
         id: person.id,
         name: person.name,
         job: person.job,
@@ -590,7 +590,7 @@ export function formatTVDetails(tv) {
         character: person.character,
         profilePath: getImageUrl(person.profile_path, 'w185'),
       })),
-      crew: tv.credits?.crew?.slice(0, 10).map((person) => ({
+      crew: tv.credits?.crew?.slice(0, 50).map((person) => ({
         id: person.id,
         name: person.name,
         job: person.job,

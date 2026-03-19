@@ -9,6 +9,7 @@ import { useUser } from "@/contexts/UserContext"
 import { useRouter } from "next/navigation"
 import VideoPlayerModal from "./video-player-modal"
 import CastSection from "./cast-section"
+import CrewSection from "./crew-section"
 import ReviewPreview from "./review-preview"
 import VideosGrid from "./videos-grid"
 import NewsCarousel from "./news-carousel"
@@ -294,6 +295,11 @@ export default function MovieDetailsClient({
           {/* Cast */}
           {movie.credits?.cast && (
             <CastSection cast={movie.credits.cast} />
+          )}
+
+          {/* Crew */}
+          {movie.credits?.crew && (
+            <CrewSection crew={movie.credits.crew} />
           )}
 
           {/* Videos */}

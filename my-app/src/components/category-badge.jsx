@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils"
 import { FLAT_CATEGORIES, CATEGORY_COLOR_STYLES } from "@/lib/config/categories"
 
 export function CategoryBadge({ category, customCategory, categoryColor, className }) {
-  const effectiveCategory = category || "general_discussion";
+  const effectiveCategory = category || "general";
   const resolvedCategory = FLAT_CATEGORIES.find(c => c.id === effectiveCategory);
   
   const label = effectiveCategory === "other" && customCategory 

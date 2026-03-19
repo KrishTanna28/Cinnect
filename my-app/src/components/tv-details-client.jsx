@@ -9,6 +9,7 @@ import { useUser } from "@/contexts/UserContext"
 import { useRouter } from "next/navigation"
 import VideoPlayerModal from "./video-player-modal"
 import CastSection from "./cast-section"
+import CrewSection from "./crew-section"
 import ReviewPreview from "./review-preview"
 import VideosGrid from "./videos-grid"
 import NewsCarousel from "./news-carousel"
@@ -270,6 +271,11 @@ export default function TVDetailsClient({
           {/* Cast */}
           {show.credits?.cast && (
             <CastSection cast={show.credits.cast} />
+          )}
+
+          {/* Crew */}
+          {show.credits?.crew && (
+            <CrewSection crew={show.credits.crew} />
           )}
 
           {/* Videos */}

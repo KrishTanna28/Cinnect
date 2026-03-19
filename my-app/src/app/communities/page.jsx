@@ -462,13 +462,27 @@ export default function CommunitiesPage() {
                                   {community.category}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                                <span className="flex items-center gap-1">
-                                  <Users className="w-3 h-3" />
-                                  {formatNumber(community.memberCount || 0)}
-                                </span>
-                                <span>•</span>
-                                <span>{formatNumber(community.postCount || 0)} posts</span>
+                              <div className="flex flex-col mt-1">
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <span className="flex items-center gap-1">
+                                    <Users className="w-3 h-3" />
+                                    {formatNumber(community.memberCount || 0)}
+                                  </span>
+                                  <span>•</span>
+                                  <span>{formatNumber(community.postCount || 0)} posts</span>
+                                </div>
+                                {community.mutuals && community.mutuals.length > 0 && (
+                                  <div className="flex items-center gap-2 mt-2">
+                                    <div className="flex -space-x-1">
+                                      {community.mutuals.slice(0, 3).map(m => (
+                                        <img key={m._id} src={m.avatar || '/default-avatar.png'} alt={m.username} className="w-4 h-4 rounded-full border border-background" title={m.username} />
+                                      ))}
+                                    </div>
+                                    <span className="text-[10px] text-muted-foreground">
+                                      {community.mutuals.length} friend{community.mutuals.length !== 1 ? 's' : ''} here
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>

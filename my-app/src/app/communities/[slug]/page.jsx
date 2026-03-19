@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Users, FileText, Plus, Clock, ThumbsUp, MessageCircle, Pin, Lock, Film, Tv, User as UserIcon, Sparkles, Trash2, UserPlus, UserX, UserTick, Bell, Pencil, MoreVertical, ThumbsDown, Newspaper, X, Check, ExternalLink, AlertTriangle, ShieldAlert, UserMinus, Info } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { useUser } from "@/contexts/UserContext"
 import { useToast } from "@/hooks/use-toast"
@@ -14,6 +14,7 @@ import PostMediaPreview from "@/components/post-media-preview"
 import { CommunityDetailSkeleton } from "@/components/skeletons"
 import { shouldFilterAdultContent } from "@/lib/utils/ageUtils"
 import { CategoryBadge } from "@/components/category-badge"
+import CommunityMembersModal from "@/components/community-members-modal"
 
 const categoryIcons = {
   general: Sparkles,
@@ -36,6 +37,7 @@ export default function CommunityPage() {
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [showMobileInfo, setShowMobileInfo] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   
   // News state
   const [news, setNews] = useState([])
@@ -54,6 +56,8 @@ export default function CommunityPage() {
   const [rulesText, setRulesText] = useState([])
   const [savingAbout, setSavingAbout] = useState(false)
   const [savingRules, setSavingRules] = useState(false)
+  const [showMembersModal, setShowMembersModal] = useState(false)
+  const [membersModalTab, setMembersModalTab] = useState("members")
 
   const params = useParams()
   const router = useRouter()
@@ -568,10 +572,6 @@ export default function CommunityPage() {
       e.stopPropagation();
     }
 
-    if (!confirm('Are you sure you want to delete this community? This action cannot be undone and will delete all posts.')) {
-      return
-    }
-
     setDeleting(true)
     try {
       const token = localStorage.getItem('token')
@@ -587,6 +587,7 @@ export default function CommunityPage() {
           title: 'Community Deleted',
           description: data.message
         })
+        setShowDeleteModal(false)
         router.push('/communities')
       } else {
         toast({
@@ -594,6 +595,7 @@ export default function CommunityPage() {
           description: data.message || 'Failed to delete community',
           variant: 'destructive'
         })
+        setDeleting(false)
       }
     } catch (error) {
       console.error('Error deleting community:', error)
@@ -710,7 +712,12 @@ export default function CommunityPage() {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Members</span>
-            <span className="text-sm text-muted-foreground">{formatNumber(community.memberCount)}</span>
+            <span 
+              className="text-sm text-foreground font-medium cursor-pointer hover:text-primary"
+              onClick={() => { setMembersModalTab('members'); setShowMembersModal(true); }}
+            >
+              {formatNumber(community.memberCount)}
+            </span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Posts</span>
@@ -719,7 +726,6 @@ export default function CommunityPage() {
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Category</span>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded text-xs font-medium">
-              <CategoryIcon className="w-3 h-3" />
               {community.category}
             </span>
           </div>
@@ -736,6 +742,30 @@ export default function CommunityPage() {
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Created</span>
               <span className="text-sm text-muted-foreground">{formatDate(community.createdAt)}</span>
+            </div>
+          )}
+          {community.mutuals && community.mutuals.length > 0 && (
+            <div className="pt-2 mt-2 border-t border-border">
+              <span className="text-sm text-muted-foreground block mb-2">Friends in community</span>
+              <div 
+                className="flex items-center gap-2 cursor-pointer"
+                onClick={() => { setMembersModalTab('mutuals'); setShowMembersModal(true); }}
+              >
+                <div className="flex -space-x-2">
+                  {community.mutuals.slice(0, 5).map(m => (
+                    <img 
+                      key={m._id} 
+                      src={m.avatar || '/default-avatar.png'} 
+                      alt={m.username}
+                      className="w-6 h-6 rounded-full border border-background"
+                      title={m.username}
+                    />
+                  ))}
+                </div>
+                <span className="text-xs text-muted-foreground hover:text-primary">
+                  {community.mutuals.length} friend{community.mutuals.length !== 1 ? 's' : ''} here
+                </span>
+              </div>
             </div>
           )}
         </div>
@@ -914,16 +944,43 @@ export default function CommunityPage() {
 
               {/* Line 2: Badges (left) + Buttons (right) - NO WRAP */}
               <div className="flex items-center justify-between gap-2 mt-1">
-                {/* Badges */}
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-primary/10 text-primary rounded text-xs font-medium">
-                    {community.category}
-                  </span>
-                  {community.isPrivate && (
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-secondary text-foreground rounded text-xs">
-                      <Lock className="w-3 h-3" />
-                      Private
+                {/* Badges and Mutuals */}
+                <div className="flex items-center flex-wrap gap-2 flex-shrink border-border">
+                  <div className="flex items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-primary/10 text-primary rounded text-xs font-medium">
+                      {community.category}
                     </span>
+                    {community.isPrivate && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-secondary text-foreground rounded text-xs">
+                        <Lock className="w-3 h-3" />
+                        Private
+                      </span>
+                    )}
+                  </div>
+                  
+                  {community.mutuals && community.mutuals.length > 0 && (
+                    <>
+                      <span className="text-xs text-muted-foreground hidden sm:inline">•</span>
+                      <div 
+                        className="flex items-center gap-1.5 cursor-pointer hover:text-primary"
+                        onClick={() => { setMembersModalTab('mutuals'); setShowMembersModal(true); }}
+                      >
+                        <div className="flex -space-x-1">
+                          {community.mutuals.slice(0, 3).map(m => (
+                            <img 
+                              key={m._id} 
+                              src={m.avatar || '/default-avatar.png'} 
+                              alt={m.username}
+                              className="w-5 h-5 rounded-full border border-background shadow-none"
+                              title={m.username}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap hover:text-primary">
+                          {community.mutuals.length} friend{community.mutuals.length !== 1 ? 's' : ''} here
+                        </span>
+                      </div>
+                    </>
                   )}
                 </div>
 
@@ -1021,7 +1078,7 @@ export default function CommunityPage() {
                               className="cursor-pointer"
                               onSelect={(e) => {
                                 e.preventDefault();
-                                handleDeleteCommunity(e);
+                                setShowDeleteModal(true);
                               }}
                               disabled={deleting}
                             >
@@ -1055,7 +1112,9 @@ export default function CommunityPage() {
 
               {/* Line 4: Stats */}
               <div className="flex items-center gap-3 mt-2 text-xs sm:text-sm text-muted-foreground">
-                <span><strong className="text-foreground">{formatNumber(community.memberCount)}</strong> {community.memberCount === 1 ? "member" : "members"}</span>
+                <span>
+                  <strong className="text-foreground">{formatNumber(community.memberCount)}</strong> {community.memberCount === 1 ? "member" : "members"}
+                </span>
                 <span><strong className="text-foreground">{formatNumber(community.postCount)}</strong> {community.postCount === 1 ? "post" : "posts"}</span>
               </div>
             </div>
@@ -1382,6 +1441,31 @@ export default function CommunityPage() {
           </div>
         </DialogContent>
       </Dialog>
+      
+      {/* Delete Community Dialog */}
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent className="sm:max-w-md w-[95vw] rounded-xl bg-background border-border">
+          <DialogHeader>
+            <DialogTitle>Delete Community</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this community? This action cannot be undone and will delete all posts.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex space-x-2 pt-4 justify-end">
+            <Button variant="outline" onClick={() => setShowDeleteModal(false)} disabled={deleting}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteCommunity} disabled={deleting}>
+              {deleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <CommunityMembersModal
+        isOpen={showMembersModal}
+        onClose={() => setShowMembersModal(false)}
+        slug={params.slug}
+        initialTab={membersModalTab}
+      />
     </main>
   )
 }

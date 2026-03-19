@@ -7,6 +7,7 @@ import { toast } from "@/hooks/use-toast"
 import * as movieAPI from "@/lib/movies"
 import ReviewSection from "@/components/review-section"
 import CastSection from "@/components/cast-section"
+import CrewSection from "@/components/crew-section"
 import ClipsSection from "@/components/clips-section"
 import VideoPlayerModal from "@/components/video-player-modal"
 import Link from "next/link"
@@ -632,6 +633,11 @@ export default function DetailsPage({ params }) {
           {/* Cast Section */}
           {movie.cast && movie.cast.length > 0 && (
             <CastSection cast={movie.cast} />
+          )}
+
+          {/* Crew Section */}
+          {movie.crew && movie.crew.length > 0 && (
+            <CrewSection crew={movie.crew} />
           )}
 
           {/* Clips Section */}

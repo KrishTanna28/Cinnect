@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, ThumbsUp, ThumbsDown, MessageCircle, Eye, Pin, Lock, Trash2, Send, Pencil, MoreVertical, Cross2, X, AlertTriangle, ShieldAlert } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useUser } from "@/contexts/UserContext"
@@ -24,6 +25,7 @@ export default function PostDetailPage() {
   const [showReplies, setShowReplies] = useState(new Set())
   const [submitting, setSubmitting] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [commentSpoiler, setCommentSpoiler] = useState(false)
   const [replySpoiler, setReplySpoiler] = useState(false)
   const [revealedSpoilers, setRevealedSpoilers] = useState(new Set())
@@ -616,8 +618,6 @@ export default function PostDetailPage() {
   }
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this post?')) return
-
     setDeleting(true)
     try {
       const token = localStorage.getItem('token')
@@ -633,6 +633,7 @@ export default function PostDetailPage() {
           title: "Success",
           description: "Post deleted successfully"
         })
+        setShowDeleteModal(false)
         router.push(`/communities/${params.slug}`)
       } else {
         toast({
@@ -807,7 +808,8 @@ export default function PostDetailPage() {
                     Edit
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={handleDelete}
+                    className="text-red-500 hover:text-red-600 focus:text-red-600"
+                    onClick={() => setShowDeleteModal(true)}
                     disabled={deleting}
                   >
                     {deleting ? (
@@ -1286,6 +1288,24 @@ export default function PostDetailPage() {
           )}
         </div>
       </div>
+      
+      {/* Delete Post Dialog */}
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent className="sm:max-w-md w-[95vw] rounded-xl bg-background border-border">
+          <DialogHeader>
+            <DialogTitle>Delete Post</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this post? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex space-x-2 pt-4 justify-end">
+            <Button variant="outline" onClick={() => setShowDeleteModal(false)} disabled={deleting}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+              {deleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   )
 }

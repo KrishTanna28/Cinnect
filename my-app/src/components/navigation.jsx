@@ -408,7 +408,7 @@ export default function Navigation() {
                 <Link href="/messages" className={`relative p-2 transition-all active:scale-90 cursor-pointer ${pathname?.startsWith('/messages') ? 'text-primary' : 'text-foreground hover:text-primary'}`} title="Messages">
                   <Send className="w-5 h-5" />
                   {unreadMsgCount > 0 && (
-                    <span className="absolute top-1 right-1 flex h-3 min-w-[12px] items-center justify-center rounded-full bg-red-500 px-0.5 text-[8px] font-bold text-white shadow-sm ring-2 ring-background">
+          <span className="absolute top-1 right-1 flex items-center justify-center min-w-[16px] h-4 px-1 text-[10px] font-bold text-white bg-red-500 rounded-full leading-none">
                       {unreadMsgCount > 99 ? '99+' : unreadMsgCount}
                     </span>
                   )}
@@ -746,7 +746,7 @@ export default function Navigation() {
                   <Link href="/messages" className={`relative p-2 transition-all active:scale-90 cursor-pointer ${pathname?.startsWith('/messages') ? 'text-primary' : 'text-foreground hover:text-primary'}`} title="Messages">
                       <Send className="w-5 h-5" />
                       {unreadMsgCount > 0 && (
-                        <span className="absolute top-1 right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white shadow-sm ring-2 ring-background">
+          <span className="absolute top-1 right-1 flex items-center justify-center min-w-[16px] h-4 px-1 text-[10px] font-bold text-white bg-red-500 rounded-full leading-none">
                           {unreadMsgCount > 99 ? '99+' : unreadMsgCount}
                         </span>
                       )}

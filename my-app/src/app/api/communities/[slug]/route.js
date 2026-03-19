@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import Community from '@/lib/models/Community.js'
+import User from '@/lib/models/User.js'
 import { withAuth, withOptionalAuth } from '@/lib/middleware/withAuth.js'
 import connectDB from '@/lib/config/database.js'
 import { uploadCommunityBannerToCloudinary, uploadCommunityIconToCloudinary, deleteImageFromCloudinary } from '@/lib/utils/cloudinaryHelper.js'
@@ -28,15 +29,28 @@ export const GET = withOptionalAuth(async (request, { params, user }) => {
     const isCreator = user ? community.creator._id?.toString() === user._id?.toString() : false
     const hasPendingRequest = user ? community.pendingRequests?.some(req => req.user.toString() === user._id?.toString()) : false
 
+    // Find mutuals in community
+    let mutuals = []
+    if (user && user.following && user.following.length > 0) {
+      const followingIds = user.following.map(id => id.toString())
+      const memberIds = community.members?.map(id => id.toString()) || []
+      const mutualIds = followingIds.filter(fid => memberIds.includes(fid))
+      if (mutualIds.length > 0) {
+        mutuals = await User.find({ _id: { $in: mutualIds } }).select('username avatar fullName').lean()
+      }
+    }
+    community.members = undefined // Hide members array
+
     // Populate pending requests if user is creator
-    let populatedCommunity = community
+    let populatedCommunity = { ...community, mutuals }
     if (isCreator) {
       const fullCommunity = await Community.findOne({ slug })
         .populate('creator', 'username avatar fullName')
         .populate('moderators', 'username avatar fullName')
         .populate('pendingRequests.user', 'username avatar fullName')
         .lean()
-      populatedCommunity = fullCommunity
+      fullCommunity.members = undefined
+      populatedCommunity = { ...fullCommunity, mutuals }
     }
 
     return NextResponse.json({
@@ -258,3 +272,4 @@ export const PATCH = withAuth(async (request, { user, params }) => {
     )
   }
 })
+
