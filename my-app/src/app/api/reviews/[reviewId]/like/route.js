@@ -4,6 +4,7 @@ import Notification from '@/lib/models/Notification.js'
 import User from '@/lib/models/User.js'
 import { withAuth } from '@/lib/middleware/withAuth.js'
 import { emitNotification } from '@/lib/socketServer.js'
+import { applyXpEvent, getProgressionSnapshot } from '@/lib/utils/gamification.js'
 
 // POST /api/reviews/[reviewId]/like - Like/unlike a review
 export const POST = withAuth(async (request, { user, params }) => {
@@ -24,6 +25,34 @@ export const POST = withAuth(async (request, { user, params }) => {
 
     // Use the model method to toggle like
     await review.likeReview(user._id)
+
+    let xpEvent = null
+    let ownerProgression = null
+
+    if (!wasAlreadyLiked && review.user.toString() !== user._id.toString()) {
+      const reviewOwner = await User.findById(review.user)
+
+      if (reviewOwner) {
+        const currentLikes = review.likes.length
+        const awardedLikeMilestone = review?.gamification?.awardedLikeMilestone || 0
+
+        if (currentLikes > awardedLikeMilestone) {
+          xpEvent = applyXpEvent(reviewOwner, {
+            action: 'review_like_received',
+            target: review,
+            metadata: {
+              qualityScore: review?.gamification?.qualityScore || 0,
+              engagementFactor: Math.min(1, currentLikes / 20)
+            }
+          })
+
+          review.gamification.awardedLikeMilestone = currentLikes
+          await reviewOwner.save()
+          ownerProgression = getProgressionSnapshot(reviewOwner)
+          await review.save()
+        }
+      }
+    }
 
     // Send notification if this is a new like (not an unlike) and not self-like
     if (!wasAlreadyLiked && review.user.toString() !== user._id.toString()) {
@@ -57,7 +86,13 @@ export const POST = withAuth(async (request, { user, params }) => {
         dislikes: review.dislikes.length,
         userLiked: review.likes.some(id => id?.toString() === user._id?.toString()),
         userDisliked: review.dislikes.some(id => id?.toString() === user._id?.toString())
-      }
+      },
+      gamification: xpEvent
+        ? {
+            xpEvent,
+            progression: ownerProgression || xpEvent.progression
+          }
+        : undefined
     })
   } catch (error) {
     console.error('Like review error:', error)

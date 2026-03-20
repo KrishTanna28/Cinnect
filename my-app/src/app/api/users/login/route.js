@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import User from '@/lib/models/User.js'
 import bcrypt from 'bcryptjs'
 import { generateToken } from '@/lib/utils/jwt.js'
+import { applyXpEvent, getProgressionSnapshot } from '@/lib/utils/gamification.js'
 
 export async function POST(request) {
   try {
@@ -46,6 +47,11 @@ export async function POST(request) {
     // Generate token
     const token = generateToken(user._id)
 
+    const xpEvent = applyXpEvent(user, {
+      action: 'daily_login',
+      target: {}
+    })
+
     // Update last login
     user.lastLogin = new Date()
     await user.save()
@@ -60,6 +66,10 @@ export async function POST(request) {
       data: {
         token,
         user: userResponse
+      },
+      gamification: {
+        xpEvent,
+        progression: getProgressionSnapshot(user)
       }
     })
   } catch (error) {

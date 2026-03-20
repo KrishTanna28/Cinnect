@@ -75,7 +75,6 @@ export default function FollowersFollowingModal({
         page: pageNum.toString(),
         limit: "20",
         ...(search && { search }),
-        ...(activeTab === "mutuals" && { mutualsOnly: "true" })
       })
 
       const response = await fetch(
@@ -234,21 +233,6 @@ export default function FollowersFollowingModal({
                 </button>
               </>
             )}
-            {currentUser && currentUser._id !== userId && (
-              <button
-                onClick={() => setActiveTab("mutuals")}
-                className={`flex-1 py-2 text-center font-semibold text-sm transition-colors cursor-pointer relative ${
-                  activeTab === "mutuals"
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Mutuals
-                {activeTab === "mutuals" && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
-                )}
-              </button>
-            )}
           </div>
           <button
             onClick={onClose}
@@ -290,8 +274,6 @@ export default function FollowersFollowingModal({
                   ? "No users found"
                   : activeTab === "followers"
                   ? "No followers yet"
-                  : activeTab === "mutuals"
-                  ? "No mutuals yet"
                   : "Not following anyone yet"}
               </p>
             </div>

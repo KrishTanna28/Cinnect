@@ -9,7 +9,7 @@ export async function POST(request) {
     await connectDB()
 
     const contentType = request.headers.get('content-type') || ''
-    let username, email, password, fullName, referralCode, avatarFile, dateOfBirth
+    let username, email, password, fullName, avatarFile, dateOfBirth
 
     if (contentType.includes('multipart/form-data') || contentType.includes('application/x-www-form-urlencoded')) {
       const formData = await request.formData()
@@ -17,7 +17,6 @@ export async function POST(request) {
       email = formData.get('email')
       password = formData.get('password')
       fullName = formData.get('fullName')
-      referralCode = formData.get('referralCode')
       avatarFile = formData.get('avatar')
       dateOfBirth = formData.get('dateOfBirth')
     } else {
@@ -27,7 +26,6 @@ export async function POST(request) {
       email = body.email
       password = body.password
       fullName = body.fullName
-      referralCode = body.referralCode
       avatarFile = null
       dateOfBirth = body.dateOfBirth
     }
@@ -68,7 +66,6 @@ export async function POST(request) {
       email,
       password,
       fullName,
-      referralCode,
       dateOfBirth,
       avatar: avatarBuffer,
       avatarName,

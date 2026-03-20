@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Users, FileText, Plus, Clock, ThumbsUp, MessageCircle, Pin, Lock, Film, Tv, User as UserIcon, Sparkles, Trash2, UserPlus, UserX, UserTick, Bell, Pencil, MoreVertical, ThumbsDown, Newspaper, X, Check, ExternalLink, AlertTriangle, ShieldAlert, EyeOff, UserMinus, Info } from "lucide-react"
+import { Users, FileText, Plus, Clock, ThumbsUp, MessageCircle, Pin, Lock, Film, Tv, User as UserIcon, Trash2, UserPlus, UserX, UserTick, Bell, Pencil, MoreVertical, ThumbsDown, Newspaper, X, Check, ExternalLink, AlertTriangle, ShieldAlert, EyeOff, UserMinus, Info } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -15,9 +15,10 @@ import { CommunityDetailSkeleton } from "@/components/skeletons"
 import { shouldFilterAdultContent } from "@/lib/utils/ageUtils"
 import { CategoryBadge } from "@/components/category-badge"
 import CommunityMembersModal from "@/components/community-members-modal"
+import UserAvatar from "@/components/user-avatar"
 
 const categoryIcons = {
-  general: Sparkles,
+  general: FileText,
   movie: Film,
   tv: Tv,
   actor: UserIcon
@@ -28,7 +29,6 @@ export default function CommunityPage() {
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [sortBy, setSortBy] = useState('recent')
   const [isMember, setIsMember] = useState(false)
   const [hasPendingRequest, setHasPendingRequest] = useState(false)
   const [isCreator, setIsCreator] = useState(false)
@@ -57,12 +57,12 @@ export default function CommunityPage() {
   const [savingAbout, setSavingAbout] = useState(false)
   const [savingRules, setSavingRules] = useState(false)
   const [showMembersModal, setShowMembersModal] = useState(false)
-  const [membersModalTab, setMembersModalTab] = useState("members")
 
   const params = useParams()
   const router = useRouter()
   const { user } = useUser()
   const { toast } = useToast()
+  const canOpenMembersModal = !community?.isPrivate || isMember || isCreator
 
   // Infinite scroll for posts
   const loadMoreRef = useInfiniteScroll(
@@ -82,13 +82,6 @@ export default function CommunityPage() {
     setHasMore(true)
     fetchPosts(1)
   }, [params.slug])
-
-  useEffect(() => {
-    setPage(1)
-    setPosts([])
-    setHasMore(true)
-    fetchPosts(1)
-  }, [sortBy])
 
   // Fetch news when community loads
   useEffect(() => {
@@ -296,7 +289,7 @@ export default function CommunityPage() {
       const token = localStorage.getItem('token')
       const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
 
-      const response = await fetch(`/api/communities/${params.slug}/posts?sort=${sortBy}&page=${pageNum}&limit=10`, { headers })
+      const response = await fetch(`/api/communities/${params.slug}/posts?page=${pageNum}&limit=10`, { headers })
       const data = await response.json()
 
       if (data.success) {
@@ -609,8 +602,6 @@ export default function CommunityPage() {
     }
   }
 
-
-
   const formatNumber = (num) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`
@@ -699,7 +690,7 @@ export default function CommunityPage() {
     )
   }
 
-  const CategoryIcon = categoryIcons[community.category] || Sparkles
+  const CategoryIcon = categoryIcons[community.category] || FileText
 
   const renderCommunityInfo = () => (
     <div className="space-y-4">
@@ -712,9 +703,13 @@ export default function CommunityPage() {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Members</span>
-            <span 
-              className="text-sm text-foreground font-medium cursor-pointer hover:text-primary"
-              onClick={() => { setMembersModalTab('members'); setShowMembersModal(true); }}
+            <span
+              className={`text-sm font-medium ${
+                canOpenMembersModal
+                  ? "text-foreground cursor-pointer hover:text-primary"
+                  : "text-muted-foreground"
+              }`}
+              onClick={canOpenMembersModal ? () => setShowMembersModal(true) : undefined}
             >
               {formatNumber(community.memberCount)}
             </span>
@@ -745,24 +740,22 @@ export default function CommunityPage() {
             </div>
           )}
           {community.mutuals && community.mutuals.length > 0 && (
-            <div className="pt-2 mt-2 border-t border-border">
-              <span className="text-sm text-muted-foreground block mb-2">Friends in community</span>
-              <div 
-                className="flex items-center gap-2 cursor-pointer"
-                onClick={() => { setMembersModalTab('mutuals'); setShowMembersModal(true); }}
-              >
+            <div className="lg:hidden pt-2 mt-2 border-t border-border">
+                <span className="text-sm text-muted-foreground block mb-2">Friends in community</span>
+              <div className="flex items-center gap-2">
                 <div className="flex -space-x-2">
                   {community.mutuals.slice(0, 5).map(m => (
-                    <img 
+                    <UserAvatar
                       key={m._id} 
-                      src={m.avatar || '/default-avatar.png'} 
-                      alt={m.username}
-                      className="w-6 h-6 rounded-full border border-background"
+                      src={m.avatar}
+                      username={m.username}
+                      className="w-6 h-6 border border-background"
+                      fallbackClassName="text-xs"
                       title={m.username}
                     />
                   ))}
                 </div>
-                <span className="text-xs text-muted-foreground hover:text-primary">
+                <span className="text-xs text-muted-foreground">
                   {community.mutuals.length} friend{community.mutuals.length !== 1 ? 's' : ''} here
                 </span>
               </div>
@@ -961,22 +954,20 @@ export default function CommunityPage() {
                   {community.mutuals && community.mutuals.length > 0 && (
                     <>
                       <span className="text-xs text-muted-foreground hidden sm:inline">•</span>
-                      <div 
-                        className="flex items-center gap-1.5 cursor-pointer hover:text-primary"
-                        onClick={() => { setMembersModalTab('mutuals'); setShowMembersModal(true); }}
-                      >
+                        <div className="flex items-center gap-1.5">
                         <div className="flex -space-x-1">
                           {community.mutuals.slice(0, 3).map(m => (
-                            <img 
+                            <UserAvatar
                               key={m._id} 
-                              src={m.avatar || '/default-avatar.png'} 
-                              alt={m.username}
-                              className="w-5 h-5 rounded-full border border-background shadow-none"
+                              src={m.avatar}
+                              username={m.username}
+                              className="w-5 h-5 border border-background shadow-none"
+                              fallbackClassName="text-[10px]"
                               title={m.username}
                             />
                           ))}
                         </div>
-                        <span className="text-xs text-muted-foreground whitespace-nowrap hover:text-primary">
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
                           {community.mutuals.length} friend{community.mutuals.length !== 1 ? 's' : ''} here
                         </span>
                       </div>
@@ -1112,7 +1103,10 @@ export default function CommunityPage() {
 
               {/* Line 4: Stats */}
               <div className="flex items-center gap-3 mt-2 text-xs sm:text-sm text-muted-foreground">
-                <span>
+                <span
+                  className={canOpenMembersModal ? "cursor-pointer hover:text-primary" : undefined}
+                  onClick={canOpenMembersModal ? () => setShowMembersModal(true) : undefined}
+                >
                   <strong className="text-foreground">{formatNumber(community.memberCount)}</strong> {community.memberCount === 1 ? "member" : "members"}
                 </span>
                 <span><strong className="text-foreground">{formatNumber(community.postCount)}</strong> {community.postCount === 1 ? "post" : "posts"}</span>
@@ -1220,19 +1214,6 @@ export default function CommunityPage() {
                 </div>
               </div>
             )}
-
-            {/* Sort Controls - Pinned */}
-            <div className="flex items-center justify-start mb-4 flex-shrink-0">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
-              >
-                <option value="recent">Recent</option>
-                <option value="top">Top Rated</option>
-                <option value="hot">Hot</option>
-              </select>
-            </div>
 
             {/* Posts List */}
             <div ref={feedContainerRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-thin pb-6">
@@ -1464,7 +1445,16 @@ export default function CommunityPage() {
         isOpen={showMembersModal}
         onClose={() => setShowMembersModal(false)}
         slug={params.slug}
-        initialTab={membersModalTab}
+        canManageMembers={isCreator}
+        onMemberRemoved={(memberCount, removedUserId) => {
+          setCommunity((prev) => prev ? {
+            ...prev,
+            memberCount: memberCount ?? Math.max(0, (prev.memberCount || 1) - 1),
+            mutuals: Array.isArray(prev.mutuals)
+              ? prev.mutuals.filter((member) => member._id !== removedUserId)
+              : prev.mutuals
+          } : prev)
+        }}
       />
     </main>
   )

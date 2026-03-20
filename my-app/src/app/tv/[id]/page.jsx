@@ -719,6 +719,15 @@ export default function TVDetailsPage({ params }) {
             </div>
           )}
 
+          {/* Reviews Section */}
+          <div>
+            <div className="flex items-center gap-3 mb-6">
+              <Star className="w-6 h-6 text-primary" />
+              <h2 className="text-2xl font-bold text-foreground">User Reviews</h2>
+            </div>
+            <ReviewPreview mediaId={tvShow.id} mediaType="tv" mediaTitle={tvShow.title} />
+          </div>
+
           {/* Cast Section */}
           {tvShow.cast && tvShow.cast.length > 0 && (
             <CastSection cast={tvShow.cast} />
@@ -767,15 +776,6 @@ export default function TVDetailsPage({ params }) {
                 setIsModalOpen={setIsModalOpen}
               />
             )}
-          </div>
-
-          {/* Reviews Section */}
-          <div>
-            <div className="flex items-center gap-3 mb-6">
-              <Star className="w-6 h-6 text-primary" />
-              <h2 className="text-2xl font-bold text-foreground">User Reviews</h2>
-            </div>
-            <ReviewPreview mediaId={tvShow.id} mediaType="tv" mediaTitle={tvShow.title} />
           </div>
 
           {/* News Section */}

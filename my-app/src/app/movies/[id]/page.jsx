@@ -630,6 +630,15 @@ export default function DetailsPage({ params }) {
 
         {/* Tabs Content */}
         <div className="space-y-12">
+          {/* Reviews Section */}
+          <div>
+            <div className="flex items-center gap-3 mb-6">
+              <Star className="w-6 h-6 text-primary" />
+              <h2 className="text-2xl font-bold text-foreground">User Reviews</h2>
+            </div>
+            <ReviewPreview mediaId={movie.id} mediaType="movie" mediaTitle={movie.title} />
+          </div>
+
           {/* Cast Section */}
           {movie.cast && movie.cast.length > 0 && (
             <CastSection cast={movie.cast} />
@@ -676,15 +685,6 @@ export default function DetailsPage({ params }) {
                 setIsModalOpen={setIsModalOpen}
               />
             )}
-          </div>
-
-          {/* Reviews Section */}
-          <div>
-            <div className="flex items-center gap-3 mb-6">
-              <Star className="w-6 h-6 text-primary" />
-              <h2 className="text-2xl font-bold text-foreground">User Reviews</h2>
-            </div>
-            <ReviewPreview mediaId={movie.id} mediaType="movie" mediaTitle={movie.title} />
           </div>
 
           {/* News Section */}

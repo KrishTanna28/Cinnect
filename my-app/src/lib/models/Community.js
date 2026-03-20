@@ -159,7 +159,7 @@ communitySchema.pre('save', function(next) {
 
 // Methods
 communitySchema.methods.addMember = function(userId) {
-  if (!this.members.includes(userId)) {
+  if (!this.members.some(id => id?.toString() === userId?.toString())) {
     this.members.push(userId);
     this.memberCount = this.members.length;
   }
@@ -167,9 +167,12 @@ communitySchema.methods.addMember = function(userId) {
 };
 
 communitySchema.methods.removeMember = function(userId) {
-  const index = this.members.indexOf(userId);
-  if (index > -1) {
-    this.members.splice(index, 1);
+  const nextMembers = this.members.filter(
+    id => id?.toString() !== userId?.toString()
+  );
+
+  if (nextMembers.length !== this.members.length) {
+    this.members = nextMembers;
     this.memberCount = this.members.length;
   }
   return this.save();
@@ -208,7 +211,7 @@ communitySchema.methods.approveJoinRequest = async function(userId) {
   this.pendingRequests = this.pendingRequests.filter(
     req => req.user.toString() !== userId?.toString()
   );
-  if (!this.members.includes(userId)) {
+  if (!this.members.some(id => id?.toString() === userId?.toString())) {
     this.members.push(userId);
     this.memberCount = this.members.length;
   }

@@ -197,6 +197,11 @@ const postSchema = new mongoose.Schema({
   isApproved: {
     type: Boolean,
     default: true
+  },
+  gamification: {
+    trendingMilestonesAwarded: [{
+      type: String
+    }]
   }
 }, {
   timestamps: true,

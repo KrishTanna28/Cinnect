@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { MessageCircle, X, Send, Sparkles, Bot, User, Loader2, Minimize2, Maximize2 } from "lucide-react"
+import { MessageCircle, X, Send, Bot, User, Loader2, Minimize2, Maximize2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
@@ -161,7 +161,7 @@ export default function AIAssistant() {
         )}
         aria-label="AI Assistant"
       >
-        <Sparkles className="w-6 h-6 group-hover:animate-pulse" />
+        <Bot className="w-6 h-6 group-hover:animate-pulse" />
       </button>
 
       {/* Chat Window */}

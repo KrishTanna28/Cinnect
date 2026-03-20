@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server'
 import Review from '@/lib/models/Review.js'
 import { withAuth } from '@/lib/middleware/withAuth.js'
+import { getLevelFromXp, getProgressionSnapshot } from '@/lib/utils/gamification.js'
+
+function clampUserPoints(user) {
+  user.points.total = Math.max(0, user.points.total || 0)
+  user.points.available = Math.max(0, user.points.available || 0)
+  user.level = getLevelFromXp(user.points.total).level
+}
 
 // GET /api/reviews/[reviewId] - Get single review by ID
 export async function GET(request, { params }) {
@@ -81,13 +88,26 @@ export const PUT = withAuth(async (request, { user, params }) => {
       }
     }
 
+    review.editCount = (review.editCount || 0) + 1
+    const editPenalty = Math.min(30, review.editCount * 5)
+    review.editPenaltyTotal = (review.editPenaltyTotal || 0) + editPenalty
+    review.pointsAwarded = Math.max(0, (review.pointsAwarded || 0) - editPenalty)
+
+    user.points.total = Math.max(0, (user.points.total || 0) - editPenalty)
+    user.points.available = Math.max(0, (user.points.available || 0) - editPenalty)
+    clampUserPoints(user)
+
     await review.save()
+    await user.save()
     await review.populate('user', 'username avatar fullName')
 
     return NextResponse.json({
       success: true,
-      message: 'Review updated successfully',
-      data: review
+      message: `Review updated successfully${editPenalty > 0 ? `. ${editPenalty} points deducted for editing.` : ''}`,
+      data: review,
+      gamification: {
+        progression: getProgressionSnapshot(user)
+      }
     })
   } catch (error) {
     console.error('Update review error:', error)
@@ -123,16 +143,24 @@ export const DELETE = withAuth(async (request, { user, params }) => {
       )
     }
 
+    const pointsToDeduct = Math.max(0, review.pointsAwarded || 0)
+
     await review.deleteOne()
 
     // Remove from user's reviews array
     user.reviews = user.reviews.filter(id => id?.toString() !== reviewId)
     user.achievements.reviewsWritten = Math.max(0, user.achievements.reviewsWritten - 1)
+    user.points.total = Math.max(0, (user.points.total || 0) - pointsToDeduct)
+    user.points.available = Math.max(0, (user.points.available || 0) - pointsToDeduct)
+    clampUserPoints(user)
     await user.save()
 
     return NextResponse.json({
       success: true,
-      message: 'Review deleted successfully'
+      message: `Review deleted successfully${pointsToDeduct > 0 ? `. ${pointsToDeduct} points deducted.` : ''}`,
+      gamification: {
+        progression: getProgressionSnapshot(user)
+      }
     })
   } catch (error) {
     console.error('Delete review error:', error)

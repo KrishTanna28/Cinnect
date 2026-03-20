@@ -4,6 +4,7 @@ import User from '@/lib/models/User.js'
 import { withAuth, withOptionalAuth } from '@/lib/middleware/withAuth.js'
 import connectDB from '@/lib/config/database.js'
 import { uploadCommunityBannerToCloudinary, uploadCommunityIconToCloudinary } from '@/lib/utils/cloudinaryHelper.js'
+import { applyXpEvent, getProgressionSnapshot } from '@/lib/utils/gamification.js'
 
 await connectDB()
 
@@ -198,10 +199,23 @@ export const POST = withAuth(async (request, { user }) => {
 
     await community.populate('creator', 'username avatar fullName')
 
+    const xpEvent = applyXpEvent(user, {
+      action: 'community_create',
+      target: {
+        description
+      }
+    })
+
+    await user.save()
+
     return NextResponse.json({
       success: true,
       message: 'Community created successfully',
-      data: community
+      data: community,
+      gamification: {
+        xpEvent,
+        progression: getProgressionSnapshot(user)
+      }
     }, { status: 201 })
   } catch (error) {
     console.error('Create community error:', error)

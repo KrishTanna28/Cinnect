@@ -22,7 +22,7 @@ export default function ReviewPreview({ mediaId, mediaType, mediaTitle }) {
     const fetchReviews = async () => {
       try {
         const response = await fetch(
-          `${API_BASE_URL}/reviews?mediaType=${mediaType}&mediaId=${mediaId}&page=1&limit=3&sortBy=popular`
+          `${API_BASE_URL}/reviews?mediaType=${mediaType}&mediaId=${mediaId}&page=1&limit=3&sortBy=top`
         )
         const data = await response.json()
 
@@ -144,7 +144,7 @@ export default function ReviewPreview({ mediaId, mediaType, mediaTitle }) {
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <div className="flex flex-wrap items-start sm:items-center gap-2 mb-1">
                     <span className="font-semibold text-foreground">{review.user?.username}</span>
                     <div className="flex flex-wrap items-center gap-1">
                       {[...Array(10)].map((_, i) => (
@@ -176,7 +176,7 @@ export default function ReviewPreview({ mediaId, mediaType, mediaTitle }) {
                             }
                             setRevealedSpoilers(newRevealed)
                           }}
-                          className={`px-2 py-0.5 rounded text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors ${
+                          className={`max-w-full px-2 py-0.5 rounded text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors whitespace-normal break-words text-left leading-tight ${
                             isSpoilerRevealed
                               ? "bg-destructive/10 text-destructive hover:bg-destructive/20"
                               : "bg-destructive/20 text-destructive hover:bg-destructive/30"

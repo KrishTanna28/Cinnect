@@ -4,6 +4,7 @@ import { withAuth } from '@/lib/middleware/withAuth.js'
 import { generateEmbedding } from '@/lib/services/embedding.service.js'
 import { moderateText } from '@/lib/services/moderation.service.js'
 import { checkAdultContentAccess, getAdultContentFilter } from '@/lib/middleware/ageGate.js'
+import { applyXpEvent, calculateReviewQuality, getProgressionSnapshot } from '@/lib/utils/gamification.js'
 
 // GET /api/reviews - Get reviews with optional filters
 export async function GET(request) {
@@ -12,15 +13,21 @@ export async function GET(request) {
     const mediaId = searchParams.get('mediaId')
     const mediaType = searchParams.get('mediaType')
     const userId = searchParams.get('userId')
-    const sortBy = searchParams.get('sortBy') || 'recent'
+    const sortByParam = searchParams.get('sortBy') || 'top'
     const limit = parseInt(searchParams.get('limit')) || 10
     const page = parseInt(searchParams.get('page')) || 1
     const skip = (page - 1) * limit
+    const sortBy =
+      sortByParam === 'popular' ? 'top' :
+      sortByParam === 'recent' ? 'latest' :
+      (sortByParam === 'highest_rated' || sortByParam === 'rating') ? 'rating' :
+      sortByParam
 
     const query = {}
     if (mediaId) query.mediaId = mediaId
     if (mediaType) query.mediaType = mediaType
     if (userId) query.user = userId
+    query.isRemoved = { $ne: true }
 
     // Filter adult content for underage users
     const { shouldFilterAdult } = await checkAdultContentAccess(request)
@@ -30,23 +37,81 @@ export async function GET(request) {
     const total = await Review.countDocuments(query)
     let reviews = []
 
-    if (sortBy === 'popular') {
-      // Calculate a hot score combining engagement (likes, replies, dislikes) and recency (1 point per day)
+    if (sortBy === 'top') {
+      // Trending-style score aligned with community posts, with review-specific moderation penalties.
       const pipeline = [
         { $match: query },
         {
           $addFields: {
-            popularityScore: {
-              $add: [
-                { $size: { $ifNull: ['$likes', []] } },
-                { $multiply: [{ $size: { $ifNull: ['$replies', []] } }, 2] },
-                { $multiply: [{ $size: { $ifNull: ['$dislikes', []] } }, -1] },
-                { $divide: [{ $toLong: { $ifNull: ['$createdAt', new Date()] } }, 86400000] } 
-              ]
-            }
+            likesCount: { $size: { $ifNull: ['$likes', []] } },
+            dislikesCount: { $size: { $ifNull: ['$dislikes', []] } },
+            repliesCount: { $size: { $ifNull: ['$replies', []] } },
+            topScore: {
+              $let: {
+                vars: {
+                  ageHours: {
+                    $max: [0.1, { $divide: [{ $subtract: [new Date(), '$createdAt'] }, 3600000] }]
+                  },
+                  engagement: {
+                    $add: [
+                      { $size: { $ifNull: ['$likes', []] } },
+                      { $multiply: [{ $size: { $ifNull: ['$replies', []] } }, 2] },
+                      { $multiply: [{ $size: { $ifNull: ['$dislikes', []] } }, -1] }
+                    ]
+                  },
+                  quality: {
+                    $min: [
+                      10,
+                      {
+                        $divide: [
+                          {
+                            $add: [
+                              { $strLenCP: { $ifNull: ['$title', ''] } },
+                              { $strLenCP: { $ifNull: ['$content', ''] } }
+                            ]
+                          },
+                          120
+                        ]
+                      }
+                    ]
+                  },
+                  penalties: {
+                    $add: [
+                      { $cond: [{ $ifNull: ['$spoiler', false] }, 1.5, 0] },
+                      { $cond: [{ $ifNull: ['$adult_content', false] }, 1, 0] },
+                      { $cond: [{ $ifNull: ['$isFlagged', false] }, 6, 0] },
+                      { $multiply: [{ $ifNull: ['$flagCount', 0] }, 2] },
+                      {
+                        $multiply: [
+                          { $ifNull: ['$moderation.confidence', 0] },
+                          5
+                        ]
+                      }
+                    ]
+                  }
+                },
+                in: {
+                  $divide: [
+                    {
+                      $subtract: [
+                        {
+                          $add: [
+                            '$$engagement',
+                            '$$quality',
+                            { $divide: ['$$engagement', '$$ageHours'] }
+                          ]
+                        },
+                        '$$penalties'
+                      ]
+                    },
+                    { $pow: [{ $add: ['$$ageHours', 2] }, 1.5] }
+                  ]
+                }
+              }
+            },
           }
         },
-        { $sort: { popularityScore: -1, createdAt: -1 } },
+        { $sort: { topScore: -1, likesCount: -1, repliesCount: -1, createdAt: -1 } },
         { $skip: skip },
         { $limit: limit },
         { $project: { _id: 1 } }
@@ -65,8 +130,9 @@ export async function GET(request) {
       // Re-sort the populated documents into the aggregation order
       reviews = ids.map(id => unsortedReviews.find(r => r._id.equals(id))).filter(Boolean)
     } else {
-      // highest_rated or recent
-      const sortOption = (sortBy === 'highest_rated' || sortBy === 'rating') ? { rating: -1, createdAt: -1 } : { createdAt: -1 }
+      const sortOption = sortBy === 'rating'
+        ? { rating: -1, createdAt: -1 }
+        : { createdAt: -1 }
       
       reviews = await Review.find(query)
         .populate('user', 'username avatar fullName')
@@ -159,6 +225,18 @@ export const POST = withAuth(async (request, { user }) => {
       spoiler: finalSpoiler
     })
 
+    const earlierReviews = await Review.countDocuments({
+      mediaId,
+      mediaType,
+      isRemoved: { $ne: true }
+    })
+    const quality = calculateReviewQuality(review)
+    review.gamification = {
+      qualityScore: quality.score,
+      qualityDetails: quality.details,
+      awardedLikeMilestone: 0
+    }
+
     // Run adult content text moderation (non-blocking)
     try {
       const moderationText = `${title}. ${content}`
@@ -186,7 +264,21 @@ export const POST = withAuth(async (request, { user }) => {
     // Update user's reviews array and achievements
     user.reviews.push(review._id)
     user.achievements.reviewsWritten += 1
+
+    const xpEvent = applyXpEvent(user, {
+      action: 'review_post',
+      target: review,
+      metadata: {
+        reviewRank: earlierReviews + 1,
+        qualityScore: quality.score,
+        moderationConfidence: review?.moderation?.confidence || 0,
+        isFlagged: review.isFlagged
+      }
+    })
+
+    review.pointsAwarded = Math.max(0, xpEvent.grantedXp)
     await user.save()
+    await review.save()
 
     // Populate user data before returning
     await review.populate('user', 'username avatar fullName')
@@ -194,7 +286,11 @@ export const POST = withAuth(async (request, { user }) => {
     return NextResponse.json({
       success: true,
       message: 'Review created successfully',
-      data: review
+      data: review,
+      gamification: {
+        xpEvent,
+        progression: getProgressionSnapshot(user)
+      }
     })
   } catch (error) {
     console.error('Create review error:', error)

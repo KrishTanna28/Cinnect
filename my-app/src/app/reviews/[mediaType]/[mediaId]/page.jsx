@@ -22,7 +22,7 @@ export default function ReviewsPage({ params }) {
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
-  const [sortBy, setSortBy] = useState('recent')
+  const [sortBy, setSortBy] = useState('top')
 
   // Write review state
   const [showWriteReview, setShowWriteReview] = useState(false)
@@ -36,6 +36,7 @@ export default function ReviewsPage({ params }) {
   const [editingReview, setEditingReview] = useState(null)
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(null)
+  const [hasReviewed, setHasReviewed] = useState(false)
 
   // Reply state
   const [replyingTo, setReplyingTo] = useState(null)
@@ -68,6 +69,53 @@ export default function ReviewsPage({ params }) {
     }
     fetchTitle()
   }, [unwrappedParams.mediaId, unwrappedParams.mediaType])
+
+  useEffect(() => {
+    const fetchExistingReview = async () => {
+      if (!user?._id) {
+        setHasReviewed(false)
+        return
+      }
+
+      try {
+        const response = await fetch(
+          `/api/reviews?mediaType=${unwrappedParams.mediaType}&mediaId=${unwrappedParams.mediaId}&userId=${user._id}&page=1&limit=1&sortBy=latest`
+        )
+        const data = await response.json()
+        setHasReviewed(!!data?.data?.length)
+      } catch (existingReviewError) {
+        console.error('Failed to check existing review:', existingReviewError)
+      }
+    }
+
+    fetchExistingReview()
+  }, [user?._id, unwrappedParams.mediaId, unwrappedParams.mediaType])
+
+  const resolveMediaTitle = async () => {
+    if (mediaTitle) return mediaTitle
+
+    try {
+      if (unwrappedParams.mediaType === 'tv') {
+        const data = await getTVDetails(unwrappedParams.mediaId)
+        const resolvedTitle = data?.data?.name || data?.data?.title || ''
+        if (resolvedTitle) {
+          setMediaTitle(resolvedTitle)
+          return resolvedTitle
+        }
+      } else {
+        const data = await getMovieDetails(unwrappedParams.mediaId)
+        const resolvedTitle = data?.data?.title || data?.data?.name || ''
+        if (resolvedTitle) {
+          setMediaTitle(resolvedTitle)
+          return resolvedTitle
+        }
+      }
+    } catch (titleError) {
+      console.error('Failed to resolve media title for review:', titleError)
+    }
+
+    return ''
+  }
 
   // Fetch reviews
   const fetchReviews = async (pageNum = 1, sortBy) => {
@@ -131,6 +179,11 @@ export default function ReviewsPage({ params }) {
       return
     }
 
+    if (!editingReview && hasReviewed) {
+      setError('You have already reviewed this media')
+      return
+    }
+
     try {
       // Auto-detect spoiler if checkbox is not checked
       let finalSpoiler = reviewForm.spoiler
@@ -179,6 +232,12 @@ export default function ReviewsPage({ params }) {
           setReviews(prev => prev.map(r => r._id === editingReview._id ? data.data : r))
         }
       } else {
+        const resolvedMediaTitle = await resolveMediaTitle()
+        if (!resolvedMediaTitle) {
+          setError('Failed to identify this media. Please try again.')
+          return
+        }
+
         // Optimistic update for new review
         const tempReview = {
           _id: 'temp-' + Date.now(),
@@ -201,34 +260,38 @@ export default function ReviewsPage({ params }) {
           updatedAt: new Date().toISOString()
         }
         setReviews(prev => [tempReview, ...prev])
-        setSuccess('Review posted successfully!')
-        setShowWriteReview(false)
-        const formData = { ...formWithSpoiler }
-        setReviewForm({ rating: 5, title: '', content: '', spoiler: false })
+          setSuccess('Review posted successfully!')
+          setShowWriteReview(false)
+          const formData = { ...formWithSpoiler }
+          setReviewForm({ rating: 5, title: '', content: '', spoiler: false })
+          setHasReviewed(true)
 
-        // Create new review
-        const data = await createReview(
-          {
-            ...formData,
-            mediaId: unwrappedParams.mediaId,
-            mediaType: unwrappedParams.mediaType,
-            mediaTitle: mediaTitle
+          // Create new review
+          const data = await createReview(
+            {
+              ...formData,
+              mediaId: unwrappedParams.mediaId,
+              mediaType: unwrappedParams.mediaType,
+              mediaTitle: resolvedMediaTitle
+            }
+          )
+
+          if (data.success) {
+            // Replace temp review with real one
+            setReviews(prev => prev.map(r => r._id === tempReview._id ? data.data : r))
+          } else {
+            setHasReviewed(false)
           }
-        )
-
-        if (data.success) {
-          // Replace temp review with real one
-          setReviews(prev => prev.map(r => r._id === tempReview._id ? data.data : r))
         }
-      }
-    } catch (error) {
-      console.error('Failed to submit review:', error)
-      setError(error.message || 'Failed to submit review')
+      } catch (error) {
+        console.error('Failed to submit review:', error)
+        setError(error.message || 'Failed to submit review')
       // Revert optimistic update on error
       if (editingReview) {
         setReviews(prev => prev.map(r => r._id === editingReview._id ? editingReview : r))
       } else {
         setReviews(prev => prev.filter(r => !r._id.startsWith('temp-')))
+        setHasReviewed(false)
       }
     }
   }
@@ -474,15 +537,18 @@ export default function ReviewsPage({ params }) {
   const confirmDelete = async () => {
     if (!deleteConfirmation) return
 
-    const deletedItem = deleteConfirmation
-    let backupData = null
+        const deletedItem = deleteConfirmation
+        let backupData = null
 
     try {
-      if (deleteConfirmation.type === 'review') {
-        // Backup and optimistically remove review
-        backupData = reviews.find(r => r._id === deletedItem.id)
-        setReviews(prev => prev.filter(r => r._id !== deletedItem.id))
-        setSuccess('Review deleted successfully!')
+        if (deleteConfirmation.type === 'review') {
+          // Backup and optimistically remove review
+          backupData = reviews.find(r => r._id === deletedItem.id)
+          setReviews(prev => prev.filter(r => r._id !== deletedItem.id))
+          if (backupData?.user?._id === user?._id) {
+            setHasReviewed(false)
+          }
+          setSuccess('Review deleted successfully!')
         setTimeout(() => setSuccess(null), 3000)
         setDeleteConfirmation(null)
 
@@ -523,6 +589,9 @@ export default function ReviewsPage({ params }) {
       // Revert optimistic update on error
       if (deletedItem.type === 'review' && backupData) {
         setReviews(prev => [backupData, ...prev])
+        if (backupData?.user?._id === user?._id) {
+          setHasReviewed(true)
+        }
       } else if (deletedItem.type === 'reply' && backupData) {
         setReviews(prev => prev.map(r => {
           if (r._id === deletedItem.reviewId) {
@@ -550,7 +619,7 @@ export default function ReviewsPage({ params }) {
   }
 
   return (
-    <main className="min-h-screen bg-background py-8">
+    <main className="min-h-screen bg-background py-6 sm:py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
@@ -560,16 +629,19 @@ export default function ReviewsPage({ params }) {
           >
             <ArrowLeft className="w-7 h-7" />
           </button>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h1 className="text-3xl font-bold text-foreground">User Reviews</h1>
-            {!showWriteReview && (
+            {!showWriteReview && !hasReviewed && (
               <button
                 onClick={() => setShowWriteReview(!showWriteReview)}
-                className="flex items-center text-sm gap-2 hover:text-primary transition-all active:scale-95 cursor-pointer mb-5"
+                className="flex items-center text-sm gap-2 hover:text-primary transition-all active:scale-95 cursor-pointer"
               >
                 <Plus className="w-5 h-5" />
                 Write a Review
               </button>
+            )}
+            {!showWriteReview && hasReviewed && (
+              <p className="text-sm text-muted-foreground">You have already reviewed this.</p>
             )}
           </div>
         </div>
@@ -726,29 +798,22 @@ export default function ReviewsPage({ params }) {
         )}
 
         {/* Sort Options */}
-        {reviews?.length > 0 && <div className="flex gap-2 mb-6">
-          <Button
-            variant={sortBy === 'recent' ? 'default' : 'outline'}
-            onClick={() => { setSortBy('recent'); setPage(1); }}
-            size="sm"
-          >
-            Recent
-          </Button>
-          <Button
-            variant={sortBy === 'popular' ? 'default' : 'outline'}
-            onClick={() => { setSortBy('popular'); setPage(1); }}
-            size="sm"
-          >
-            Popular
-          </Button>
-          <Button
-            variant={sortBy === 'rating' ? 'default' : 'outline'}
-            onClick={() => { setSortBy('rating'); setPage(1); }}
-            size="sm"
-          >
-            Highest Rated
-          </Button>
-        </div>}
+          {reviews?.length > 0 && <div className="flex flex-wrap gap-2 mb-6">
+            <Button
+            variant={sortBy === 'top' ? 'default' : 'outline'}
+            onClick={() => { setSortBy('top'); setPage(1); }}
+             size="sm"
+            >
+             Top
+            </Button>
+            <Button
+            variant={sortBy === 'latest' ? 'default' : 'outline'}
+            onClick={() => { setSortBy('latest'); setPage(1); }}
+             size="sm"
+            >
+             Latest
+            </Button>
+          </div>}
 
         {/* Reviews List */}
         <div className="space-y-6">
@@ -757,21 +822,21 @@ export default function ReviewsPage({ params }) {
             const isOwnReview = user && review.user?._id === user._id
 
             return (
-              <div key={review._id} className="bg-card rounded-lg p-6">
+              <div key={review._id} className="bg-card rounded-lg p-4 sm:p-6">
                 {/* Review Header */}
-                <div className="flex items-start gap-4 mb-4">
-                  <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
+                <div className="flex items-start gap-3 sm:gap-4 mb-4">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
                     {review.user?.avatar ? (
                       <img src={review.user.avatar} alt={review.user.username} className="w-full h-full rounded-full object-cover" />
                     ) : (
-                      <span className="text-lg font-bold text-foreground">
+                      <span className="text-base sm:text-lg font-bold text-foreground">
                         {review.user?.username?.[0]?.toUpperCase()}
                       </span>
                     )}
                   </div>
 
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex flex-wrap items-start sm:items-center gap-2 mb-1">
                       <span className="font-semibold text-foreground">{review.user?.username}</span>
                       <span className="text-xs text-muted-foreground">
                         {new Date(review.createdAt).toLocaleDateString()}
@@ -793,7 +858,7 @@ export default function ReviewsPage({ params }) {
                                 }
                                 setRevealedSpoilers(newRevealed);
                               }}
-                              className={`px-2 py-0.5 rounded text-xs flex items-center gap-1 cursor-pointer transition-colors ${
+                              className={`max-w-full px-2 py-0.5 rounded text-xs flex items-center gap-1 cursor-pointer transition-colors whitespace-normal break-words text-left leading-tight ${
                                 isSpoilerRevealed
                                   ? "bg-destructive/10 text-destructive hover:bg-destructive/20"
                                   : "bg-destructive/20 text-destructive hover:bg-destructive/30"
@@ -877,7 +942,7 @@ export default function ReviewsPage({ params }) {
                 </div>
 
                 {/* Review Actions */}
-                <div className="flex items-center gap-4 pt-4 border-t border-border">
+                <div className="flex flex-wrap items-center gap-3 sm:gap-4 pt-4 border-t border-border">
                   <button
                     onClick={() => handleLikeReview(review._id)}
                     className={`flex items-center gap-2 text-sm transition-all active:scale-95 cursor-pointer ${review.likes?.some(id => id && user?._id && id?.toString() === user._id?.toString())
@@ -909,7 +974,7 @@ export default function ReviewsPage({ params }) {
                     <span>{review.dislikeCount || 0}</span>
                   </button>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       onClick={() => {
                         const newShowReplies = new Set(showReplies)
@@ -944,7 +1009,7 @@ export default function ReviewsPage({ params }) {
 
                 {/* Reply Form */}
                 {replyingTo === review._id && (
-                  <div className="mt-4 pl-16">
+                  <div className="mt-4 pl-0 sm:pl-16">
                     {mentionUser && (
                       <div className="mb-2 text-xs text-muted-foreground">
                         Replying to <span className="text-primary font-semibold">@{mentionUser}</span>
@@ -995,15 +1060,15 @@ export default function ReviewsPage({ params }) {
 
                 {/* Replies */}
                 {review.replies && review.replies.length > 0 && showReplies.has(review._id) && (
-                  <div className="mt-4 pl-16 space-y-4">
+                  <div className="mt-4 pl-0 sm:pl-16 space-y-4">
                     {review.replies.map((reply) => {
                       const isOwnReply = user && reply.user?._id === user._id
                       const replySpoilerRevealed = revealedSpoilers.has(reply._id)
                       const shouldBlurReply = reply.spoiler && !replySpoilerRevealed && !isOwnReply
 
                       return (
-                      <div key={reply._id} className="flex gap-3">
-                        <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
+                      <div key={reply._id} className="flex gap-2 sm:gap-3">
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
                           {reply.user?.avatar ? (
                             <img src={reply.user.avatar} alt={reply.user.username} className="w-full h-full rounded-full object-cover" />
                           ) : (
@@ -1014,7 +1079,7 @@ export default function ReviewsPage({ params }) {
                         </div>
 
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex flex-wrap items-start sm:items-center gap-2 mb-1">
                             <span className="font-semibold text-sm text-foreground">{reply.user?.username}</span>
                             <span className="text-xs text-muted-foreground">
                               {new Date(reply.createdAt).toLocaleDateString()}
@@ -1036,7 +1101,7 @@ export default function ReviewsPage({ params }) {
                                         }
                                         setRevealedSpoilers(newRevealed);
                                       }}
-                                      className={`px-1.5 py-0.5 rounded text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors ${
+                                      className={`max-w-full px-1.5 py-0.5 rounded text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors whitespace-normal break-words text-left leading-tight ${
                                         replySpoilerRevealed
                                           ? "bg-destructive/10 text-destructive hover:bg-destructive/20"
                                           : "bg-destructive/20 text-destructive hover:bg-destructive/30"

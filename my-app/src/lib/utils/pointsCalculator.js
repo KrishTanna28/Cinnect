@@ -319,10 +319,24 @@ export function calculateBadges(user) {
 
     // Quality badges
     if (user.averageReviewLength >= 500) badges.push({ name: 'Detailed Analyst', icon: 'file-text' });
-    if (user.helpfulnessRatio >= 0.8) badges.push({ name: 'Helpful Reviewer', icon: 'sparkles' });
+    if (user.helpfulnessRatio >= 0.8) badges.push({ name: 'Helpful Reviewer', icon: 'star' });
 
     return badges;
   }
+
+const PointsCalculator = {
+  calculateReviewPoints,
+  calculateQualityPoints,
+  calculateEngagementPoints,
+  calculateTimingPoints,
+  calculateDiversityPoints,
+  calculateReplyPoints,
+  calculatePenalties,
+  calculateMultiplier,
+  calculateStreakPoints,
+  getLevelFromPoints,
+  calculateBadges
+}
 
 export default PointsCalculator;
 

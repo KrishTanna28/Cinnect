@@ -5,6 +5,7 @@ import Notification from '@/lib/models/Notification.js'
 import { withAuth } from '@/lib/middleware/withAuth.js'
 import { emitNotification } from '@/lib/socketServer.js'
 import { moderateText } from '@/lib/services/moderation.service.js'
+import { applyXpEvent, getProgressionSnapshot } from '@/lib/utils/gamification.js'
 
 // POST /api/reviews/[reviewId]/reply - Add a reply to a review
 export const POST = withAuth(async (request, { user, params }) => {
@@ -66,6 +67,18 @@ export const POST = withAuth(async (request, { user, params }) => {
     // Update user achievements
     user.achievements.commentsPosted += 1
     user.markModified('achievements.commentsPosted')
+
+    const xpEvent = applyXpEvent(user, {
+      action: 'reply_post',
+      target: {
+        content,
+        moderation: review?.moderation
+      },
+      metadata: {
+        moderationConfidence: review?.moderation?.confidence || 0
+      }
+    })
+
     await user.save()
 
     // Send notification to review author (if not self-reply)
@@ -97,7 +110,11 @@ export const POST = withAuth(async (request, { user, params }) => {
     return NextResponse.json({
       success: true,
       message: 'Reply added successfully',
-      data: review
+      data: review,
+      gamification: {
+        xpEvent,
+        progression: getProgressionSnapshot(user)
+      }
     })
   } catch (error) {
     console.error('Add reply error:', error)

@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import { ensureProgressionState, getLevelFromXp } from '../utils/gamification.js';
 
 const userSchema = new mongoose.Schema({
   // Basic Information
@@ -96,10 +97,72 @@ const userSchema = new mongoose.Schema({
     default: 1,
     min: 1
   },
+  ranking: {
+    score: {
+      type: Number,
+      default: 0
+    },
+    globalRank: {
+      type: Number,
+      default: null
+    },
+    percentile: {
+      type: Number,
+      default: null
+    },
+    tier: {
+      type: String,
+      default: 'Smallfolk'
+    },
+    qualityScore: {
+      type: Number,
+      default: 0
+    },
+    engagementScore: {
+      type: Number,
+      default: 0
+    },
+    consistencyScore: {
+      type: Number,
+      default: 0
+    },
+    updatedAt: {
+      type: Date,
+      default: null
+    }
+  },
+  progression: {
+    badgeIds: [{
+      type: String
+    }],
+    daily: {
+      dateKey: {
+        type: String,
+        default: ''
+      },
+      xp: {
+        reviews: { type: Number, default: 0 },
+        reviewLikes: { type: Number, default: 0 },
+        comments: { type: Number, default: 0 },
+        replies: { type: Number, default: 0 },
+        logins: { type: Number, default: 0 },
+        communities: { type: Number, default: 0 },
+        trending: { type: Number, default: 0 }
+      },
+      counts: {
+        reviews: { type: Number, default: 0 },
+        reviewLikes: { type: Number, default: 0 },
+        comments: { type: Number, default: 0 },
+        replies: { type: Number, default: 0 },
+        logins: { type: Number, default: 0 },
+        communities: { type: Number, default: 0 },
+        trending: { type: Number, default: 0 }
+      }
+    }
+  },
   badges: [{
     badgeId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Badge'
+      type: String
     },
     name: String,
     description: String,
@@ -138,10 +201,6 @@ const userSchema = new mongoose.Schema({
       default: 0
     },
     watchPartiesHosted: {
-      type: Number,
-      default: 0
-    },
-    friendsReferred: {
       type: Number,
       default: 0
     },
@@ -303,28 +362,6 @@ const userSchema = new mongoose.Schema({
     }
   }],
 
-  // Referral System
-  referralCode: {
-    type: String,
-    unique: true,
-    sparse: true
-  },
-  referredBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
-  referrals: [{
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    joinedAt: Date,
-    rewardClaimed: {
-      type: Boolean,
-      default: false
-    }
-  }],
-
   // Vouchers & Rewards
   vouchers: [{
     voucherId: {
@@ -399,53 +436,26 @@ const userSchema = new mongoose.Schema({
 });
 
 // Indexes for performance
-// Note: email, username, and referralCode already have unique indexes from schema definition
+// Note: email and username already have unique indexes from schema definition
 userSchema.index({ 'points.total': -1 });
 userSchema.index({ level: -1 });
+userSchema.index({ 'ranking.score': -1 });
 
 // Virtual for account lock status
 userSchema.virtual('isLocked').get(function() {
   return !!(this.lockUntil && this.lockUntil > Date.now());
 });
 
-// Helper function to generate unique referral code
-const generateReferralCode = async function() {
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let code;
-  let isUnique = false;
-  
-  while (!isUnique) {
-    code = '';
-    for (let i = 0; i < 8; i++) {
-      code += characters.charAt(Math.floor(Math.random() * characters.length));
-    }
-    
-    // Check if code already exists
-    const existing = await mongoose.model('User').findOne({ referralCode: code });
-    if (!existing) {
-      isUnique = true;
-    }
-  }
-  
-  return code;
-};
-
-// Pre-save middleware to hash password and generate referral code
+// Pre-save middleware to hash password
 userSchema.pre('save', async function(next) {
+  ensureProgressionState(this);
+  this.level = getLevelFromXp(this.points?.total || 0).level;
+
   // Hash password if modified
   if (this.isModified('password')) {
     try {
       const salt = await bcrypt.genSalt(10);
       this.password = await bcrypt.hash(this.password, salt);
-    } catch (error) {
-      return next(error);
-    }
-  }
-  
-  // Generate referral code for new users
-  if (this.isNew && !this.referralCode) {
-    try {
-      this.referralCode = await generateReferralCode();
     } catch (error) {
       return next(error);
     }
@@ -468,8 +478,7 @@ userSchema.methods.addPoints = function(points, reason) {
   this.points.total += points;
   this.points.available += points;
   
-  // Level up logic (every 1000 points = 1 level)
-  this.level = Math.floor(this.points.total / 1000) + 1;
+  this.level = getLevelFromXp(this.points.total).level;
   
   return this.save();
 };
@@ -580,57 +589,6 @@ userSchema.methods.resetLoginAttempts = function() {
     $set: { loginAttempts: 0 },
     $unset: { lockUntil: 1 }
   });
-};
-
-// Method to handle referral rewards
-userSchema.methods.processReferral = async function(referrerCode) {
-  if (!referrerCode) return { success: false, message: 'No referral code provided' };
-  
-  // Find the referrer
-  const referrer = await mongoose.model('User').findOne({ referralCode: referrerCode });
-  
-  if (!referrer) {
-    return { success: false, message: 'Invalid referral code' };
-  }
-  
-  if (referrer._id.equals(this._id)) {
-    return { success: false, message: 'Cannot use your own referral code' };
-  }
-  
-  // Check if already referred
-  if (this.referredBy) {
-    return { success: false, message: 'Already used a referral code' };
-  }
-  
-  // Award points to both users (50 each)
-  const referralPoints = 50;
-  
-  // Update current user (new user who used the code)
-  this.referredBy = referrer._id;
-  this.points.total += referralPoints;
-  this.points.available += referralPoints;
-  // Note: caller is responsible for saving this user
-  
-  // Update referrer
-  referrer.points.total += referralPoints;
-  referrer.points.available += referralPoints;
-  referrer.achievements.friendsReferred += 1;
-  referrer.referrals.push({
-    userId: this._id,
-    joinedAt: new Date(),
-    rewardClaimed: true
-  });
-  referrer.level = Math.floor(referrer.points.total / 1000) + 1;
-  await referrer.save();
-  
-  return {
-    success: true,
-    message: `Referral successful! Both users received ${referralPoints} points`,
-    pointsAwarded: referralPoints,
-    referrerName: referrer.username,
-    referrerId: referrer._id,
-    referrerAvatar: referrer.avatar || ''
-  };
 };
 
 // Method to generate OTP

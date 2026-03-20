@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Film, Tv, User, Sparkles, X, Search, Upload, Image as ImageIcon } from "lucide-react"
+import { ArrowLeft, Film, Tv, User, FileText, X, Search, Upload, Image as ImageIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,7 +10,7 @@ import { useUser } from "@/contexts/UserContext"
 import { useToast } from "@/hooks/use-toast"
 
 const categories = [
-  { id: 'general', label: 'General', icon: Sparkles, description: 'Community about general topics' },
+  { id: 'general', label: 'General', icon: FileText, description: 'Community about general topics' },
   { id: 'movie', label: 'Movie', icon: Film, description: 'Community about a specific movie or movies in general' },
   { id: 'tv', label: 'TV Show', icon: Tv, description: 'Community about a TV series or TV shows in general' },
   { id: 'actor', label: 'Actor/Cast', icon: User, description: 'Community about actors, directors, or crew members' }

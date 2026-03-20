@@ -1,6 +1,6 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api'
 
-export async function getReviews(mediaType, mediaId, page = 1, limit = 10, sortBy = 'recent') {
+export async function getReviews(mediaType, mediaId, page = 1, limit = 10, sortBy = 'top') {
   try {
     const response = await fetch(
       `${API_BASE_URL}/reviews?mediaType=${mediaType}&mediaId=${mediaId}&page=${page}&limit=${limit}&sortBy=${sortBy}`

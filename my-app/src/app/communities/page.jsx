@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Plus, Users, Film, Tv, User, Sparkles, Filter, ChevronDown, ChevronUp, Heart, MessageCircle, Eye, Clock, AlertTriangle, ShieldAlert, EyeOff, ThumbsUp, ThumbsDown, Video, Play } from "lucide-react"
+import { Plus, Users, Film, Tv, User, FileText, Filter, ChevronDown, ChevronUp, Heart, MessageCircle, Eye, Clock, AlertTriangle, ShieldAlert, EyeOff, ThumbsUp, ThumbsDown, Video, Play } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useUser } from "@/contexts/UserContext"
 import { useToast } from "@/hooks/use-toast"
@@ -12,19 +12,14 @@ import PostMediaPreview from "@/components/post-media-preview"
 import { CommunitiesFeedSkeleton } from "@/components/skeletons"
 import { shouldFilterAdultContent } from "@/lib/utils/ageUtils"
 import { CategoryBadge } from "@/components/category-badge"
+import UserAvatar from "@/components/user-avatar"
 
 const categories = [
   { id: 'all', label: 'All Posts' },
-  { id: 'general', label: 'General', icon: Sparkles },
+  { id: 'general', label: 'General', icon: FileText },
   { id: 'movie', label: 'Movies', icon: Film },
   { id: 'tv', label: 'TV Shows', icon: Tv },
   { id: 'actor', label: 'Actors & Cast', icon: User },
-]
-
-const sortOptions = [
-  { id: 'recent', label: 'Recent' },
-  { id: 'popular', label: 'Most Popular' },
-  { id: 'hot', label: 'Trending' }
 ]
 
 export default function CommunitiesPage() {
@@ -32,7 +27,6 @@ export default function CommunitiesPage() {
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState('all')
-  const [sortBy, setSortBy] = useState('recent')
   const [showFilters, setShowFilters] = useState(false)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
@@ -86,9 +80,7 @@ export default function CommunitiesPage() {
 
   useEffect(() => {
     const category = searchParams.get('category')
-    const sort = searchParams.get('sort')
     if (category) setSelectedCategory(category)
-    if (sort) setSortBy(sort)
   }, [searchParams])
 
   // Fetch trending posts for sidebar
@@ -138,7 +130,7 @@ export default function CommunitiesPage() {
     setAllPosts([])
     setHasMore(true)
     fetchPosts(1)
-  }, [selectedCategory, sortBy])
+  }, [selectedCategory])
 
   const fetchPosts = async (pageNum = 1) => {
     const isFirstPage = pageNum === 1
@@ -151,7 +143,6 @@ export default function CommunitiesPage() {
     try {
       const params = new URLSearchParams()
       if (selectedCategory !== 'all') params.append('category', selectedCategory)
-      params.append('sort', sortBy)
       params.append('page', pageNum.toString())
       params.append('limit', '20')
 
@@ -329,21 +320,6 @@ export default function CommunitiesPage() {
               </select>
             </div>
 
-            {/* Sort Dropdown */}
-            <div className="hidden lg:block">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
-              >
-                {sortOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
             {/* Mobile Filter Toggle */}
             <button
               onClick={() => setShowFilters(!showFilters)}
@@ -383,21 +359,6 @@ export default function CommunitiesPage() {
                 ))}
               </select>
             </div>
-
-            <div>
-              <label className="text-sm font-medium text-muted-foreground mb-2 block">Sort by</label>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
-              >
-                {sortOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
           </div>
         </div>
 
@@ -426,7 +387,7 @@ export default function CommunitiesPage() {
                     </div>
                   ) : (
                     recommendedCommunities.filter(c => !(shouldFilterAdultContent(user) && c.adult_content)).slice(0, 10).map((community) => {
-                      const CategoryIcon = categories.find(c => c.id === community.category)?.icon || Sparkles
+                      const CategoryIcon = categories.find(c => c.id === community.category)?.icon || FileText
                       
                       return (
                         <Link 
@@ -476,7 +437,13 @@ export default function CommunitiesPage() {
                                   <div className="flex items-center gap-2 mt-2">
                                     <div className="flex -space-x-1">
                                       {community.mutuals.slice(0, 3).map(m => (
-                                        <img key={m._id} src={m.avatar || '/default-avatar.png'} alt={m.username} className="w-4 h-4 rounded-full border border-background" title={m.username} />
+                                        <UserAvatar
+                                          key={m._id}
+                                          src={m.avatar}
+                                          username={m.username}
+                                          className="w-4 h-4 border border-background"
+                                          fallbackClassName="text-[8px]"
+                                        />
                                       ))}
                                     </div>
                                     <span className="text-[10px] text-muted-foreground">
@@ -516,7 +483,7 @@ export default function CommunitiesPage() {
               <>
                 <div className="space-y-4">
                   {allPosts.filter(post => !(shouldFilterAdultContent(user) && post.adult_content)).map((post) => {
-                    const CategoryIcon = categories.find(c => c.id === post.community?.category)?.icon || Sparkles
+                    const CategoryIcon = categories.find(c => c.id === post.community?.category)?.icon || FileText
                     const userLiked = user && post.likes?.some(id => id?.toString() === user._id)
                     const userDisliked = user && post.dislikes?.some(id => id?.toString() === user._id)
                     
@@ -691,12 +658,12 @@ export default function CommunitiesPage() {
                     </div>
                   ) : (
                     trendingPosts.filter(post => !(shouldFilterAdultContent(user) && post.adult_content)).slice(0, 10).map((post) => {
-                      const CategoryIcon = categories.find(c => c.id === post.community?.category)?.icon || Sparkles
+                      const CategoryIcon = categories.find(c => c.id === post.community?.category)?.icon || FileText
                       
                       return (
                         <Link 
                           key={post._id}
-                          href={`/communities/${post.community?.slug}`}
+                          href={`/communities/${post.community?.slug}/posts/${post._id}`}
                           className="block hover:bg-secondary/50 transition-colors"
                         >
                           <div className="p-3 flex gap-3">

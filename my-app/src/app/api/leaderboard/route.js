@@ -10,10 +10,7 @@ export async function GET(request) {
 
     return NextResponse.json({
       success: true,
-      data: {
-        users: leaderboard.users,
-        pagination: leaderboard.pagination
-      }
+      data: leaderboard
     })
   } catch (error) {
     console.error('Leaderboard error:', error)
@@ -27,4 +24,4 @@ export async function GET(request) {
   }
 }
 
-export const revalidate = 300 // 5 minutes
+export const revalidate = 300

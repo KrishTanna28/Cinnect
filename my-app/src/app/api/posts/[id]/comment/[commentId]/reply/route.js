@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import Post from '@/lib/models/Post.js'
+import User from '@/lib/models/User.js'
 import { withAuth } from '@/lib/middleware/withAuth.js'
 import connectDB from '@/lib/config/database.js'
 import { moderateText } from '@/lib/services/moderation.service.js'
+import { applyXpEvent, getProgressionSnapshot, getTrendingTier } from '@/lib/utils/gamification.js'
 
 await connectDB()
 
@@ -52,10 +54,51 @@ export const POST = withAuth(async (request, { user, params }) => {
     await post.populate('comments.user', 'username avatar fullName')
     await post.populate('comments.replies.user', 'username avatar fullName')
 
+    const xpEvent = applyXpEvent(user, {
+      action: 'reply_post',
+      target: { content },
+      metadata: {
+        moderationConfidence: 0
+      }
+    })
+
+    let trendingEvent = null
+    if (post.user.toString() !== user._id.toString()) {
+      const tier = getTrendingTier(post)
+      const awarded = new Set(post?.gamification?.trendingMilestonesAwarded || [])
+
+      if (tier && !awarded.has(tier.key)) {
+        const postOwner = await User.findById(post.user)
+        if (postOwner) {
+          trendingEvent = applyXpEvent(postOwner, {
+            action: 'trending_post',
+            target: post,
+            metadata: {
+              tierKey: tier.key,
+              tierFactor: tier.factor,
+              trendFactor: Math.min(1.5, tier.score / 30)
+            }
+          })
+
+          post.gamification = post.gamification || {}
+          post.gamification.trendingMilestonesAwarded = Array.from(awarded).concat(tier.key)
+          await postOwner.save()
+          await post.save()
+        }
+      }
+    }
+
+    await user.save()
+
     return NextResponse.json({
       success: true,
       message: 'Reply added successfully',
-      data: post
+      data: post,
+      gamification: {
+        xpEvent,
+        trendingEvent,
+        progression: getProgressionSnapshot(user)
+      }
     })
   } catch (error) {
     console.error('Add reply error:', error)

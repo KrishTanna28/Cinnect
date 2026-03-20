@@ -14,7 +14,7 @@ const notificationSchema = new mongoose.Schema({
     type: String,
     enum: [
       'follow_request', 'community_join_request', 'ai_generated',
-      'new_follower', 'lost_follower', 'review_like', 'review_reply', 'referral',
+      'new_follower', 'lost_follower', 'review_like', 'review_reply',
       // Entertainment notification types
       'trailer', 'news', 'announcement', 'casting_update', 'interview'
     ],

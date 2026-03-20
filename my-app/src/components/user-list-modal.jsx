@@ -172,10 +172,17 @@ export default function UserListModal({
       <div className="relative w-full max-w-md mx-4 bg-background border border-border rounded-2xl shadow-xl flex flex-col max-h-[70vh]">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
-          <h2 className="font-semibold text-sm text-foreground">{title}</h2>
+          <div className="flex gap-0 flex-1">
+            <button
+              className="flex-1 py-2 text-center font-semibold text-sm transition-colors cursor-pointer relative text-foreground"
+            >
+              {title}
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
+            </button>
+          </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full hover:text-primary transition-all active:scale-90 cursor-pointer"
+            className="p-1.5 rounded-full hover:text-primary transition-all active:scale-90 cursor-pointer ml-2"
           >
             <X className="w-5 h-5" />
           </button>
@@ -204,7 +211,7 @@ export default function UserListModal({
         >
           {loading ? (
             <div className="divide-y divide-border/50">
-              {[...Array(6)].map((_, i) => (
+              {[...Array(8)].map((_, i) => (
                 <UserRowSkeleton key={i} />
               ))}
             </div>

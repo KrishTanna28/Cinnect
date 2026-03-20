@@ -18,7 +18,6 @@ export default function SignupPage() {
     password: "",
     fullName: "",
     dateOfBirth: "",
-    referralCode: "",
   })
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
@@ -80,18 +79,6 @@ export default function SignupPage() {
             description: `You received ${data.data.welcomeBonus.points} points as a welcome gift!`,
             duration: 5000,
           })
-        }
-        
-        // Show referral reward if applicable
-        if (data.data.referralReward && data.data.referralReward.success) {
-          setTimeout(() => {
-            toast({
-              variant: "success",
-              title: "Referral Bonus!",
-              description: `You and ${data.data.referralReward.referrerName} both received ${data.data.referralReward.pointsAwarded} points!`,
-              duration: 5000,
-            })
-          }, 1500)
         }
         
         // Show success message
@@ -332,28 +319,6 @@ export default function SignupPage() {
                 <p className="text-xs text-destructive">{fieldErrors.dateOfBirth}</p>
               ) : (
                 <p className="text-xs text-muted-foreground">Required to personalize your experience</p>
-              )}
-            </div>
-
-            {/* Referral Code */}
-            <div className="space-y-2">
-              <Label htmlFor="referralCode">Have a Referral Code? (Optional)</Label>
-              <div className="relative">
-                <Gift className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  id="referralCode"
-                  name="referralCode"
-                  type="text"
-                  placeholder="Enter friend's referral code"
-                  value={formData.referralCode}
-                  onChange={handleChange}
-                  className={`pl-10 ${fieldErrors.referralCode ? 'border-destructive' : ''}`}
-                />
-              </div>
-              {fieldErrors.referralCode ? (
-                <p className="text-xs text-destructive">{fieldErrors.referralCode}</p>
-              ) : (
-                <p className="text-xs text-primary font-medium"><Gift className="w-3.5 h-3.5 inline mr-1" />Both you and your friend get 50 points!</p>
               )}
             </div>
 

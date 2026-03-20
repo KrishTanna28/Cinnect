@@ -15,6 +15,7 @@ import PostMediaGallery from "@/components/post-media-gallery"
 import { PostDetailSkeleton } from "@/components/skeletons"
 import { shouldFilterAdultContent } from "@/lib/utils/ageUtils"
 import { CategoryBadge } from "@/components/category-badge"
+import UserAvatar from "@/components/user-avatar"
 
 export default function PostDetailPage() {
   const [post, setPost] = useState(null)
@@ -730,7 +731,7 @@ export default function PostDetailPage() {
     return (
       <main className="min-h-screen bg-background">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <button onClick={() => router.back()} className="flex items-center text-sm gap-2 hover:text-primary transition-all active:scale-95 cursor-pointer mb-5">
+          <button onClick={() => router.push(`/communities/${params.slug}`)} className="flex items-center text-sm gap-2 hover:text-primary transition-all active:scale-95 cursor-pointer mb-5">
             <ArrowLeft className="w-4 h-4" /> Back
           </button>
           <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -777,10 +778,11 @@ export default function PostDetailPage() {
               )}
               <span className="flex items-center gap-3">
                 {/* User avatar */}
-                <img
-                  src={post.user?.avatar || '/default-avatar.png'}
-                  alt={post.user?.username || 'User'}
-                  className="w-8 h-8 rounded-full object-cover"
+                <UserAvatar
+                  src={post.user?.avatar}
+                  username={post.user?.username}
+                  className="w-8 h-8"
+                  fallbackClassName="text-sm"
                 />
 
                 {/* Stacked text */}
@@ -816,7 +818,6 @@ export default function PostDetailPage() {
                     Edit
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    className="text-red-500 hover:text-red-600 focus:text-red-600"
                     onClick={() => setShowDeleteModal(true)}
                     disabled={deleting}
                   >

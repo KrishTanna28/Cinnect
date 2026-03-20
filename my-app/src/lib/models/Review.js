@@ -102,6 +102,35 @@ const reviewSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  pointsAwarded: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  editCount: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  editPenaltyTotal: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  gamification: {
+    qualityScore: {
+      type: Number,
+      default: 0
+    },
+    qualityDetails: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {}
+    },
+    awardedLikeMilestone: {
+      type: Number,
+      default: 0
+    }
+  },
 
   // Adult content moderation
   adult_content: {

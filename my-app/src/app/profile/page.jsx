@@ -12,6 +12,115 @@ import * as movieAPI from "@/lib/movies"
 import { ProfileSkeleton, CardGridSkeleton, ReviewListSkeleton } from "@/components/skeletons"
 import FollowersFollowingModal from "@/components/followers-following-modal"
 
+const BADGE_STYLES = {
+  hand_of_the_king: "from-amber-500/20 to-yellow-400/10 border-amber-500/30",
+  maesters_insight: "from-sky-500/20 to-cyan-400/10 border-sky-500/30",
+  three_eyed_raven: "from-indigo-500/20 to-blue-400/10 border-indigo-500/30",
+  iron_throne: "from-rose-500/20 to-orange-400/10 border-rose-500/30"
+}
+
+function getBadgeStyle(badgeId) {
+  return BADGE_STYLES[badgeId] || "from-primary/10 to-primary/5 border-primary/20"
+}
+
+function getReviewQualityLabel(score = 0) {
+  if (score >= 0.9) return "Hand of the King"
+  if (score >= 0.8) return "Maester's Insight"
+  if (score >= 0.65) return "Knighted Review"
+  return null
+}
+
+function ProgressHeader({ level, stats, bio, onOpenLeaderboard }) {
+  const progression = stats?.progression
+  const currentXp = stats?.xp?.current ?? stats?.points?.total ?? 0
+  const nextLevelXp = stats?.xp?.nextLevel
+  const progress = progression?.progressPercent ?? stats?.xp?.progress ?? 0
+  const tier = stats?.tier || "Smallfolk"
+  const globalRank = stats?.globalRank
+  const topPercentLabel = stats?.topPercentLabel
+
+  return (
+    <div className="space-y-3 max-w-2xl">
+      <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start">
+        <span
+          title="Your personal progression based on activity"
+          className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold tracking-[0.16em] text-primary uppercase"
+        >
+          XP Level {level || 1}
+        </span>
+        {(stats?.influenceScore || 0) >= 70 && (
+          <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-200">
+            Influence Boost
+          </span>
+        )}
+      </div>
+      <div className="space-y-2">
+        <div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <span title="Your personal progression based on activity" className="text-foreground font-medium">
+            XP Level {level || 1} | {currentXp.toLocaleString()} XP
+          </span>
+          <span className="text-muted-foreground sm:text-right">
+            {nextLevelXp ? `${currentXp.toLocaleString()} / ${nextLevelXp.toLocaleString()} XP -> Level ${(level || 1) + 1}` : "At the peak of the realm"}
+          </span>
+        </div>
+        <div className="h-3 rounded-full bg-secondary/60 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-amber-500 via-primary to-red-500 transition-all duration-500"
+            style={{ width: `${Math.max(6, Math.min(progress, 100))}%` }}
+          />
+        </div>
+        {nextLevelXp && (
+          <p className="text-xs text-muted-foreground">
+            {(stats?.xp?.toNextLevel ?? progression?.xpForNextLevel ?? Math.max(0, nextLevelXp - currentXp)).toLocaleString()} XP needed for the next level.
+          </p>
+        )}
+      </div>
+      {bio && <p className="text-muted-foreground text-sm">{bio}</p>}
+    </div>
+  )
+}
+
+function BadgeSection({ badges }) {
+  if (!badges?.length) return null
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <h2 className="text-2xl font-bold text-foreground mb-6">Titles and Sigils</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {badges.map((badge, index) => (
+          <div
+            key={`${badge.badgeId || badge.name}-${index}`}
+            className={`rounded-2xl border bg-gradient-to-br ${getBadgeStyle(badge.badgeId)} p-5`}
+          >
+            <p className="text-sm font-semibold text-foreground">{badge.name}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function MetricCard({ icon: Icon, label, value, accent = "text-primary", valueClassName = "text-4xl" }) {
+  return (
+    <div className="bg-secondary/30 rounded-xl p-5 border border-border min-h-[148px] flex flex-col justify-between">
+      <div className="flex items-start justify-between gap-3">
+        <span className="text-muted-foreground text-sm leading-5 max-w-[10rem]">{label}</span>
+        <Icon className={`w-5 h-5 ${accent} shrink-0`} />
+      </div>
+      <p className={`${valueClassName} font-bold text-foreground tracking-tight`}>{value}</p>
+    </div>
+  )
+}
+
+function HeaderStat({ label, value }) {
+  return (
+    <div className="rounded-xl border border-border bg-secondary/20 px-4 py-3">
+      <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
+      <p className="mt-1 text-base font-semibold text-foreground">{value}</p>
+    </div>
+  )
+}
+
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState("overview")
   const [stats, setStats] = useState(null)
@@ -240,8 +349,8 @@ export default function ProfilePage() {
       {/* Header */}
       <div className="border-b border-border py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-0">
-            <div className="flex flex-col items-center sm:flex-row sm:items-center gap-4 sm:gap-6">
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1.08fr)_minmax(320px,380px)_auto] lg:items-start xl:grid-cols-[minmax(0,1.1fr)_420px_auto] xl:gap-10">
+            <div className="min-w-0 flex flex-col items-center sm:flex-row sm:items-center gap-4 sm:gap-6">
               <button onClick={() => setShowAvatarLightbox(true)} className="cursor-pointer transition-all active:scale-95 flex-shrink-0">
                 <Avatar className="w-20 h-20 sm:w-24 sm:h-24 border-4 border-primary">
                   <AvatarImage src={user.avatar} alt={user.username} />
@@ -251,7 +360,7 @@ export default function ProfilePage() {
                 </Avatar>
               </button>
               <div className="text-center sm:text-left">
-                <div className="flex items-center gap-3 mb-2 justify-center sm:justify-start">
+                <div className="items-center gap-3 mb-2 justify-center sm:justify-start">
                   <h1 className="text-2xl sm:text-4xl font-bold text-foreground">{user.fullName || user.username}</h1>
                   {user.isPrivate && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-secondary/50 rounded-full text-xs text-muted-foreground">
@@ -266,7 +375,7 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-6 mb-3 justify-center sm:justify-start">
                   <div className="text-center">
                     <p className="text-lg font-bold text-foreground">{stats?.achievements?.reviewsWritten || 0}</p>
-                    <p className="text-xs text-muted-foreground">Posts</p>
+                    <p className="text-xs text-muted-foreground">Reviews</p>
                   </div>
                   <button
                     onClick={() => { setFollowModalTab("followers"); setShowFollowModal(true) }}
@@ -284,19 +393,45 @@ export default function ProfilePage() {
                   </button>
                 </div>
 
-                <p className="text-muted-foreground text-sm">Level {stats?.level || 1} • {stats?.points?.total || 0} Points</p>
-                {user.bio && <p className="text-muted-foreground mt-2 max-w-2xl text-sm">{user.bio}</p>}
+                <div className="space-y-1">
+                  <p className="text-2xl sm:text-3xl font-bold text-foreground">{stats?.tier || "Smallfolk"}</p>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/leaderboard")}
+                    title="Your global position based on quality and influence"
+                    className="text-sm text-primary hover:text-primary/80 transition-colors cursor-pointer"
+                  >
+                    {stats?.globalRank ? `Global #${stats.globalRank}` : "Unranked"}
+                  </button>
+                </div>
+                <div className="mt-4 flex justify-center sm:justify-start lg:hidden">
+                  <Link href="/settings">
+                    <Button variant="secondary" size="sm" className="gap-2">
+                      <Settings className="w-4 h-4" />
+                      <span>Settings</span>
+                    </Button>
+                  </Link>
+                </div>
               </div>
             </div>
 
-            {/* Action buttons */}
-            <div className="flex items-center gap-2 justify-center sm:justify-end">
-              <Link href="/settings">
-                <Button variant="secondary" size="sm" className="gap-2">
-                  <Settings className="w-4 h-4" />
-                  <span className="hidden sm:inline">Edit Profile</span>
-                </Button>
-              </Link>
+            <div className="flex flex-col gap-4 lg:-ml-6 lg:items-center lg:justify-self-end lg:mr-2 lg:w-[380px] xl:-ml-4 xl:mr-6 xl:w-[420px]">
+              <div className="hidden lg:block w-full">
+                <ProgressHeader level={stats?.level} stats={stats} bio={user.bio} onOpenLeaderboard={() => router.push("/leaderboard")} />
+              </div>
+            </div>
+            <div className="hidden lg:flex flex-col items-end gap-4">
+              <div className="flex items-center gap-2 justify-end">
+                <Link href="/settings">
+                  <Button variant="secondary" size="sm" className="gap-2">
+                    <Settings className="w-4 h-4" />
+                    <span>Settings</span>
+                  </Button>
+                </Link>
+              </div>
+            </div>
+            <div className="lg:hidden">
+              <ProgressHeader level={stats?.level} stats={stats} bio={user.bio} onOpenLeaderboard={() => router.push("/leaderboard")} />
             </div>
           </div>
         </div>
@@ -337,86 +472,17 @@ export default function ProfilePage() {
 
       {/* Stats */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
-          <div className="bg-secondary/30 rounded-lg p-6 border border-border">
-            <div className="flex items-center gap-3 mb-2">
-              <Trophy className="w-5 h-5 text-primary" />
-              <span className="text-muted-foreground text-sm">Points</span>
-            </div>
-            <p className="text-3xl font-bold text-foreground">{stats?.points?.total?.toLocaleString() || 0}</p>
-          </div>
-          <div className="bg-secondary/30 rounded-lg p-6 border border-border">
-            <div className="flex items-center gap-3 mb-2">
-              <Award className="w-5 h-5 text-primary" />
-              <span className="text-muted-foreground text-sm">Level</span>
-            </div>
-            <p className="text-3xl font-bold text-foreground">{stats?.level || 1}</p>
-          </div>
-          <div className="bg-secondary/30 rounded-lg p-6 border border-border">
-            <div className="flex items-center gap-3 mb-2">
-              <Star className="w-5 h-5 text-primary" />
-              <span className="text-muted-foreground text-sm">Badges</span>
-            </div>
-            <p className="text-3xl font-bold text-foreground">{stats?.badges || 0}</p>
-          </div>
-          <div className="bg-secondary/30 rounded-lg p-6 border border-border">
-            <div className="flex items-center gap-3 mb-2">
-              <Film className="w-5 h-5 text-primary" />
-              <span className="text-muted-foreground text-sm">Watchlist</span>
-            </div>
-            <p className="text-3xl font-bold text-foreground">{stats?.watchlistCount || 0}</p>
-          </div>
-          <div className="bg-secondary/30 rounded-lg p-6 border border-border">
-            <div className="flex items-center gap-3 mb-2">
-              <Heart className="w-5 h-5 text-primary" />
-              <span className="text-muted-foreground text-sm">Favorites</span>
-            </div>
-            <p className="text-3xl font-bold text-foreground">{stats?.favoritesCount || 0}</p>
-          </div>
-          <div className="bg-secondary/30 rounded-lg p-6 border border-border">
-            <div className="flex items-center gap-3 mb-2">
-              <Flame className="w-5 h-5 text-primary" />
-              <span className="text-muted-foreground text-sm">Streak</span>
-            </div>
-            <p className="text-3xl font-bold text-foreground">{stats?.streaks?.current || 0}</p>
-          </div>
-        </div>
-      </div>
+                  <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                    <MetricCard icon={Trophy} label="Influence" value={stats?.influenceScore || 0} />
+                    <MetricCard icon={Award} label="Quality" value={`${Math.round((stats?.averageReviewQuality || 0) * 100)}%`} />
+                    <MetricCard icon={Flame} label="Impact" value={stats?.trendingPostsCount || 0} />
+                    <MetricCard icon={Heart} label="Streak" value={stats?.streaks?.current || 0} />
+                    <MetricCard icon={Star} label="Top Percent" value={stats?.topPercentLabel || "-"} valueClassName="text-2xl" />
+                    <MetricCard icon={MessageCircle} label="Avg Engagement / Review" value={stats?.averageEngagementPerReview || 0} valueClassName="text-2xl" />
+                  </div>
+                </div>
 
-      {/* Achievements */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h2 className="text-2xl font-bold text-foreground mb-6">Achievements</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          <div className="bg-secondary/30 rounded-lg p-6 border border-border">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-muted-foreground text-sm">Reviews Written</span>
-              <Star className="w-5 h-5 text-primary" />
-            </div>
-            <p className="text-2xl font-bold text-foreground">{stats?.achievements?.reviewsWritten || 0}</p>
-          </div>
-          <div className="bg-secondary/30 rounded-lg p-6 border border-border">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-muted-foreground text-sm">Ratings Given</span>
-              <Star className="w-5 h-5 text-primary" />
-            </div>
-            <p className="text-2xl font-bold text-foreground">{stats?.achievements?.ratingsGiven || 0}</p>
-          </div>
-          <div className="bg-secondary/30 rounded-lg p-6 border border-border">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-muted-foreground text-sm">Watch Parties</span>
-              <Users className="w-5 h-5 text-primary" />
-            </div>
-            <p className="text-2xl font-bold text-foreground">{stats?.achievements?.watchPartiesJoined || 0}</p>
-          </div>
-          <div className="bg-secondary/30 rounded-lg p-6 border border-border">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-muted-foreground text-sm">Friends Referred</span>
-              <Users className="w-5 h-5 text-primary" />
-            </div>
-            <p className="text-2xl font-bold text-foreground">{stats?.achievements?.friendsReferred || 0}</p>
-          </div>
-        </div>
-      </div>
+      <BadgeSection badges={stats?.badges} />
 
       {/* Tabs */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -456,10 +522,6 @@ export default function ProfilePage() {
               <div>
                 <p className="text-sm text-muted-foreground">Username</p>
                 <p className="text-foreground font-medium">@{user.username}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Referral Code</p>
-                <p className="text-foreground font-medium">{stats?.referralCode || user.referralCode || 'N/A'}</p>
               </div>
               {user.preferences?.favoriteGenres && user.preferences.favoriteGenres.length > 0 && (
                 <div>
@@ -621,7 +683,22 @@ export default function ProfilePage() {
                     <div className="bg-secondary/20 rounded-lg p-6 border border-border hover:border-primary transition-colors cursor-pointer mb-4">
                       <div className="flex items-start justify-between mb-3">
                         <div>
-                          <h4 className="font-bold text-foreground text-lg">{review.title || 'Review'}</h4>
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <h4 className="font-bold text-foreground text-lg">{review.title || 'Review'}</h4>
+                            <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                              {stats?.tier || "Smallfolk"}
+                            </span>
+                            {stats?.level >= 7 && (
+                              <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-200">
+                                Boosted by Level
+                              </span>
+                            )}
+                            {getReviewQualityLabel(review?.gamification?.qualityScore) && (
+                              <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[11px] font-medium text-sky-200">
+                                {getReviewQualityLabel(review?.gamification?.qualityScore)}
+                              </span>
+                            )}
+                          </div>
                           <p className="text-sm text-muted-foreground">
                             {new Date(review.createdAt).toLocaleDateString('en-US', {
                               year: 'numeric',
@@ -636,6 +713,9 @@ export default function ProfilePage() {
                       <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
                         <span><ThumbsUp className="w-3.5 h-3.5 inline mr-1" />{review.likeCount == 1 ? '1 like' : `${review.likeCount} likes`}</span>
                         <span><MessageCircle className="w-3.5 h-3.5 inline mr-1" />{review.replyCount == 1 ? '1 reply' : `${review.replyCount} replies`}</span>
+                        {typeof review?.gamification?.qualityScore === "number" && (
+                          <span>High Quality Review {Math.round(review.gamification.qualityScore * 100)}%</span>
+                        )}
                         {review.hasSpoilers && <span className="text-red-500"><AlertTriangle className="w-3.5 h-3.5 inline mr-1" />Contains spoilers</span>}
                       </div>
                     </div>

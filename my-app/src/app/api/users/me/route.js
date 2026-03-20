@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/middleware/withAuth.js'
+import { getProgressionSnapshot } from '@/lib/utils/gamification.js'
 
 // GET /api/users/me - Get current user profile
 export const GET = withAuth(async (request, { user }) => {
   try {
     return NextResponse.json({
       success: true,
-      data: user
+      data: {
+        ...user.toObject(),
+        progression: getProgressionSnapshot(user)
+      }
     })
   } catch (error) {
     console.error('Get profile error:', error)
@@ -88,7 +92,10 @@ export const PUT = withAuth(async (request, { user }) => {
     return NextResponse.json({
       success: true,
       message: 'Profile updated successfully',
-      data: user
+      data: {
+        ...user.toObject(),
+        progression: getProgressionSnapshot(user)
+      }
     })
   } catch (error) {
     console.error('Update profile error:', error)

@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server'
 import { withOptionalAuth } from '@/lib/middleware/withAuth.js'
 import User from '@/lib/models/User.js'
 import Review from '@/lib/models/Review.js'
+import Post from '@/lib/models/Post.js'
 import connectDB from '@/lib/config/database.js'
+import { getProgressionSnapshot, getTopPercentLabel } from '@/lib/utils/gamification.js'
+import { calculateInfluenceFromRanking, getUserRankingSnapshot } from '@/lib/utils/ranking.js'
 
 await connectDB()
 
@@ -95,6 +98,10 @@ export const GET = withOptionalAuth(async (request, { params, user: currentUser 
     }
 
     // Basic profile data (always visible)
+    const progression = getProgressionSnapshot(user)
+
+    const ranking = await getUserRankingSnapshot(user._id)
+
     const publicProfile = {
       _id: user._id,
       username: user.username,
@@ -114,7 +121,20 @@ export const GET = withOptionalAuth(async (request, { params, user: currentUser 
         total: totalMutuals,
       },
       level: user.level || 1,
+      xpLevel: user.level || 1,
       points: user.points || 0,
+      badges: user.badges || [],
+      progression,
+      ranking,
+      tier: ranking.tier,
+      globalRank: ranking.globalRank,
+      topPercentLabel: getTopPercentLabel(ranking.percentile),
+      xp: {
+        current: progression.totalXp,
+        nextLevel: progression.nextLevelXp,
+        progress: progression.progressPercent,
+        toNextLevel: progression.xpForNextLevel
+      }
     }
 
     if (!canViewFullProfile) {
@@ -140,16 +160,39 @@ export const GET = withOptionalAuth(async (request, { params, user: currentUser 
     }
 
     // Full profile - get all data
-    const reviewStats = await Review.aggregate([
-      { $match: { user: user._id } },
-      {
-        $group: {
-          _id: null,
-          totalReviews: { $sum: 1 },
-          averageRating: { $avg: '$rating' },
-          totalLikes: { $sum: { $size: { $ifNull: ['$likes', []] } } }
+    const [reviewStats, trendingPostsCount] = await Promise.all([
+      Review.aggregate([
+        { $match: { user: user._id } },
+        {
+          $project: {
+            rating: 1,
+            qualityScore: { $ifNull: ['$gamification.qualityScore', 0] },
+            likesCount: { $size: { $ifNull: ['$likes', []] } },
+            repliesCount: { $size: { $ifNull: ['$replies', []] } }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalReviews: { $sum: 1 },
+            averageRating: { $avg: '$rating' },
+            totalLikes: { $sum: '$likesCount' },
+            averageQuality: { $avg: '$qualityScore' },
+            highQualityReviewsCount: {
+              $sum: {
+                $cond: [{ $gte: ['$qualityScore', 0.8] }, 1, 0]
+              }
+            },
+            averageEngagementPerReview: {
+              $avg: { $add: ['$likesCount', '$repliesCount'] }
+            }
+          }
         }
-      }
+      ]),
+      Post.countDocuments({
+        user: user._id,
+        'gamification.trendingMilestonesAwarded.0': { $exists: true }
+      })
     ])
 
     const recentReviews = await Review.find({ user: user._id })
@@ -169,6 +212,9 @@ export const GET = withOptionalAuth(async (request, { params, user: currentUser 
       poster: review.mediaPoster
     }))
 
+    const averageQuality = reviewStats[0]?.averageQuality || 0
+    const averageEngagementPerReview = reviewStats[0]?.averageEngagementPerReview || 0
+
     return NextResponse.json({
       success: true,
       data: {
@@ -181,6 +227,12 @@ export const GET = withOptionalAuth(async (request, { params, user: currentUser 
           averageRating: reviewStats[0]?.averageRating?.toFixed(1) || '0.0',
           totalLikes: reviewStats[0]?.totalLikes || 0
         },
+        qualityScore: Number(averageQuality.toFixed(2)),
+        influenceScore: calculateInfluenceFromRanking(ranking),
+        averageReviewQuality: Number(averageQuality.toFixed(2)),
+        highQualityReviewsCount: reviewStats[0]?.highQualityReviewsCount || 0,
+        trendingPostsCount,
+        averageEngagementPerReview: Number(averageEngagementPerReview.toFixed(1)),
         recentReviews: formattedReviews,
         favoriteGenres: user.preferences?.favoriteGenres || [],
         watchlistCount: user.watchlist?.length || 0,

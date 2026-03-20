@@ -4,6 +4,8 @@ import { withAuth, withOptionalAuth } from '@/lib/middleware/withAuth.js'
 import connectDB from '@/lib/config/database.js'
 import { deleteMultipleImagesFromCloudinary } from '@/lib/utils/cloudinaryHelper.js'
 import Community from '@/lib/models/Community.js'
+import User from '@/lib/models/User.js'
+import { applyXpEvent, getTrendingTier } from '@/lib/utils/gamification.js'
 
 await connectDB()
 
@@ -106,6 +108,8 @@ export const POST = withAuth(async (request, { user, params }) => {
     const likeIndex = post.likes.findIndex(id => id?.toString() === userId)
     const dislikeIndex = post.dislikes.findIndex(id => id?.toString() === userId)
 
+    const wasLiked = likeIndex > -1
+
     if (action === 'like') {
       // Remove from dislikes if present
       if (dislikeIndex > -1) {
@@ -132,6 +136,32 @@ export const POST = withAuth(async (request, { user, params }) => {
 
     await post.save()
 
+    let trendingEvent = null
+    if (action === 'like' && !wasLiked && post.user.toString() !== user._id.toString()) {
+      const tier = getTrendingTier(post)
+      const awarded = new Set(post?.gamification?.trendingMilestonesAwarded || [])
+
+      if (tier && !awarded.has(tier.key)) {
+        const postOwner = await User.findById(post.user)
+        if (postOwner) {
+          trendingEvent = applyXpEvent(postOwner, {
+            action: 'trending_post',
+            target: post,
+            metadata: {
+              tierKey: tier.key,
+              tierFactor: tier.factor,
+              trendFactor: Math.min(1.5, tier.score / 30)
+            }
+          })
+
+          post.gamification = post.gamification || {}
+          post.gamification.trendingMilestonesAwarded = Array.from(awarded).concat(tier.key)
+          await postOwner.save()
+          await post.save()
+        }
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -139,7 +169,8 @@ export const POST = withAuth(async (request, { user, params }) => {
         dislikes: post.dislikes.length,
         userLiked: post.likes.some(id => id?.toString() === userId),
         userDisliked: post.dislikes.some(id => id?.toString() === userId)
-      }
+      },
+      gamification: trendingEvent ? { trendingEvent } : undefined
     })
   } catch (error) {
     console.error('Vote post error:', error)

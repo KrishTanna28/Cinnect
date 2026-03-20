@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/middleware/withAuth.js'
 import { withOptionalAuth } from '@/lib/middleware/withAuth.js'
 import Community from '@/lib/models/Community.js'
 import User from '@/lib/models/User.js'
@@ -127,6 +128,67 @@ export const GET = withOptionalAuth(async (request, { params, user: currentUser 
     console.error('Get community members error:', error)
     return NextResponse.json(
       { success: false, message: error.message || 'Failed to get members' },
+      { status: 500 }
+    )
+  }
+})
+
+export const DELETE = withAuth(async (request, { params, user: currentUser }) => {
+  try {
+    const { slug } = await params
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId')
+
+    if (!slug || !userId) {
+      return NextResponse.json(
+        { success: false, message: 'Community slug and userId are required' },
+        { status: 400 }
+      )
+    }
+
+    const community = await Community.findOne({ slug })
+
+    if (!community) {
+      return NextResponse.json(
+        { success: false, message: 'Community not found' },
+        { status: 404 }
+      )
+    }
+
+    if (community.creator.toString() !== currentUser._id.toString()) {
+      return NextResponse.json(
+        { success: false, message: 'Only the creator can remove members' },
+        { status: 403 }
+      )
+    }
+
+    if (community.creator.toString() === userId) {
+      return NextResponse.json(
+        { success: false, message: 'The creator cannot be removed from the community' },
+        { status: 400 }
+      )
+    }
+
+    if (!community.isMember(userId)) {
+      return NextResponse.json(
+        { success: false, message: 'Member not found in this community' },
+        { status: 404 }
+      )
+    }
+
+    await community.removeMember(userId)
+
+    return NextResponse.json({
+      success: true,
+      message: 'Member removed successfully',
+      data: {
+        memberCount: community.memberCount
+      }
+    })
+  } catch (error) {
+    console.error('Remove community member error:', error)
+    return NextResponse.json(
+      { success: false, message: error.message || 'Failed to remove member' },
       { status: 500 }
     )
   }

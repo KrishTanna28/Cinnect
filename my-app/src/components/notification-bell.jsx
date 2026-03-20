@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { Bell, Check, X, UserPlus, UserMinus, UserCheck as UserCheckIcon, Users, Sparkles, Loader2, Heart, MessageCircle, Gift, Film, Tv, Megaphone, Clapperboard, Newspaper, ExternalLink, Play } from "lucide-react"
+import { Bell, Check, X, UserPlus, UserMinus, UserCheck as UserCheckIcon, Users, Star, Loader2, Heart, MessageCircle, Gift, Film, Tv, Megaphone, Clapperboard, Newspaper, ExternalLink, Play } from "lucide-react"
 import { useUser } from "@/contexts/UserContext"
 import { useSocket } from "@/contexts/SocketContext"
 import { useToast } from "@/hooks/use-toast"
@@ -178,7 +178,7 @@ export default function NotificationBell() {
       case "community_join_request":
         return <Users className="w-4 h-4 text-purple-400" />
       case "ai_generated":
-        return <Sparkles className="w-4 h-4 text-amber-400" />
+        return <Star className="w-4 h-4 text-amber-400" />
       case "new_follower":
         return <UserCheckIcon className="w-4 h-4 text-green-400" />
       case "lost_follower":
@@ -187,8 +187,6 @@ export default function NotificationBell() {
         return <Heart className="w-4 h-4 text-pink-400" />
       case "review_reply":
         return <MessageCircle className="w-4 h-4 text-blue-400" />
-      case "referral":
-        return <Gift className="w-4 h-4 text-emerald-400" />
       case "trailer":
         return <Play className="w-4 h-4 text-red-400" />
       case "news":
