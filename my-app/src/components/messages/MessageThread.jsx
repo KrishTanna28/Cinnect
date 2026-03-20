@@ -221,6 +221,11 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
   // Reacting to messages state
   const [reactingToMsgId, setReactingToMsgId] = useState(null);
 
+  // Typing indicator state
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimeoutRef = useRef(null);
+  const otherUserTypingTimeoutRef = useRef(null);
+
   // Set global active conversation so navigation top bar knows when not to alert
   useEffect(() => {
     if (conversation?._id) {
@@ -301,10 +306,37 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
     const unsubscribe2 = socket.on('messages:read', handleMessagesRead);
     const unsubscribe3 = socket.on('message:react', handleMessageReact);
 
+    const handleTypingStart = (data) => {
+      const currentConvId = String(conversation._id || '');
+      const incomingConvId = String(data.conversationId || '');
+      
+      if (currentConvId === incomingConvId) {
+        setIsTyping(true);
+        if (otherUserTypingTimeoutRef.current) clearTimeout(otherUserTypingTimeoutRef.current);
+        otherUserTypingTimeoutRef.current = setTimeout(() => setIsTyping(false), 5000);
+        scrollToBottom();
+      }
+    };
+
+    const handleTypingStop = (data) => {
+      const currentConvId = String(conversation._id || '');
+      const incomingConvId = String(data.conversationId || '');
+
+      if (currentConvId === incomingConvId) {
+        setIsTyping(false);
+        if (otherUserTypingTimeoutRef.current) clearTimeout(otherUserTypingTimeoutRef.current);
+      }
+    };
+
+    const unsubscribe4 = socket.on('typing:start', handleTypingStart);
+    const unsubscribe5 = socket.on('typing:stop', handleTypingStop);
+
     return () => {
       unsubscribe1();
       unsubscribe2();
       unsubscribe3();
+      unsubscribe4();
+      unsubscribe5();
     };
   }, [socket, conversation, user]);
 
@@ -466,6 +498,11 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
   const handleSendMessage = async (e, contentToSend = newMessage, type = 'text', fileData = null) => {
     if (e) e.preventDefault();
     if (!contentToSend.trim() && !fileData) return;
+
+    if (socket && participant?._id) {
+      socket.emit('typing:stop', { recipientId: participant._id, conversationId: conversation._id });
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    }
 
     setSelectedMediaType(type);
     setSending(true);
@@ -845,6 +882,24 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
                 </div>
               </div>
             ))}
+            
+            {/* Typing indicator */}
+            {isTyping && (
+              <div className="flex items-end gap-2 mb-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <Avatar className="w-8 h-8 rounded-full border border-border flex-shrink-0">
+                  <AvatarImage src={participant?.avatar} />
+                  <AvatarFallback className="bg-primary/20 text-primary text-xs">
+                    {participant?.username?.[0]?.toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="bg-secondary text-secondary-foreground rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm flex items-center gap-1">
+                  <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                </div>
+              </div>
+            )}
+
             <div ref={messagesEndRef} />
           </div>
         )}
@@ -912,7 +967,26 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
           <Input
             placeholder="Message..."
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setNewMessage(val);
+              
+              if (socket && socket.emit && participant?._id) {
+                const recId = String(participant._id);
+                const convId = String(conversation._id);
+                
+                if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+                
+                if (val.trim() === '') {
+                  socket.emit('typing:stop', { recipientId: recId, conversationId: convId });
+                } else {
+                  socket.emit('typing:start', { recipientId: recId, conversationId: convId });
+                  typingTimeoutRef.current = setTimeout(() => {
+                    socket.emit('typing:stop', { recipientId: recId, conversationId: convId });
+                  }, 3000);
+                }
+              }
+            }}
             className="flex-1"
             disabled={sending && newMessage === ''}
           />

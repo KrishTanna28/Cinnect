@@ -847,12 +847,13 @@ export default function Navigation() {
             </Link>
 
             {/* AI Chatbot */}
-            <button
-              onClick={toggleAIAssistant}
-              className="flex flex-col items-center justify-center flex-1 h-full text-muted-foreground transition-all active:scale-90 cursor-pointer"
+            <Link
+              href="/cast"
+              className={`flex flex-col items-center justify-center flex-1 h-full transition-all active:scale-90 ${pathname === '/cast' ? 'text-primary' : 'text-muted-foreground hover:text-primary'
+                }`}
             >
-              <Bot className="w-6 h-6" strokeWidth={1.5} />
-            </button>
+              <Bot className="w-6 h-6" strokeWidth={pathname === '/cast' ? 2.5 : 1.5} />
+            </Link>
 
             {/* Profile (avatar with popup) */}
             <div className="relative flex flex-col items-center justify-center flex-1 h-full" ref={profilePopupRef}>

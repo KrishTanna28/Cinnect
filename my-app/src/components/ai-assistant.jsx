@@ -167,9 +167,9 @@ export default function AIAssistant() {
       {/* Chat Window */}
       <div
         className={cn(
-          "fixed z-50 transition-all duration-300 ease-in-out",
-          // Mobile: full screen | Desktop: bottom-right popup
-          "inset-0 sm:inset-auto sm:bottom-6 sm:right-6",
+          "fixed z-50 hidden sm:flex transition-all duration-300 ease-in-out",
+          // Desktop: bottom-right popup
+          "sm:inset-auto sm:bottom-6 sm:right-6",
           isOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none",
           isMinimized ? "sm:w-72" : "sm:w-[420px]"
         )}
