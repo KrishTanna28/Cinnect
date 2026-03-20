@@ -68,48 +68,48 @@ export const GET = withOptionalAuth(async (request, { user }) => {
               { $size: { $ifNull: ['$dislikes', []] } }
             ]
           },
-          // Hot score: engagement weighted by recency (Wilson score approximation)
-          // Higher engagement + more recent = higher hot score
-          hotScore: {
-            $add: [
-              // Base engagement score
-              {
-                $multiply: [
+          // Trending score calculation
+          // Trending score = (engagement + quality + velocity boost) / time decay
+          trendingScore: {
+            $let: {
+              vars: {
+                // Age in hours (min 0.1 to avoid division by zero)
+                ageHours: {
+                  $max: [0.1, { $divide: [{ $subtract: [new Date(), '$createdAt'] }, 3600000] }]
+                },
+                // Engagement: likes + (comments * 2) + (views / 10)
+                engagement: {
+                  $add: [
+                    { $size: { $ifNull: ['$likes', []] } },
+                    { $multiply: [{ $size: { $ifNull: ['$comments', []] } }, 2] },
+                    { $divide: [{ $ifNull: ['$views', 0] }, 10] }
+                  ]
+                },
+                // Quality: max 10, content length / 100
+                quality: {
+                  $min: [
+                    10,
+                    { $divide: [{ $strLenCP: { $ifNull: ['$content', ''] } }, 100] }
+                  ]
+                }
+              },
+              in: {
+                $divide: [
+                  // Numerator: engagement + quality + velocity boost
                   {
                     $add: [
-                      { $size: { $ifNull: ['$likes', []] } },
-                      { $multiply: [{ $size: { $ifNull: ['$comments', []] } }, 2] },
-                      { $divide: [{ $ifNull: ['$views', 0] }, 10] }
+                      '$$engagement',
+                      '$$quality',
+                      { $divide: ['$$engagement', '$$ageHours'] } // Velocity boost
                     ]
                   },
-                  // Decay factor based on age (posts older than 48h get penalized)
+                  // Denominator: time decay (age_hours + 2)^1.5
                   {
-                    $max: [
-                      0.1,
-                      {
-                        $subtract: [
-                          1,
-                          {
-                            $divide: [
-                              { $subtract: [new Date(), '$createdAt'] },
-                              172800000 // 48 hours in milliseconds
-                            ]
-                          }
-                        ]
-                      }
-                    ]
+                    $pow: [{ $add: ['$$ageHours', 2] }, 1.5]
                   }
                 ]
-              },
-              // Bonus for very recent posts (last 6 hours)
-              {
-                $cond: [
-                  { $lt: [{ $subtract: [new Date(), '$createdAt'] }, 21600000] }, // 6 hours
-                  5,
-                  0
-                ]
               }
-            ]
+            }
           }
         }
       }
@@ -123,10 +123,11 @@ export const GET = withOptionalAuth(async (request, { user }) => {
           $sort: { score: -1, likesCount: -1, commentsCount: -1, createdAt: -1 }
         })
         break
+      case 'trending':
       case 'hot':
-        // Trending: hot score (recent + engaging posts)
+        // Trending: calculated based on engagement, velocity, and time decay
         pipeline.push({
-          $sort: { hotScore: -1, createdAt: -1 }
+          $sort: { trendingScore: -1, createdAt: -1 }
         })
         break
       case 'recent':

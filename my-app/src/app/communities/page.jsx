@@ -37,8 +37,8 @@ export default function CommunitiesPage() {
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [totalPages, setTotalPages] = useState(1)
-  const [recentPosts, setRecentPosts] = useState([])
-  const [recentPostsLoading, setRecentPostsLoading] = useState(true)
+  const [trendingPosts, setTrendingPosts] = useState([])
+  const [trendingPostsLoading, setTrendingPostsLoading] = useState(true)
   const [recommendedCommunities, setRecommendedCommunities] = useState([])
   const [communitiesLoading, setCommunitiesLoading] = useState(true)
   const router = useRouter()
@@ -91,9 +91,9 @@ export default function CommunitiesPage() {
     if (sort) setSortBy(sort)
   }, [searchParams])
 
-  // Fetch recent posts for sidebar
+  // Fetch trending posts for sidebar
   useEffect(() => {
-    fetchRecentPosts()
+    fetchTrendingPosts()
     fetchRecommendedCommunities()
   }, [])
 
@@ -102,7 +102,8 @@ export default function CommunitiesPage() {
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
       const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
-      const response = await fetch('/api/communities?sort=popular&limit=10', { headers })
+      const endpoint = token ? '/api/communities/recommended?limit=10' : '/api/communities?sort=popular&limit=10'
+      const response = await fetch(endpoint, { headers })
       const data = await response.json()
       if (data.success) {
         setRecommendedCommunities(data.data)
@@ -114,20 +115,20 @@ export default function CommunitiesPage() {
     }
   }
 
-  const fetchRecentPosts = async () => {
-    setRecentPostsLoading(true)
+  const fetchTrendingPosts = async () => {
+    setTrendingPostsLoading(true)
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
       const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
-      const response = await fetch('/api/communities/posts?sort=recent&limit=10', { headers })
+      const response = await fetch('/api/communities/posts?sort=trending&limit=10', { headers })
       const data = await response.json()
       if (data.success) {
-        setRecentPosts(data.data)
+        setTrendingPosts(data.data)
       }
     } catch (error) {
-      console.error('Error fetching recent posts:', error)
+      console.error('Error fetching trending posts:', error)
     } finally {
-      setRecentPostsLoading(false)
+      setTrendingPostsLoading(false)
     }
   }
 
@@ -667,29 +668,29 @@ export default function CommunitiesPage() {
               )}
           </div>
 
-          {/* Recent Posts Sidebar - Right Column */}
+          {/* Trending Posts Sidebar - Right Column */}
           <aside ref={rightSidebarRef} className="hidden xl:block w-80 flex-shrink-0 self-start sticky top-0 max-h-[calc(100vh-10rem)] overflow-y-auto overscroll-contain scrollbar-thin">
             <div>
               <div className="bg-secondary/30 rounded-lg border border-border overflow-hidden">
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                    Recent Posts
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                    Trending Posts
                   </h3>
                 </div>
 
                 {/* Posts List */}
                 <div className="divide-y divide-border/50">
-                  {recentPostsLoading ? (
+                  {trendingPostsLoading ? (
                     <div className="p-4 flex items-center justify-center">
                       <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
                     </div>
-                  ) : recentPosts.length === 0 ? (
+                  ) : trendingPosts.length === 0 ? (
                     <div className="p-4 text-center text-sm text-muted-foreground">
-                      No recent posts
+                      No trending posts
                     </div>
                   ) : (
-                    recentPosts.filter(post => !(shouldFilterAdultContent(user) && post.adult_content)).slice(0, 10).map((post) => {
+                    trendingPosts.filter(post => !(shouldFilterAdultContent(user) && post.adult_content)).slice(0, 10).map((post) => {
                       const CategoryIcon = categories.find(c => c.id === post.community?.category)?.icon || Sparkles
                       
                       return (
@@ -807,4 +808,3 @@ export default function CommunitiesPage() {
     </main>
   )
 }
-

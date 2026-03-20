@@ -18,8 +18,12 @@ export const awardReviewPoints = async (req, res, next) => {
     const context = await getReviewContext(review);
 
     // Calculate points
-    const pointsData = PointsCalculator.calculateReviewPoints(review, user, context);
+    const pointsData = await PointsCalculator.calculateReviewPoints(review, user, context);
     
+    // Mark for cron processing (heavy operations)
+    review.needsProcessing = true;
+    await review.save();
+
     // Apply multiplier
     const finalPoints = Math.round(pointsData.total * pointsData.multiplier);
 
