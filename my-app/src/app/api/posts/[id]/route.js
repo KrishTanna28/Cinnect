@@ -234,7 +234,8 @@ export const DELETE = withAuth(async (request, { user, params }) => {
   }
 })
 
-export const PUT = withAuth(async (request, { user, params }) => {
+// PATCH /api/posts/[id] - Update post
+export const PATCH = withAuth(async (request, { user, params }) => {
   try {
     const { id } = await params
     const { title, content, images, category, custom_category, category_color } = await request.json()

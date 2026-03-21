@@ -40,8 +40,8 @@ export async function GET(request, { params }) {
   }
 }
 
-// PUT /api/reviews/[reviewId] - Update review
-export const PUT = withAuth(async (request, { user, params }) => {
+// PATCH /api/reviews/[reviewId] - Update review
+export const PATCH = withAuth(async (request, { user, params }) => {
   try {
     const { reviewId } = await params
     const body = await request.json()

@@ -52,17 +52,17 @@ function getReviewQualityLabel(score = 0) {
   return null
 }
 
-function PublicProgressHeader({ profile, onOpenLeaderboard }) {
+function PublicProgressHeader({ profile }) {
   const currentXp = profile?.xp?.current ?? profile?.points?.total ?? 0
   const nextLevelXp = profile?.xp?.nextLevel
   const progress = profile?.xp?.progress ?? profile?.progression?.progressPercent ?? 0
   const level = profile?.xpLevel || profile?.level || 1
 
   return (
-    <div className="space-y-3 max-w-2xl">
+    <div className="space-y-3 max-w-md">
       <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start">
         <span
-          title="Your personal progression based on activity"
+          title="Personal progression based on activity"
           className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold tracking-[0.16em] text-primary uppercase"
         >
           XP Level {level}
@@ -74,11 +74,11 @@ function PublicProgressHeader({ profile, onOpenLeaderboard }) {
         )}
       </div>
       <div className="space-y-2">
-        <div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-          <span title="Your personal progression based on activity" className="text-foreground font-medium">
+        <div className="flex flex-col gap-1 text-sm text-center sm:text-left">
+          <span title="Personal progression based on activity" className="text-foreground font-medium">
             XP Level {level} | {currentXp.toLocaleString()} XP
           </span>
-          <span className="text-muted-foreground sm:text-right">
+          <span className="text-muted-foreground">
             {nextLevelXp ? `${currentXp.toLocaleString()} / ${nextLevelXp.toLocaleString()} XP -> Level ${level + 1}` : "At the peak of the realm"}
           </span>
         </div>
@@ -89,7 +89,7 @@ function PublicProgressHeader({ profile, onOpenLeaderboard }) {
           />
         </div>
       </div>
-      {profile?.bio && <p className="text-muted-foreground mt-2 max-w-2xl text-sm justify-center sm:justify-start">{profile.bio}</p>}
+      {profile?.bio && <p className="text-muted-foreground text-sm text-center sm:text-left">{profile.bio}</p>}
     </div>
   )
 }
@@ -375,8 +375,125 @@ export default function PublicProfilePage({ params }) {
       {/* Header */}
       <div className="border-b border-border py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="grid gap-8 lg:grid-cols-[minmax(0,1.08fr)_minmax(320px,380px)_auto] lg:items-start xl:grid-cols-[minmax(0,1.1fr)_420px_auto] xl:gap-10">
-            <div className="min-w-0 flex flex-col items-center sm:flex-row sm:items-center gap-8 sm:gap-6">
+          {/* Desktop Layout */}
+          <div className="hidden lg:flex lg:items-start lg:justify-between">
+            {/* Left side: User Info + XP Progress */}
+            <div className="flex items-start gap-8">
+              {/* User Info */}
+              <div className="flex items-start gap-6">
+                <button onClick={() => setShowAvatarLightbox(true)} className="cursor-pointer transition-all active:scale-95 flex-shrink-0">
+                  <Avatar className="w-24 h-24 border-4 border-primary">
+                    <AvatarImage src={profile.avatar} alt={profile.username} />
+                    <AvatarFallback className="bg-primary text-primary-foreground text-4xl">
+                      {profile.username?.charAt(0).toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <h1 className="text-3xl font-bold text-foreground">{profile.fullName || profile.username}</h1>
+                    {profile.isPrivate && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-secondary/50 rounded-full text-xs text-muted-foreground">
+                        <Lock className="w-3 h-3" />
+                        Private
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-base text-primary font-semibold mb-3">@{profile.username}</p>
+
+                  {/* Stats row */}
+                  <div className="flex items-center gap-5 mb-3">
+                    <div className="text-center">
+                      <p className="text-base font-bold text-foreground">{profile.stats?.totalReviews || 0}</p>
+                      <p className="text-xs text-muted-foreground">Reviews</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (isLocked) return;
+                        setFollowModalTab("followers");
+                        setShowFollowModal(true);
+                      }}
+                      className={`text-center transition-opacity ${isLocked ? '' : 'cursor-pointer hover:opacity-80'}`}
+                    >
+                      <p className="text-base font-bold text-foreground">{followersCount}</p>
+                      <p className="text-xs text-muted-foreground">Followers</p>
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (isLocked) return;
+                        setFollowModalTab("following");
+                        setShowFollowModal(true);
+                      }}
+                      className={`text-center transition-opacity ${isLocked ? '' : 'cursor-pointer hover:opacity-80'}`}
+                    >
+                      <p className="text-base font-bold text-foreground">{followingCount}</p>
+                      <p className="text-xs text-muted-foreground">Following</p>
+                    </button>
+                  </div>
+
+                  {/* Mutual Followers Preview */}
+                  {!profile.isOwnProfile && profile.mutuals?.total > 0 && (
+                    <button
+                      onClick={() => { setFollowModalTab("mutuals"); setShowFollowModal(true) }}
+                      className="flex items-center gap-2 cursor-pointer group w-fit mb-3"
+                    >
+                      <div className="flex -space-x-2">
+                        {profile.mutuals.preview.map((f) => (
+                          <Avatar key={f._id} className="w-6 h-6 border-2 border-background">
+                            <AvatarImage src={f.avatar} alt={f.username} />
+                            <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-bold">
+                              {f.username?.charAt(0).toUpperCase() || 'U'}
+                            </AvatarFallback>
+                          </Avatar>
+                        ))}
+                      </div>
+                      <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors text-left">
+                        Followed by{" "}
+                        <span className="font-semibold text-foreground">
+                          {profile.mutuals.preview[0].username}
+                        </span>
+                        {profile.mutuals.total - 1 > 0 && (
+                          <>
+                            {" "}and{" "}
+                            <span className="font-semibold text-foreground">
+                              {profile.mutuals.total - 1} other{(profile.mutuals.total - 1) > 1 ? "s" : ""}
+                            </span>
+                          </>
+                        )}
+                      </p>
+                    </button>
+                  )}
+
+                  <div className="space-y-1">
+                    <p className="text-2xl font-bold text-foreground">{profile?.tier || "Smallfolk"}</p>
+                    <button
+                      type="button"
+                      onClick={() => router.push("/leaderboard")}
+                      title="Global position based on quality and influence"
+                      className="text-sm text-primary hover:text-primary/80 transition-colors cursor-pointer"
+                    >
+                      {profile?.globalRank ? `Global #${profile.globalRank}` : "Unranked"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="w-px h-46 bg-border self-center" />
+
+              {/* XP Progress */}
+              <PublicProgressHeader profile={profile} />
+            </div>
+
+            {/* Right: Follow Button */}
+            <div className="flex items-center gap-2">
+              {getFollowButton()}
+            </div>
+          </div>
+
+          {/* Mobile/Tablet Layout */}
+          <div className="lg:hidden flex flex-col gap-6">
+            <div className="flex flex-col items-center sm:flex-row sm:items-center gap-4 sm:gap-6">
               <button onClick={() => setShowAvatarLightbox(true)} className="cursor-pointer transition-all active:scale-95 flex-shrink-0">
                 <Avatar className="w-20 h-20 sm:w-24 sm:h-24 border-4 border-primary">
                   <AvatarImage src={profile.avatar} alt={profile.username} />
@@ -387,7 +504,7 @@ export default function PublicProfilePage({ params }) {
               </button>
               <div className="text-center sm:text-left">
                 <div className="flex items-center gap-3 mb-2 justify-center sm:justify-start">
-                  <h1 className="text-2xl sm:text-4xl font-bold text-foreground">{profile.fullName || profile.username}</h1>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{profile.fullName || profile.username}</h1>
                   {profile.isPrivate && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-secondary/50 rounded-full text-xs text-muted-foreground">
                       <Lock className="w-3 h-3" />
@@ -395,42 +512,43 @@ export default function PublicProfilePage({ params }) {
                     </span>
                   )}
                 </div>
-                <p className="text-lg text-primary font-semibold mb-3">@{profile.username}</p>
+                <p className="text-base text-primary font-semibold mb-3">@{profile.username}</p>
 
-                {/* Instagram-style stats row */}
-                <div className="flex items-center gap-6 mb-3 justify-center sm:justify-start">
+                {/* Stats row */}
+                <div className="flex items-center gap-5 mb-3 justify-center sm:justify-start">
                   <div className="text-center">
-                    <p className="text-lg font-bold text-foreground">{profile.stats?.totalReviews || 0}</p>
+                    <p className="text-base font-bold text-foreground">{profile.stats?.totalReviews || 0}</p>
                     <p className="text-xs text-muted-foreground">Reviews</p>
                   </div>
                   <button
                     onClick={() => {
                       if (isLocked) return;
-                      setFollowModalTab("followers"); 
+                      setFollowModalTab("followers");
                       setShowFollowModal(true);
                     }}
                     className={`text-center transition-opacity ${isLocked ? '' : 'cursor-pointer hover:opacity-80'}`}
                   >
-                    <p className="text-lg font-bold text-foreground">{followersCount}</p>
+                    <p className="text-base font-bold text-foreground">{followersCount}</p>
                     <p className="text-xs text-muted-foreground">Followers</p>
                   </button>
                   <button
                     onClick={() => {
                       if (isLocked) return;
-                      setFollowModalTab("following"); 
+                      setFollowModalTab("following");
                       setShowFollowModal(true);
                     }}
                     className={`text-center transition-opacity ${isLocked ? '' : 'cursor-pointer hover:opacity-80'}`}
                   >
-                    <p className="text-lg font-bold text-foreground">{followingCount}</p>
+                    <p className="text-base font-bold text-foreground">{followingCount}</p>
                     <p className="text-xs text-muted-foreground">Following</p>
                   </button>
                 </div>
+
                 {/* Mutual Followers Preview */}
                 {!profile.isOwnProfile && profile.mutuals?.total > 0 && (
                   <button
                     onClick={() => { setFollowModalTab("mutuals"); setShowFollowModal(true) }}
-                    className="flex items-center gap-2 cursor-pointer group w-fit mt-3 mx-auto sm:mx-0 mb-3"
+                    className="flex items-center gap-2 cursor-pointer group w-fit mb-3 mx-auto sm:mx-0"
                   >
                     <div className="flex -space-x-2">
                       {profile.mutuals.preview.map((f) => (
@@ -460,34 +578,25 @@ export default function PublicProfilePage({ params }) {
                 )}
 
                 <div className="space-y-1 mb-3">
-                  <p className="text-2xl sm:text-3xl font-bold text-foreground">{profile?.tier || "Smallfolk"}</p>
+                  <p className="text-2xl font-bold text-foreground">{profile?.tier || "Smallfolk"}</p>
                   <button
                     type="button"
                     onClick={() => router.push("/leaderboard")}
-                    title="Your global position based on quality and influence"
+                    title="Global position based on quality and influence"
                     className="text-sm text-primary hover:text-primary/80 transition-colors cursor-pointer"
                   >
-                    {profile?.globalRank ? `Global #${profile.globalRank} ` : "Unranked"}
+                    {profile?.globalRank ? `Global #${profile.globalRank}` : "Unranked"}
                   </button>
                 </div>
 
+                <div className="flex justify-center sm:justify-start">
+                  {getFollowButton()}
+                </div>
               </div>
             </div>
 
-            <div className="flex flex-col gap-4 lg:-ml-6 lg:items-center lg:justify-self-end lg:mr-2 lg:w-[380px] xl:-ml-4 xl:mr-6 xl:w-[420px]">
-              <div className="hidden lg:block w-full">
-                <PublicProgressHeader profile={profile} onOpenLeaderboard={() => router.push("/leaderboard")} />
-              </div>
-            </div>
-            <div className="hidden lg:flex flex-col items-end gap-4">
-              <div className="flex items-center gap-2 justify-end">
-                {getFollowButton()}
-                {followStatus === 'following' && profile.isFollowedBy}
-              </div>
-            </div>
-            <div className="lg:hidden">
-              <PublicProgressHeader profile={profile} onOpenLeaderboard={() => router.push("/leaderboard")} />
-            </div>
+            {/* XP Progress Section - Mobile */}
+            <PublicProgressHeader profile={profile} />
           </div>
         </div>
       </div>
@@ -578,17 +687,19 @@ export default function PublicProfilePage({ params }) {
         </div>
       ) : (
         <>
-          {/* Stats */}
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-              <MetricCard icon={Trophy} label="Influence" value={profile.influenceScore || 0} />
-              <MetricCard icon={Award} label="Quality" value={`${Math.round((profile.averageReviewQuality || 0) * 100)}%`} />
-              <MetricCard icon={Flame} label="Impact" value={profile.trendingPostsCount || 0} />
-              <MetricCard icon={Heart} label="Streak" value={profile.streak?.current || 0} />
-              <MetricCard icon={Star} label="Top Percent" value={profile.topPercentLabel || "-"} valueClassName="text-2xl" />
-              <MetricCard icon={MessageCircle} label="Avg Engagement / Review" value={profile.averageEngagementPerReview || 0} valueClassName="text-2xl" />
+          {/* Stats - Only show if user has some activity */}
+          {(profile.stats?.totalReviews > 0 || profile.influenceScore > 0 || profile.streak?.current > 0) && (
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                <MetricCard icon={Trophy} label="Influence" value={profile.influenceScore || 0} />
+                <MetricCard icon={Award} label="Quality" value={`${Math.round((profile.averageReviewQuality || 0) * 100)}%`} />
+                <MetricCard icon={Flame} label="Impact" value={profile.trendingPostsCount || 0} />
+                <MetricCard icon={Heart} label="Streak" value={profile.streak?.current || 0} />
+                <MetricCard icon={Star} label="Top Percent" value={profile.topPercentLabel || "-"} valueClassName="text-2xl" />
+                <MetricCard icon={MessageCircle} label="Avg Engagement / Review" value={profile.averageEngagementPerReview || 0} valueClassName="text-2xl" />
+              </div>
             </div>
-          </div>
+          )}
 
           <BadgeSection badges={profile.badges} />
 

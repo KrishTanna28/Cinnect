@@ -30,8 +30,8 @@ export const GET = withAuth(async (request, { user }) => {
   }
 })
 
-// PUT /api/users/me/settings - Update current user settings
-export const PUT = withAuth(async (request, { user }) => {
+// PATCH /api/users/me/settings - Update current user settings
+export const PATCH = withAuth(async (request, { user }) => {
   try {
     const body = await request.json()
     const { isPrivate, notifications, theme, language } = body

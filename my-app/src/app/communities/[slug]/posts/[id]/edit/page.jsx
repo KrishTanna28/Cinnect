@@ -171,7 +171,7 @@ export default function EditPostPage() {
       const selectedCat = FLAT_CATEGORIES.find(c => c.id === category)
 
       const response = await fetch(`/api/posts/${params.id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`

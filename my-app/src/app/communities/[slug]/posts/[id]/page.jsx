@@ -660,7 +660,7 @@ export default function PostDetailPage() {
     try {
       const token = localStorage.getItem('token')
       const response = await fetch(`/api/posts/${params.id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Authorization': `Bearer ${token}` }
       })
       const data = await response.json()

@@ -152,7 +152,7 @@ export default function SettingsPage() {
       }
 
       const response = await fetch("/api/users/me/settings", {
-        method: "PUT",
+        method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json"
@@ -198,7 +198,7 @@ export default function SettingsPage() {
       }
 
       const response = await fetch("/api/users/me", {
-        method: "PUT",
+        method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
         body: formData
       })

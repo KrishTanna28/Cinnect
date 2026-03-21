@@ -60,7 +60,7 @@ export async function updateReview(reviewId, reviewData) {
     }
 
     const response = await fetch(`${API_BASE_URL}/reviews/${reviewId}`, {
-      method: 'PUT',
+      method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`

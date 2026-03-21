@@ -24,8 +24,8 @@ export const GET = withAuth(async (request, { user }) => {
   }
 })
 
-// PUT /api/users/me - Update current user profile
-export const PUT = withAuth(async (request, { user }) => {
+// PATCH /api/users/me - Update current user profile
+export const PATCH = withAuth(async (request, { user }) => {
   try {
     const formData = await request.formData()
     const fullName = formData.get('fullName')

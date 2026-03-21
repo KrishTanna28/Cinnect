@@ -1,0 +1,24 @@
+{
+  "scenarios": {
+    "load_test": {
+      "executor": "ramping-vus",
+      "startVUs": 0,
+      "stages": [
+        { "duration": "2m", "target": 20 },
+        { "duration": "5m", "target": 20 },
+        { "duration": "2m", "target": 50 },
+        { "duration": "5m", "target": 50 },
+        { "duration": "2m", "target": 0 }
+      ],
+      "gracefulRampDown": "30s",
+      "exec": "loadTest"
+    }
+  },
+  "thresholds": {
+    "http_req_duration": ["p(95)<3000", "p(99)<5000"],
+    "http_req_failed": ["rate<0.05"],
+    "auth_errors": ["rate<0.02"],
+    "auth_response_time": ["p(95)<2000"],
+    "movie_response_time": ["p(95)<1500"]
+  }
+}

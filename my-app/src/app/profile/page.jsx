@@ -40,7 +40,7 @@ function ProgressHeader({ level, stats, bio, onOpenLeaderboard }) {
   const topPercentLabel = stats?.topPercentLabel
 
   return (
-    <div className="space-y-3 max-w-2xl">
+    <div className="space-y-3 max-w-md">
       <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start">
         <span
           title="Your personal progression based on activity"
@@ -55,11 +55,11 @@ function ProgressHeader({ level, stats, bio, onOpenLeaderboard }) {
         )}
       </div>
       <div className="space-y-2">
-        <div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div className="flex flex-col gap-1 text-sm text-center sm:text-left">
           <span title="Your personal progression based on activity" className="text-foreground font-medium">
             XP Level {level || 1} | {currentXp.toLocaleString()} XP
           </span>
-          <span className="text-muted-foreground sm:text-right">
+          <span className="text-muted-foreground">
             {nextLevelXp ? `${currentXp.toLocaleString()} / ${nextLevelXp.toLocaleString()} XP -> Level ${(level || 1) + 1}` : "At the peak of the realm"}
           </span>
         </div>
@@ -70,12 +70,12 @@ function ProgressHeader({ level, stats, bio, onOpenLeaderboard }) {
           />
         </div>
         {nextLevelXp && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground text-center sm:text-left">
             {(stats?.xp?.toNextLevel ?? progression?.xpForNextLevel ?? Math.max(0, nextLevelXp - currentXp)).toLocaleString()} XP needed for the next level.
           </p>
         )}
       </div>
-      {bio && <p className="text-muted-foreground text-sm">{bio}</p>}
+      {bio && <p className="text-muted-foreground text-sm text-center sm:text-left">{bio}</p>}
     </div>
   )
 }
@@ -349,8 +349,87 @@ export default function ProfilePage() {
       {/* Header */}
       <div className="border-b border-border py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="grid gap-8 lg:grid-cols-[minmax(0,1.08fr)_minmax(320px,380px)_auto] lg:items-start xl:grid-cols-[minmax(0,1.1fr)_420px_auto] xl:gap-10">
-            <div className="min-w-0 flex flex-col items-center sm:flex-row sm:items-center gap-4 sm:gap-6">
+          {/* Desktop Layout */}
+          <div className="hidden lg:flex lg:items-start lg:justify-between">
+            {/* Left side: User Info + XP Progress */}
+            <div className="flex items-start gap-8">
+              {/* User Info */}
+              <div className="flex items-start gap-6">
+                <button onClick={() => setShowAvatarLightbox(true)} className="cursor-pointer transition-all active:scale-95 flex-shrink-0">
+                  <Avatar className="w-24 h-24 border-4 border-primary">
+                    <AvatarImage src={user.avatar} alt={user.username} />
+                    <AvatarFallback className="bg-primary text-primary-foreground text-4xl">
+                      {user.username?.charAt(0).toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <h1 className="text-3xl font-bold text-foreground">{user.fullName || user.username}</h1>
+                    {user.isPrivate && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-secondary/50 rounded-full text-xs text-muted-foreground">
+                        <Lock className="w-3 h-3" />
+                        Private
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-base text-primary font-semibold mb-3">@{user.username}</p>
+
+                  {/* Stats row */}
+                  <div className="flex items-center gap-5 mb-3">
+                    <div className="text-center">
+                      <p className="text-base font-bold text-foreground">{stats?.achievements?.reviewsWritten || 0}</p>
+                      <p className="text-xs text-muted-foreground">Reviews</p>
+                    </div>
+                    <button
+                      onClick={() => { setFollowModalTab("followers"); setShowFollowModal(true) }}
+                      className="text-center cursor-pointer hover:opacity-80 transition-opacity"
+                    >
+                      <p className="text-base font-bold text-foreground">{stats?.followersCount ?? 0}</p>
+                      <p className="text-xs text-muted-foreground">Followers</p>
+                    </button>
+                    <button
+                      onClick={() => { setFollowModalTab("following"); setShowFollowModal(true) }}
+                      className="text-center cursor-pointer hover:opacity-80 transition-opacity"
+                    >
+                      <p className="text-base font-bold text-foreground">{stats?.followingCount ?? 0}</p>
+                      <p className="text-xs text-muted-foreground">Following</p>
+                    </button>
+                  </div>
+
+                  <div className="space-y-1">
+                    <p className="text-2xl font-bold text-foreground">{stats?.tier || "Smallfolk"}</p>
+                    <button
+                      type="button"
+                      onClick={() => router.push("/leaderboard")}
+                      title="Your global position based on quality and influence"
+                      className="text-sm text-primary hover:text-primary/80 transition-colors cursor-pointer"
+                    >
+                      {stats?.globalRank ? `Global #${stats.globalRank}` : "Unranked"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="w-px h-46 bg-border self-center" />
+
+              {/* XP Progress */}
+              <ProgressHeader level={stats?.level} stats={stats} bio={user.bio} onOpenLeaderboard={() => router.push("/leaderboard")} />
+            </div>
+
+            {/* Right: Settings Button */}
+            <Link href="/settings">
+              <Button variant="secondary" size="sm" className="gap-2">
+                <Settings className="w-4 h-4" />
+                <span>Settings</span>
+              </Button>
+            </Link>
+          </div>
+
+          {/* Mobile/Tablet Layout */}
+          <div className="lg:hidden flex flex-col gap-6">
+            <div className="flex flex-col items-center sm:flex-row sm:items-center gap-4 sm:gap-6">
               <button onClick={() => setShowAvatarLightbox(true)} className="cursor-pointer transition-all active:scale-95 flex-shrink-0">
                 <Avatar className="w-20 h-20 sm:w-24 sm:h-24 border-4 border-primary">
                   <AvatarImage src={user.avatar} alt={user.username} />
@@ -360,8 +439,8 @@ export default function ProfilePage() {
                 </Avatar>
               </button>
               <div className="text-center sm:text-left">
-                <div className="items-center gap-3 mb-2 justify-center sm:justify-start">
-                  <h1 className="text-2xl sm:text-4xl font-bold text-foreground">{user.fullName || user.username}</h1>
+                <div className="flex items-center gap-3 mb-2 justify-center sm:justify-start">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{user.fullName || user.username}</h1>
                   {user.isPrivate && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-secondary/50 rounded-full text-xs text-muted-foreground">
                       <Lock className="w-3 h-3" />
@@ -369,32 +448,32 @@ export default function ProfilePage() {
                     </span>
                   )}
                 </div>
-                <p className="text-lg text-primary font-semibold mb-3">@{user.username}</p>
+                <p className="text-base text-primary font-semibold mb-3">@{user.username}</p>
 
-                {/* Instagram-style stats row */}
-                <div className="flex items-center gap-6 mb-3 justify-center sm:justify-start">
+                {/* Stats row */}
+                <div className="flex items-center gap-5 mb-3 justify-center sm:justify-start">
                   <div className="text-center">
-                    <p className="text-lg font-bold text-foreground">{stats?.achievements?.reviewsWritten || 0}</p>
+                    <p className="text-base font-bold text-foreground">{stats?.achievements?.reviewsWritten || 0}</p>
                     <p className="text-xs text-muted-foreground">Reviews</p>
                   </div>
                   <button
                     onClick={() => { setFollowModalTab("followers"); setShowFollowModal(true) }}
                     className="text-center cursor-pointer hover:opacity-80 transition-opacity"
                   >
-                    <p className="text-lg font-bold text-foreground">{stats?.followersCount ?? 0}</p>
+                    <p className="text-base font-bold text-foreground">{stats?.followersCount ?? 0}</p>
                     <p className="text-xs text-muted-foreground">Followers</p>
                   </button>
                   <button
                     onClick={() => { setFollowModalTab("following"); setShowFollowModal(true) }}
                     className="text-center cursor-pointer hover:opacity-80 transition-opacity"
                   >
-                    <p className="text-lg font-bold text-foreground">{stats?.followingCount ?? 0}</p>
+                    <p className="text-base font-bold text-foreground">{stats?.followingCount ?? 0}</p>
                     <p className="text-xs text-muted-foreground">Following</p>
                   </button>
                 </div>
 
                 <div className="space-y-1">
-                  <p className="text-2xl sm:text-3xl font-bold text-foreground">{stats?.tier || "Smallfolk"}</p>
+                  <p className="text-2xl font-bold text-foreground">{stats?.tier || "Smallfolk"}</p>
                   <button
                     type="button"
                     onClick={() => router.push("/leaderboard")}
@@ -404,7 +483,7 @@ export default function ProfilePage() {
                     {stats?.globalRank ? `Global #${stats.globalRank}` : "Unranked"}
                   </button>
                 </div>
-                <div className="mt-4 flex justify-center sm:justify-start lg:hidden">
+                <div className="mt-4 flex justify-center sm:justify-start">
                   <Link href="/settings">
                     <Button variant="secondary" size="sm" className="gap-2">
                       <Settings className="w-4 h-4" />
@@ -415,24 +494,8 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-4 lg:-ml-6 lg:items-center lg:justify-self-end lg:mr-2 lg:w-[380px] xl:-ml-4 xl:mr-6 xl:w-[420px]">
-              <div className="hidden lg:block w-full">
-                <ProgressHeader level={stats?.level} stats={stats} bio={user.bio} onOpenLeaderboard={() => router.push("/leaderboard")} />
-              </div>
-            </div>
-            <div className="hidden lg:flex flex-col items-end gap-4">
-              <div className="flex items-center gap-2 justify-end">
-                <Link href="/settings">
-                  <Button variant="secondary" size="sm" className="gap-2">
-                    <Settings className="w-4 h-4" />
-                    <span>Settings</span>
-                  </Button>
-                </Link>
-              </div>
-            </div>
-            <div className="lg:hidden">
-              <ProgressHeader level={stats?.level} stats={stats} bio={user.bio} onOpenLeaderboard={() => router.push("/leaderboard")} />
-            </div>
+            {/* XP Progress Section - Mobile */}
+            <ProgressHeader level={stats?.level} stats={stats} bio={user.bio} onOpenLeaderboard={() => router.push("/leaderboard")} />
           </div>
         </div>
       </div>
@@ -470,17 +533,19 @@ export default function ProfilePage() {
         followingCount={stats?.followingCount ?? 0}
       />
 
-      {/* Stats */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                  <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                    <MetricCard icon={Trophy} label="Influence" value={stats?.influenceScore || 0} />
-                    <MetricCard icon={Award} label="Quality" value={`${Math.round((stats?.averageReviewQuality || 0) * 100)}%`} />
-                    <MetricCard icon={Flame} label="Impact" value={stats?.trendingPostsCount || 0} />
-                    <MetricCard icon={Heart} label="Streak" value={stats?.streaks?.current || 0} />
-                    <MetricCard icon={Star} label="Top Percent" value={stats?.topPercentLabel || "-"} valueClassName="text-2xl" />
-                    <MetricCard icon={MessageCircle} label="Avg Engagement / Review" value={stats?.averageEngagementPerReview || 0} valueClassName="text-2xl" />
-                  </div>
-                </div>
+      {/* Stats - Only show if user has some activity */}
+      {(stats?.achievements?.reviewsWritten > 0 || stats?.influenceScore > 0 || stats?.streaks?.current > 0) && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+            <MetricCard icon={Trophy} label="Influence" value={stats?.influenceScore || 0} />
+            <MetricCard icon={Award} label="Quality" value={`${Math.round((stats?.averageReviewQuality || 0) * 100)}%`} />
+            <MetricCard icon={Flame} label="Impact" value={stats?.trendingPostsCount || 0} />
+            <MetricCard icon={Heart} label="Streak" value={stats?.streaks?.current || 0} />
+            <MetricCard icon={Star} label="Top Percent" value={stats?.topPercentLabel || "-"} valueClassName="text-2xl" />
+            <MetricCard icon={MessageCircle} label="Avg Engagement / Review" value={stats?.averageEngagementPerReview || 0} valueClassName="text-2xl" />
+          </div>
+        </div>
+      )}
 
       <BadgeSection badges={stats?.badges} />
 
