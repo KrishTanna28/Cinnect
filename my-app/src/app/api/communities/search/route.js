@@ -3,10 +3,9 @@ import Community from '@/lib/models/Community.js'
 import connectDB from '@/lib/config/database.js'
 import { buildFuzzyMongoQuery } from '@/lib/utils/fuzzySearch.js'
 
-await connectDB()
-
 // GET /api/communities/search - Search communities
 export async function GET(request) {
+  await connectDB()
   try {
     const { searchParams } = new URL(request.url)
     const query = searchParams.get('q')

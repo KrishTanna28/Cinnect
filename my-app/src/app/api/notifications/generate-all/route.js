@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server';
 import connectDB from '@/lib/config/database.js';
 import { generateForAllUsers } from '@/lib/services/entertainmentNotification.service.js';
 
-await connectDB();
-
 /**
  * POST /api/notifications/generate-all
  * Internal endpoint called by the background scheduler to generate
@@ -11,6 +9,7 @@ await connectDB();
  * Protected by a shared secret header.
  */
 export async function POST(request) {
+  await connectDB();
   try {
     const secret = request.headers.get('x-scheduler-secret');
     const expected = process.env.SCHEDULER_SECRET || 'internal-scheduler';

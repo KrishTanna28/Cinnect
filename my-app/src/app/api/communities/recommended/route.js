@@ -12,6 +12,7 @@ await connectDB()
 
 export const GET = withAuth(async (request, { user }) => {
   try {
+    await connectDB();
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get('limit') || '10')
     const userId = user._id

@@ -14,6 +14,7 @@ await connectDB();
  */
 export const POST = withAuth(async (request, { user }) => {
   try {
+    await connectDB();
     const body = await request.json();
     const { type } = body;
 

@@ -10,6 +10,7 @@ await connectDB()
 // POST /api/users/[id]/follow - Follow a user
 export const POST = withAuth(async (request, { params, user }) => {
   try {
+    await connectDB();
     const { id: targetUserId } = await params
 
     if (!targetUserId) {

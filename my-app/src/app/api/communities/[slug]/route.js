@@ -10,6 +10,7 @@ await connectDB()
 // GET /api/communities/[slug] - Get community by slug
 export const GET = withOptionalAuth(async (request, { params, user }) => {
   try {
+    await connectDB();
     const { slug } = await params
 
     const community = await Community.findOne({ slug })

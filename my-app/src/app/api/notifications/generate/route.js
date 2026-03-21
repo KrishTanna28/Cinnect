@@ -8,6 +8,7 @@ await connectDB();
 // POST /api/notifications/generate — generate dynamic entertainment notifications for the current user
 export const POST = withAuth(async (request, { user }) => {
   try {
+    await connectDB();
     const created = await generateForUser(user._id, 5);
 
     return NextResponse.json({

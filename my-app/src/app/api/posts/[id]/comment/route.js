@@ -11,6 +11,7 @@ await connectDB()
 // POST /api/posts/[id]/comment - Add comment to post
 export const POST = withAuth(async (request, { user, params }) => {
   try {
+    await connectDB();
     const { id } = await params
     const body = await request.json()
     const { content, spoiler } = body

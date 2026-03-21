@@ -11,6 +11,7 @@ await connectDB()
 // GET /api/communities - Get all communities
 export const GET = withOptionalAuth(async (request, { user }) => {
   try {
+    await connectDB();
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
     const search = searchParams.get('search')

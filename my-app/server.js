@@ -26,7 +26,7 @@ app.prepare().then(() => {
     path: '/api/socketio',
     addTrailingSlash: false,
     cors: {
-      origin: '*',
+      origin: process.env.NEXT_PUBLIC_FRONTEND_URL || '*',
       methods: ['GET', 'POST'],
     },
     transports: ['websocket', 'polling'],

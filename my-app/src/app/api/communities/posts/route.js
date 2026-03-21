@@ -11,6 +11,7 @@ await connectDB()
 // GET /api/communities/posts - Get all posts across all communities
 export const GET = withOptionalAuth(async (request, { user }) => {
   try {
+    await connectDB();
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
     const sortBy = searchParams.get('sort') || 'recent'

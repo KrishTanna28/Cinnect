@@ -13,6 +13,7 @@ await connectDB()
 // GET /api/communities/[slug]/posts - Get posts in community
 export const GET = withOptionalAuth(async (request, { params, user }) => {
   try {
+    await connectDB();
     const { slug } = await params
     const { searchParams } = new URL(request.url)
     const sortBy = searchParams.get('sort') || 'recent'

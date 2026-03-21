@@ -3,10 +3,9 @@ import { verifyToken, generateToken } from '@/lib/utils/jwt.js'
 import User from '@/lib/models/User.js'
 import connectDB from '@/lib/config/database.js'
 
-await connectDB()
-
 // POST /api/auth/refresh - Refresh JWT token
 export async function POST(request) {
+  await connectDB()
   try {
     const authHeader = request.headers.get('authorization')
     

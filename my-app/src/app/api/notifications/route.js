@@ -10,6 +10,7 @@ await connectDB();
 // GET /api/notifications — fetch the current user's notifications
 export const GET = withAuth(async (request, { user }) => {
   try {
+    await connectDB();
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page')) || 1;
     const limit = parseInt(searchParams.get('limit')) || 30;

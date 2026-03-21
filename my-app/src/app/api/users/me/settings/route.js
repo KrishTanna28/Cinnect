@@ -7,6 +7,7 @@ await connectDB()
 // GET /api/users/me/settings - Get current user settings
 export const GET = withAuth(async (request, { user }) => {
   try {
+    await connectDB();
     return NextResponse.json({
       success: true,
       data: {

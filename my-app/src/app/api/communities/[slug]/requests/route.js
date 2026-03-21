@@ -8,6 +8,7 @@ await connectDB()
 // POST /api/communities/[slug]/requests - Approve or reject join request
 export const POST = withAuth(async (request, { user, params }) => {
   try {
+    await connectDB();
     const { slug } = await params
     const { userId, action } = await request.json()
 

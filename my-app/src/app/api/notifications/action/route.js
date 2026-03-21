@@ -10,6 +10,7 @@ await connectDB();
 // POST /api/notifications/action — accept or reject a request notification
 export const POST = withAuth(async (request, { user }) => {
   try {
+    await connectDB();
     const { notificationId, action } = await request.json();
     // action = 'accept' | 'reject'
 

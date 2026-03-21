@@ -9,6 +9,7 @@ await connectDB()
 // PATCH /api/communities/[slug]/update - Update community details (creator/moderators only)
 export const PATCH = withAuth(async (request, { user, params }) => {
   try {
+    await connectDB();
     const { slug } = await params
     const body = await request.json()
     const { description, rules, banner, icon, isPrivate } = body

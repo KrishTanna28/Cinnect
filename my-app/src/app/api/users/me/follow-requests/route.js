@@ -8,6 +8,7 @@ await connectDB()
 // GET /api/users/me/follow-requests - Get pending follow requests
 export const GET = withAuth(async (request, { user }) => {
   try {
+    await connectDB();
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page')) || 1
     const limit = parseInt(searchParams.get('limit')) || 20

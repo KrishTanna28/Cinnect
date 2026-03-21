@@ -8,6 +8,7 @@ await connectDB()
 // GET /api/users/[id]/following - Get user's following list
 export const GET = withOptionalAuth(async (request, { params, user: currentUser }) => {
   try {
+    await connectDB();
     const { id: userId } = await params
 
     if (!userId) {

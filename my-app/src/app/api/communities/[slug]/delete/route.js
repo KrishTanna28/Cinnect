@@ -10,6 +10,7 @@ await connectDB()
 // DELETE /api/communities/[slug]/delete - Delete community (creator only)
 export const DELETE = withAuth(async (request, { user, params }) => {
   try {
+    await connectDB();
     const { slug } = await params
 
     const community = await Community.findOne({ slug })

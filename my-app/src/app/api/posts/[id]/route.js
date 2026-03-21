@@ -12,6 +12,7 @@ await connectDB()
 // GET /api/posts/[id] - Get single post
 export const GET = withOptionalAuth(async (request, { params, user }) => {
   try {
+    await connectDB();
     const { id } = await params
     const { searchParams } = new URL(request.url)
     const commentsPage = parseInt(searchParams.get('commentsPage') || '1')

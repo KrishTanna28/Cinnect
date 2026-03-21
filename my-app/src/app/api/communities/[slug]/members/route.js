@@ -9,6 +9,7 @@ await connectDB()
 
 export const GET = withOptionalAuth(async (request, { params, user: currentUser }) => {
   try {
+    await connectDB();
     const { slug } = await params
 
     if (!slug) {

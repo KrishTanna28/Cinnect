@@ -7,11 +7,10 @@ import connectDB from '@/lib/config/database.js'
 import { getProgressionSnapshot, getTopPercentLabel } from '@/lib/utils/gamification.js'
 import { calculateInfluenceFromRanking, getUserRankingSnapshot } from '@/lib/utils/ranking.js'
 
-await connectDB()
-
 // GET /api/users/[id] - Get public user profile by ID
 export const GET = withOptionalAuth(async (request, { params, user: currentUser }) => {
   try {
+    await connectDB()
     const { id } = await params
 
     if (!id) {

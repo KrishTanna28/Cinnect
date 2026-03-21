@@ -18,6 +18,7 @@ await connectDB()
  */
 export const GET = withAuth(async (request, { params, user }) => {
   try {
+    await connectDB();
     const { id: contentId } = await params
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search') || ''
