@@ -5,9 +5,11 @@ import { generateEmbedding } from '@/lib/services/embedding.service.js'
 import { moderateText } from '@/lib/services/moderation.service.js'
 import { checkAdultContentAccess, getAdultContentFilter } from '@/lib/middleware/ageGate.js'
 import { applyXpEvent, calculateReviewQuality, getProgressionSnapshot } from '@/lib/utils/gamification.js'
+import connectDB from '@/lib/config/database.js'
 
 // GET /api/reviews - Get reviews with optional filters
 export async function GET(request) {
+  await connectDB()
   try {
     const { searchParams } = new URL(request.url)
     const mediaId = searchParams.get('mediaId')
@@ -169,7 +171,9 @@ export async function GET(request) {
 
 // POST /api/reviews - Create a new review
 export const POST = withAuth(async (request, { user }) => {
-  try {
+  
+    await connectDB()
+try {
     const body = await request.json()
     const { mediaId, mediaType, mediaTitle, rating, title, content, spoiler } = body
 

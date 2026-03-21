@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/middleware/withAuth.js'
+import connectDB from '@/lib/config/database.js'
 
 // GET /api/users/me/favorites - Get user's favorites
 export const GET = withAuth(async (request, { user }) => {
-  try {
+  
+    await connectDB()
+try {
     return NextResponse.json({
       success: true,
       data: user.favorites
@@ -22,7 +25,9 @@ export const GET = withAuth(async (request, { user }) => {
 
 // POST /api/users/me/favorites - Add to favorites
 export const POST = withAuth(async (request, { user }) => {
-  try {
+  
+    await connectDB()
+try {
     const body = await request.json()
     const { movieId } = body
 

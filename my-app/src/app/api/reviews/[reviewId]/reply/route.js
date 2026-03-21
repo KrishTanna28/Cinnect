@@ -6,10 +6,13 @@ import { withAuth } from '@/lib/middleware/withAuth.js'
 import { emitNotification } from '@/lib/socketServer.js'
 import { moderateText } from '@/lib/services/moderation.service.js'
 import { applyXpEvent, getProgressionSnapshot } from '@/lib/utils/gamification.js'
+import connectDB from '@/lib/config/database.js'
 
 // POST /api/reviews/[reviewId]/reply - Add a reply to a review
 export const POST = withAuth(async (request, { user, params }) => {
-  try {
+  
+    await connectDB()
+try {
     const { reviewId } = await params
     const body = await request.json()
     const { content, spoiler } = body

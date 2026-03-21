@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/middleware/withAuth.js'
+import connectDB from '@/lib/config/database.js'
 
 // GET /api/users/me/watchlist - Get user's watchlist
 export const GET = withAuth(async (request, { user }) => {
-  try {
+  
+    await connectDB()
+try {
     return NextResponse.json({
       success: true,
       data: user.watchlist
@@ -22,7 +25,9 @@ export const GET = withAuth(async (request, { user }) => {
 
 // POST /api/users/me/watchlist - Add to watchlist
 export const POST = withAuth(async (request, { user }) => {
-  try {
+  
+    await connectDB()
+try {
     const body = await request.json()
     const { movieId } = body
 

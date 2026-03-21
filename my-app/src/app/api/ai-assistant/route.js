@@ -6,6 +6,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
 import { withOptionalAuth } from '@/lib/middleware/withAuth';
+import connectDB from '@/lib/config/database.js';
 
 // Import AI modules
 import { SYSTEM_PROMPT } from '@/lib/services/ai/systemPrompt';
@@ -105,6 +106,7 @@ Use this to personalize responses when relevant.`;
  * Main POST handler
  */
 async function handler(request, context) {
+  await connectDB()
   try {
     const { message, conversationHistory = [] } = await request.json();
     const user = context?.user || null;

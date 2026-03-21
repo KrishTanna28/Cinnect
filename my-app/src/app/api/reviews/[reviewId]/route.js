@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import Review from '@/lib/models/Review.js'
 import { withAuth } from '@/lib/middleware/withAuth.js'
 import { getLevelFromXp, getProgressionSnapshot } from '@/lib/utils/gamification.js'
+import connectDB from '@/lib/config/database.js'
 
 function clampUserPoints(user) {
   user.points.total = Math.max(0, user.points.total || 0)
@@ -11,7 +12,9 @@ function clampUserPoints(user) {
 
 // GET /api/reviews/[reviewId] - Get single review by ID
 export async function GET(request, { params }) {
-  try {
+  
+  await connectDB()
+try {
     const { reviewId } = await params
 
     const review = await Review.findById(reviewId)
@@ -42,7 +45,9 @@ export async function GET(request, { params }) {
 
 // PATCH /api/reviews/[reviewId] - Update review
 export const PATCH = withAuth(async (request, { user, params }) => {
-  try {
+  
+    await connectDB()
+try {
     const { reviewId } = await params
     const body = await request.json()
     const { rating, title, content, spoiler } = body
@@ -123,7 +128,9 @@ export const PATCH = withAuth(async (request, { user, params }) => {
 
 // DELETE /api/reviews/[reviewId] - Delete review
 export const DELETE = withAuth(async (request, { user, params }) => {
-  try {
+  
+    await connectDB()
+try {
     const { reviewId } = await params
 
     const review = await Review.findById(reviewId)

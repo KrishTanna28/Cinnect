@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { runModerationPipeline, moderateText } from '@/lib/services/moderation.service.js'
 import { withAuth } from '@/lib/middleware/withAuth.js'
+import connectDB from '@/lib/config/database.js'
 
 /**
  * POST /api/moderate
@@ -9,7 +10,9 @@ import { withAuth } from '@/lib/middleware/withAuth.js'
  * Returns: { adult_content: boolean, moderation: object }
  */
 export const POST = withAuth(async (request) => {
-  try {
+  
+    await connectDB()
+try {
     const { text, imageUrls, videoUrls } = await request.json()
 
     if (!text && (!imageUrls || imageUrls.length === 0) && (!videoUrls || videoUrls.length === 0)) {
@@ -40,7 +43,9 @@ export const POST = withAuth(async (request) => {
  * Body: { text: string }
  */
 export async function PUT(request) {
-  try {
+  
+  await connectDB()
+try {
     const { text } = await request.json()
 
     if (!text || text.trim().length === 0) {

@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/middleware/withAuth';
 import SearchHistory from '@/lib/models/SearchHistory';
+import connectDB from '@/lib/config/database.js'
 
 // GET /api/search/log — fetch user's search history (most recent first)
 export const GET = withAuth(async (request, { user }) => {
-  try {
+  
+    await connectDB()
+try {
     const { searchParams } = new URL(request.url);
     const limit = Math.min(parseInt(searchParams.get('limit') || '15', 10), 30);
 
@@ -32,7 +35,9 @@ export const GET = withAuth(async (request, { user }) => {
 
 // POST /api/search/log — save a search query
 export const POST = withAuth(async (request, { user }) => {
-  try {
+  
+    await connectDB()
+try {
     const { query } = await request.json();
 
     if (!query || typeof query !== 'string' || !query.trim()) {
@@ -79,7 +84,9 @@ export const POST = withAuth(async (request, { user }) => {
 
 // DELETE /api/search/log — delete one entry (by id) or clear all
 export const DELETE = withAuth(async (request, { user }) => {
-  try {
+  
+    await connectDB()
+try {
     const { searchParams } = new URL(request.url);
     const entryId = searchParams.get('id');
 

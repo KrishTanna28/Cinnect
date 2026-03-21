@@ -3,8 +3,10 @@ import User from '@/lib/models/User.js'
 import bcrypt from 'bcryptjs'
 import { generateToken } from '@/lib/utils/jwt.js'
 import { applyXpEvent, getProgressionSnapshot } from '@/lib/utils/gamification.js'
+import connectDB from '@/lib/config/database.js'
 
 export async function POST(request) {
+  await connectDB()
   try {
     const { email, password } = await request.json()
 

@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getLeaderboardPage } from '@/lib/utils/ranking.js'
+import connectDB from '@/lib/config/database.js'
 
 export async function GET(request) {
-  try {
+  
+  await connectDB()
+try {
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get('limit') || '20')
     const page = parseInt(searchParams.get('page') || '1')

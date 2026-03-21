@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server'
 import Review from '@/lib/models/Review.js'
+import connectDB from '@/lib/config/database.js'
 
 // GET /api/reviews/user/[userId] - Get reviews by user ID
 export async function GET(request, { params }) {
-  try {
+  
+  await connectDB()
+try {
     const { userId } = await params
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get('limit')) || 10

@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/middleware/withAuth.js'
+import connectDB from '@/lib/config/database.js'
 
 // DELETE /api/users/me/watchlist/[id] - Remove from watchlist
 export const DELETE = withAuth(async (request, { user, params }) => {
-  try {
+  
+    await connectDB()
+try {
     const { id: movieId } = await params
 
     if (!movieId) {

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import connectDB from '@/lib/config/database.js'
 
 const HUGGINGFACE_API_URL = 'https://router.huggingface.co/hf-inference/models/facebook/bart-large-mnli'
 
@@ -9,7 +10,9 @@ const HUGGINGFACE_API_URL = 'https://router.huggingface.co/hf-inference/models/f
  * Returns: { isSpoiler: boolean, confidence: number, scores: object }
  */
 export async function POST(request) {
-  try {
+  
+  await connectDB()
+try {
     const { text } = await request.json()
 
     if (!text || text.trim().length === 0) {

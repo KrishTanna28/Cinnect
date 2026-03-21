@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/middleware/withAuth.js'
+import connectDB from '@/lib/config/database.js'
 
 // GET /api/users/profile - Get current user profile (alias for /api/users/me)
 export const GET = withAuth(async (request, { user }) => {
-  try {
+  
+    await connectDB()
+try {
     return NextResponse.json({
       success: true,
       data: user

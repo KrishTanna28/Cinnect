@@ -5,10 +5,13 @@ import User from '@/lib/models/User.js'
 import { withAuth } from '@/lib/middleware/withAuth.js'
 import { emitNotification } from '@/lib/socketServer.js'
 import { applyXpEvent, getProgressionSnapshot } from '@/lib/utils/gamification.js'
+import connectDB from '@/lib/config/database.js'
 
 // POST /api/reviews/[reviewId]/like - Like/unlike a review
 export const POST = withAuth(async (request, { user, params }) => {
-  try {
+  
+    await connectDB()
+try {
     const { reviewId } = await params
 
     const review = await Review.findById(reviewId)

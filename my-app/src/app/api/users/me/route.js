@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/middleware/withAuth.js'
 import { getProgressionSnapshot } from '@/lib/utils/gamification.js'
+import connectDB from '@/lib/config/database.js'
 
 // GET /api/users/me - Get current user profile
 export const GET = withAuth(async (request, { user }) => {
-  try {
+  
+    await connectDB()
+try {
     return NextResponse.json({
       success: true,
       data: {
@@ -26,7 +29,9 @@ export const GET = withAuth(async (request, { user }) => {
 
 // PATCH /api/users/me - Update current user profile
 export const PATCH = withAuth(async (request, { user }) => {
-  try {
+  
+    await connectDB()
+try {
     const formData = await request.formData()
     const fullName = formData.get('fullName')
     const bio = formData.get('bio')

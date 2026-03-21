@@ -10,6 +10,7 @@ import {
   formatMediaList,
 } from '@/lib/services/tmdb.service';
 import axios from 'axios';
+import connectDB from '@/lib/config/database.js'
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
@@ -330,7 +331,9 @@ async function fetchMetadataBatch(items, batchSize = 5) {
 }
 
 export const GET = withAuth(async (request, { user }) => {
-  try {
+  
+    await connectDB()
+try {
     const { searchParams } = new URL(request.url);
     const country = searchParams.get('country') || 'US';
     const countryName = searchParams.get('countryName') || 'Your Country';

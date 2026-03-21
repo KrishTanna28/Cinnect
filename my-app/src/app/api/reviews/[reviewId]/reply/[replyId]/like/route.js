@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server'
 import Review from '@/lib/models/Review.js'
 import { withAuth } from '@/lib/middleware/withAuth.js'
+import connectDB from '@/lib/config/database.js'
 
 // POST /api/reviews/[reviewId]/reply/[replyId]/like - Like/unlike a reply
 export const POST = withAuth(async (request, { user, params }) => {
-  try {
+  
+    await connectDB()
+try {
     const { reviewId, replyId } = await params
 
     const review = await Review.findById(reviewId)

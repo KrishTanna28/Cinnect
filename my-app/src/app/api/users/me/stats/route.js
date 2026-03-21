@@ -4,10 +4,13 @@ import Review from '@/lib/models/Review.js'
 import Post from '@/lib/models/Post.js'
 import { getLevelCatalog, getProgressionSnapshot, getTopPercentLabel, getXpConfig } from '@/lib/utils/gamification.js'
 import { calculateInfluenceFromRanking, getUserRankingSnapshot } from '@/lib/utils/ranking.js'
+import connectDB from '@/lib/config/database.js'
 
 // GET /api/users/me/stats - Get user statistics
 export const GET = withAuth(async (request, { user }) => {
-  try {
+  
+    await connectDB()
+try {
     const [reviewMetrics, trendingPostsCount] = await Promise.all([
       Review.aggregate([
         { $match: { user: user._id } },

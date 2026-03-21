@@ -1,11 +1,14 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import * as tmdbService from "@/lib/services/tmdb.service";
+import connectDB from '@/lib/config/database.js'
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 export async function GET() {
-  try {
+  
+  await connectDB()
+try {
     // Fetch some trending data to give context to Gemini
     let trendingContext = "";
     try {
