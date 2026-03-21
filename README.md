@@ -135,9 +135,3 @@ node src/scripts/backfill-embeddings.mjs
 4. Join a community, create posts, and interact with other users through comments or messages.
 5. Open C.A.S.T to ask for recommendations, title explanations, or help navigating platform features.
 6. Track progress through profile stats, badges, and leaderboard rank.
-
-## Future Improvements
-
-- Move scheduled notification generation into a dedicated worker or job system instead of running it inside the web server process.
-- Add an `.env.example` and scripted setup for vector indexes and embedding backfills to reduce first-run friction.
-- Expand automated test coverage around recommendation scoring, moderation flows, and realtime messaging.

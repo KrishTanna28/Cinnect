@@ -30,23 +30,26 @@ function getReviewQualityLabel(score = 0) {
   return null
 }
 
-function ProgressHeader({ level, stats, bio, onOpenLeaderboard }) {
+const MAX_LEVEL = 10
+
+function ProgressHeader({ stats, bio }) {
   const progression = stats?.progression
-  const currentXp = stats?.xp?.current ?? stats?.points?.total ?? 0
-  const nextLevelXp = stats?.xp?.nextLevel
-  const progress = progression?.progressPercent ?? stats?.xp?.progress ?? 0
-  const tier = stats?.tier || "Smallfolk"
-  const globalRank = stats?.globalRank
-  const topPercentLabel = stats?.topPercentLabel
+  const level = progression?.currentLevel ?? stats?.level ?? 1
+  const currentXp = progression?.totalXp ?? stats?.xp?.current ?? stats?.points?.total ?? 0
+  const currentLevelMinXp = progression?.currentLevelMinXp ?? 0
+  const nextLevelXp = progression?.nextLevelXp ?? stats?.xp?.nextLevel
+  const xpIntoLevel = currentXp - currentLevelMinXp
+  const xpForLevel = nextLevelXp ? nextLevelXp - currentLevelMinXp : 1
+  const progress = nextLevelXp ? Math.min(100, Math.round((xpIntoLevel / xpForLevel) * 100)) : 100
 
   return (
-    <div className="space-y-3 max-w-md">
+    <div className="space-y-4 max-w-md">
       <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start">
         <span
           title="Your personal progression based on activity"
           className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold tracking-[0.16em] text-primary uppercase"
         >
-          XP Level {level || 1}
+          XP Level {level}
         </span>
         {(stats?.influenceScore || 0) >= 70 && (
           <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-200">
@@ -54,27 +57,58 @@ function ProgressHeader({ level, stats, bio, onOpenLeaderboard }) {
           </span>
         )}
       </div>
+
+      {/* Level segments */}
       <div className="space-y-2">
-        <div className="flex flex-col gap-1 text-sm text-center sm:text-left">
-          <span title="Your personal progression based on activity" className="text-foreground font-medium">
-            XP Level {level || 1} | {currentXp.toLocaleString()} XP
-          </span>
-          <span className="text-muted-foreground">
-            {nextLevelXp ? `${currentXp.toLocaleString()} / ${nextLevelXp.toLocaleString()} XP -> Level ${(level || 1) + 1}` : "At the peak of the realm"}
-          </span>
+        <div className="flex gap-1">
+          {Array.from({ length: MAX_LEVEL }, (_, i) => {
+            const segmentLevel = i + 1
+            const isCurrent = segmentLevel === level
+            const isCompleted = segmentLevel < level
+            const isMax = level >= MAX_LEVEL
+
+            return (
+              <div
+                key={segmentLevel}
+                className={`relative h-2 flex-1 rounded-full transition-all duration-300 ${
+                  isCompleted
+                    ? "bg-gradient-to-r from-amber-500 to-primary"
+                    : isCurrent && !isMax
+                    ? "bg-secondary/60 overflow-hidden"
+                    : isCurrent && isMax
+                    ? "bg-gradient-to-r from-amber-500 via-primary to-red-500"
+                    : "bg-secondary/30"
+                }`}
+                title={`Level ${segmentLevel}`}
+              >
+                {isCurrent && !isMax && (
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-amber-500 to-primary transition-all duration-500"
+                    style={{ width: `${progress}%` }}
+                  />
+                )}
+              </div>
+            )
+          })}
         </div>
-        <div className="h-3 rounded-full bg-secondary/60 overflow-hidden">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-amber-500 via-primary to-red-500 transition-all duration-500"
-            style={{ width: `${Math.max(6, Math.min(progress, 100))}%` }}
-          />
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span>Lvl 1</span>
+          <span>Lvl {MAX_LEVEL}</span>
         </div>
-        {nextLevelXp && (
-          <p className="text-xs text-muted-foreground text-center sm:text-left">
-            {(stats?.xp?.toNextLevel ?? progression?.xpForNextLevel ?? Math.max(0, nextLevelXp - currentXp)).toLocaleString()} XP needed for the next level.
+      </div>
+
+      {/* XP details */}
+      <div className="text-sm text-center sm:text-left">
+        <p className="text-foreground font-medium">{currentXp.toLocaleString()} XP Total</p>
+        {nextLevelXp ? (
+          <p className="text-muted-foreground">
+            {xpIntoLevel.toLocaleString()} / {xpForLevel.toLocaleString()} XP to Level {level + 1} ({progress}%)
           </p>
+        ) : (
+          <p className="text-muted-foreground">Max level reached</p>
         )}
       </div>
+
       {bio && <p className="text-muted-foreground text-sm text-center sm:text-left">{bio}</p>}
     </div>
   )
@@ -415,7 +449,7 @@ export default function ProfilePage() {
               <div className="w-px h-46 bg-border self-center" />
 
               {/* XP Progress */}
-              <ProgressHeader level={stats?.level} stats={stats} bio={user.bio} onOpenLeaderboard={() => router.push("/leaderboard")} />
+              <ProgressHeader stats={stats} bio={user.bio} onOpenLeaderboard={() => router.push("/leaderboard")} />
             </div>
 
             {/* Right: Settings Button */}
@@ -495,7 +529,7 @@ export default function ProfilePage() {
             </div>
 
             {/* XP Progress Section - Mobile */}
-            <ProgressHeader level={stats?.level} stats={stats} bio={user.bio} onOpenLeaderboard={() => router.push("/leaderboard")} />
+            <ProgressHeader stats={stats} bio={user.bio} onOpenLeaderboard={() => router.push("/leaderboard")} />
           </div>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/dbConnect';
+import connectDB from '@/lib/config/database';
 import Review from '@/lib/models/Review';
 import User from '@/lib/models/User';
 import AIPointsCalculator from '@/lib/utils/aiPointsCalculator';
@@ -13,7 +13,7 @@ export async function GET(request) {
   }
 
   try {
-    await dbConnect();
+    await connectDB();
     console.log('Starting daily points recalculation cron job...');
 
     // 1. Recalculate user credibility
