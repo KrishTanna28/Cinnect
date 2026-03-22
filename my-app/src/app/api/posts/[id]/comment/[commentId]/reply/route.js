@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server'
 import Post from '@/lib/models/Post.js'
 import User from '@/lib/models/User.js'
+import Notification from '@/lib/models/Notification.js'
+import Community from '@/lib/models/Community.js'
 import { withAuth } from '@/lib/middleware/withAuth.js'
 import connectDB from '@/lib/config/database.js'
 import { moderateText } from '@/lib/services/moderation.service.js'
 import { applyXpEvent, getProgressionSnapshot, getTrendingTier } from '@/lib/utils/gamification.js'
+import { extractAndValidateMentions } from '@/lib/utils/mentionUtils.js'
+import { emitNotification } from '@/lib/socketServer.js'
 
 await connectDB()
 
@@ -13,7 +17,7 @@ export const POST = withAuth(async (request, { user, params }) => {
   try {
     await connectDB();
     const { id, commentId } = await params
-    const { content, spoiler } = await request.json()
+    const { content, spoiler, parentReplyId, mentions } = await request.json()
 
     if (!content || content.trim().length < 1) {
       return NextResponse.json(
@@ -37,7 +41,43 @@ export const POST = withAuth(async (request, { user, params }) => {
       )
     }
 
-    await post.addReply(commentId, user._id, content, spoiler || false)
+    const comment = post.comments.id(commentId)
+    if (!comment) {
+      return NextResponse.json(
+        { success: false, message: 'Comment not found' },
+        { status: 404 }
+      )
+    }
+
+    // Validate parentReplyId and calculate depth for nested replies
+    let depth = 0
+    let parentReply = null
+
+    if (parentReplyId) {
+      parentReply = comment.replies.id(parentReplyId)
+      if (!parentReply) {
+        return NextResponse.json(
+          { success: false, message: 'Parent reply not found' },
+          { status: 404 }
+        )
+      }
+
+      // Enforce max depth of 5 levels (depth 0-4)
+      if (parentReply.depth >= 4) {
+        return NextResponse.json(
+          { success: false, message: 'Maximum nesting depth reached (5 levels)' },
+          { status: 400 }
+        )
+      }
+
+      depth = parentReply.depth + 1
+    }
+
+    // Extract and validate mentions
+    const mentionedUsers = await extractAndValidateMentions(content)
+
+    // Add reply with nested support
+    await post.addReply(commentId, user._id, content, spoiler || false, false, parentReplyId, depth, mentionedUsers)
 
     // Run adult content text moderation on the new reply (non-blocking)
     try {
@@ -50,6 +90,59 @@ export const POST = withAuth(async (request, { user, params }) => {
       }
     } catch (modErr) {
       console.error('Reply moderation failed:', modErr)
+    }
+
+    // Send notifications (non-blocking)
+    try {
+      const notificationsToSend = []
+      const community = await Community.findById(post.community)
+
+      // 1. Notify comment author (if replying directly to comment, not a nested reply)
+      if (!parentReplyId && comment.user.toString() !== user._id.toString()) {
+        notificationsToSend.push({
+          recipient: comment.user,
+          type: 'comment_reply',
+          title: 'New Reply',
+          message: `${user.username} replied to your comment`,
+          link: `/communities/${community.slug}/posts/${post._id}`
+        })
+      }
+
+      // 2. Notify parent reply author (if replying to a reply)
+      if (parentReplyId && parentReply.user.toString() !== user._id.toString()) {
+        notificationsToSend.push({
+          recipient: parentReply.user,
+          type: 'reply_to_reply',
+          title: 'New Reply',
+          message: `${user.username} replied to your reply`,
+          link: `/communities/${community.slug}/posts/${post._id}`
+        })
+      }
+
+      // 3. Notify mentioned users
+      for (const mention of mentionedUsers) {
+        if (mention.userId.toString() !== user._id.toString()) {
+          notificationsToSend.push({
+            recipient: mention.userId,
+            type: 'mention',
+            title: 'You were mentioned',
+            message: `${user.username} mentioned you in a reply`,
+            link: `/communities/${community.slug}/posts/${post._id}`
+          })
+        }
+      }
+
+      // Create and emit all notifications
+      for (const notifData of notificationsToSend) {
+        const notification = await Notification.create({
+          ...notifData,
+          read: false
+        })
+        await emitNotification(notifData.recipient.toString(), notification)
+      }
+    } catch (notifError) {
+      console.error('Notification error:', notifError)
+      // Don't fail the request if notifications fail
     }
 
     await post.populate('comments.user', 'username avatar fullName')
@@ -136,6 +229,33 @@ export const PATCH = withAuth(async (request, { user, params }) => {
 
     if (action === 'like') {
       await post.likeReply(commentId, replyId, user._id)
+      
+      try {
+        const comment = post.comments.id(commentId);
+        const reply = comment?.replies?.id(replyId);
+        if (reply && reply.user.toString() !== user._id.toString()) {
+          const recipient = await User.findById(reply.user).select('preferences').lean();
+          if (recipient?.preferences?.notifications?.push !== false) {
+            let communitySlug = 'all';
+            if (post.community) {
+              const community = await Community.findById(post.community);
+              if (community) communitySlug = community.slug;
+            }
+            const notif = await Notification.create({
+              recipient: reply.user,
+              type: 'reply_like',
+              fromUser: user._id,
+              title: 'New Like',
+              message: `${user.fullName || user.username} liked your reply.`,
+              image: user.avatar || '',
+              link: `/communities/${communitySlug}/posts/${post._id}`
+            });
+            await emitNotification(reply.user.toString(), notif.toObject());
+          }
+        }
+      } catch (notifErr) {
+        console.error('Failed to create reply like notification:', notifErr)
+      }
     } else if (action === 'dislike') {
       await post.dislikeReply(commentId, replyId, user._id)
     } else {

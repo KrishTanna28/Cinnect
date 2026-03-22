@@ -415,6 +415,8 @@ export default function PostDetailPage() {
       comments: [...(prev.comments || []), tempComment],
       commentCount: (prev.commentCount || 0) + 1
     }))
+    // Also update allComments for immediate UI update
+    setAllComments(prev => [...prev, tempComment])
 
     // Clear form immediately
     setCommentText("")
@@ -435,6 +437,7 @@ export default function PostDetailPage() {
 
       if (data.success) {
         setPost(data.data) // Update with actual server data
+        setAllComments(data.data.comments || []) // Sync allComments with server data
       } else {
         // Revert optimistic update on error
         setPost(prev => ({
@@ -442,6 +445,7 @@ export default function PostDetailPage() {
           comments: prev.comments.filter(c => c._id !== tempComment._id),
           commentCount: Math.max(0, (prev.commentCount || 1) - 1)
         }))
+        setAllComments(prev => prev.filter(c => c._id !== tempComment._id))
         toast({
           title: "Error",
           description: data.message || "Failed to add comment",
@@ -456,6 +460,7 @@ export default function PostDetailPage() {
         comments: prev.comments.filter(c => c._id !== tempComment._id),
         commentCount: Math.max(0, (prev.commentCount || 1) - 1)
       }))
+      setAllComments(prev => prev.filter(c => c._id !== tempComment._id))
       toast({
         title: "Error",
         description: "Failed to add comment",
@@ -527,6 +532,16 @@ export default function PostDetailPage() {
         return c
       })
     }))
+    // Also update allComments for immediate UI update
+    setAllComments(prev => prev.map(c => {
+      if (c._id === commentId) {
+        return {
+          ...c,
+          replies: [...(c.replies || []), tempReply]
+        }
+      }
+      return c
+    }))
 
     // Clear form and show replies immediately
     setReplyContent('')
@@ -551,6 +566,7 @@ export default function PostDetailPage() {
 
       if (data.success) {
         setPost(data.data) // Update with actual server data
+        setAllComments(data.data.comments || []) // Sync allComments with server data
       } else {
         // Revert optimistic update on error
         setPost(prev => ({
@@ -564,6 +580,15 @@ export default function PostDetailPage() {
             }
             return c
           })
+        }))
+        setAllComments(prev => prev.map(c => {
+          if (c._id === commentId) {
+            return {
+              ...c,
+              replies: c.replies.filter(r => r._id !== tempReply._id)
+            }
+          }
+          return c
         }))
         toast({
           title: "Error",
@@ -585,6 +610,15 @@ export default function PostDetailPage() {
           }
           return c
         })
+      }))
+      setAllComments(prev => prev.map(c => {
+        if (c._id === commentId) {
+          return {
+            ...c,
+            replies: c.replies.filter(r => r._id !== tempReply._id)
+          }
+        }
+        return c
       }))
       toast({
         title: "Error",

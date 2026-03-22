@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, use, useRef, useCallback } from "react"
-import { Award, Calendar, Clock, ArrowLeft, Play } from "lucide-react"
+import { Award, Calendar, Clock, ArrowLeft, Play, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { getTVSeasonDetails } from "@/lib/movies"
 import Link from "next/link"
@@ -234,7 +234,7 @@ export default function SeasonDetailsPage({ params }) {
             {displayedEpisodes < season.episodes.length && (
               <div ref={observerTarget} className="flex justify-center py-8">
                 {isLoadingMore &&
-                  <InlineLoadingSkeleton count={3} />
+                  <Loader2 className="w-8 h-8 text-primary animate-spin" />
                 }
               </div>
             )}

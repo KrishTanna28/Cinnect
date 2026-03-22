@@ -303,10 +303,33 @@ export default function ReviewsPage({ params }) {
       return
     }
 
+    // Store previous state for rollback
+    const previousReviews = reviews.find(r => r._id === reviewId)
+
+    // Optimistic update - update UI immediately
+    setReviews(prev => prev.map(r => {
+      if (r._id === reviewId) {
+        const userLiked = r.likes?.some(id => id?.toString() === user._id?.toString())
+        const userDisliked = r.dislikes?.some(id => id?.toString() === user._id?.toString())
+
+        return {
+          ...r,
+          likeCount: userLiked ? (r.likeCount || 0) - 1 : (r.likeCount || 0) + 1,
+          dislikeCount: userDisliked ? (r.dislikeCount || 0) - 1 : r.dislikeCount || 0,
+          likes: userLiked
+            ? (r.likes || []).filter(id => id?.toString() !== user._id?.toString())
+            : [...(r.likes || []), user._id],
+          dislikes: (r.dislikes || []).filter(id => id?.toString() !== user._id?.toString())
+        }
+      }
+      return r
+    }))
+
     try {
       const data = await likeReview(reviewId)
 
       if (data.success) {
+        // Update with actual server data
         setReviews(prev => prev.map(r => {
           if (r._id === reviewId) {
             return {
@@ -319,10 +342,15 @@ export default function ReviewsPage({ params }) {
           }
           return r
         }))
+      } else {
+        // Revert optimistic update on error
+        setReviews(prev => prev.map(r => r._id === reviewId ? previousReviews : r))
       }
     } catch (error) {
       console.error('Failed to like review:', error)
       setError('Failed to like review')
+      // Revert optimistic update on error
+      setReviews(prev => prev.map(r => r._id === reviewId ? previousReviews : r))
     }
   }
 
@@ -333,10 +361,33 @@ export default function ReviewsPage({ params }) {
       return
     }
 
+    // Store previous state for rollback
+    const previousReviews = reviews.find(r => r._id === reviewId)
+
+    // Optimistic update - update UI immediately
+    setReviews(prev => prev.map(r => {
+      if (r._id === reviewId) {
+        const userLiked = r.likes?.some(id => id?.toString() === user._id?.toString())
+        const userDisliked = r.dislikes?.some(id => id?.toString() === user._id?.toString())
+
+        return {
+          ...r,
+          likeCount: userLiked ? (r.likeCount || 0) - 1 : r.likeCount || 0,
+          dislikeCount: userDisliked ? (r.dislikeCount || 0) - 1 : (r.dislikeCount || 0) + 1,
+          likes: (r.likes || []).filter(id => id?.toString() !== user._id?.toString()),
+          dislikes: userDisliked
+            ? (r.dislikes || []).filter(id => id?.toString() !== user._id?.toString())
+            : [...(r.dislikes || []), user._id]
+        }
+      }
+      return r
+    }))
+
     try {
       const data = await dislikeReview(reviewId)
 
       if (data.success) {
+        // Update with actual server data
         setReviews(prev => prev.map(r => {
           if (r._id === reviewId) {
             return {
@@ -349,10 +400,15 @@ export default function ReviewsPage({ params }) {
           }
           return r
         }))
+      } else {
+        // Revert optimistic update on error
+        setReviews(prev => prev.map(r => r._id === reviewId ? previousReviews : r))
       }
     } catch (error) {
       console.error('Failed to dislike review:', error)
       setError('Failed to dislike review')
+      // Revert optimistic update on error
+      setReviews(prev => prev.map(r => r._id === reviewId ? previousReviews : r))
     }
   }
 
@@ -446,10 +502,39 @@ export default function ReviewsPage({ params }) {
       return
     }
 
+    // Store previous state for rollback
+    const previousReview = reviews.find(r => r._id === reviewId)
+
+    // Optimistic update - update UI immediately
+    setReviews(prev => prev.map(r => {
+      if (r._id === reviewId) {
+        return {
+          ...r,
+          replies: r.replies.map(reply => {
+            if (reply._id === replyId) {
+              const userLiked = reply.likes?.some(id => id?.toString() === user._id?.toString())
+              const userDisliked = reply.dislikes?.some(id => id?.toString() === user._id?.toString())
+
+              return {
+                ...reply,
+                likes: userLiked
+                  ? (reply.likes || []).filter(id => id?.toString() !== user._id?.toString())
+                  : [...(reply.likes || []), user._id],
+                dislikes: (reply.dislikes || []).filter(id => id?.toString() !== user._id?.toString())
+              }
+            }
+            return reply
+          })
+        }
+      }
+      return r
+    }))
+
     try {
       const data = await likeReply(reviewId, replyId)
 
       if (data.success) {
+        // Update with actual server data
         setReviews(prev => prev.map(r => {
           if (r._id === reviewId) {
             return {
@@ -468,10 +553,15 @@ export default function ReviewsPage({ params }) {
           }
           return r
         }))
+      } else {
+        // Revert optimistic update on error
+        setReviews(prev => prev.map(r => r._id === reviewId ? previousReview : r))
       }
     } catch (error) {
       console.error('Failed to like reply:', error)
       setError('Failed to like reply')
+      // Revert optimistic update on error
+      setReviews(prev => prev.map(r => r._id === reviewId ? previousReview : r))
     }
   }
 
@@ -482,10 +572,39 @@ export default function ReviewsPage({ params }) {
       return
     }
 
+    // Store previous state for rollback
+    const previousReview = reviews.find(r => r._id === reviewId)
+
+    // Optimistic update - update UI immediately
+    setReviews(prev => prev.map(r => {
+      if (r._id === reviewId) {
+        return {
+          ...r,
+          replies: r.replies.map(reply => {
+            if (reply._id === replyId) {
+              const userLiked = reply.likes?.some(id => id?.toString() === user._id?.toString())
+              const userDisliked = reply.dislikes?.some(id => id?.toString() === user._id?.toString())
+
+              return {
+                ...reply,
+                likes: (reply.likes || []).filter(id => id?.toString() !== user._id?.toString()),
+                dislikes: userDisliked
+                  ? (reply.dislikes || []).filter(id => id?.toString() !== user._id?.toString())
+                  : [...(reply.dislikes || []), user._id]
+              }
+            }
+            return reply
+          })
+        }
+      }
+      return r
+    }))
+
     try {
       const data = await dislikeReply(reviewId, replyId)
 
       if (data.success) {
+        // Update with actual server data
         setReviews(prev => prev.map(r => {
           if (r._id === reviewId) {
             return {
@@ -504,10 +623,15 @@ export default function ReviewsPage({ params }) {
           }
           return r
         }))
+      } else {
+        // Revert optimistic update on error
+        setReviews(prev => prev.map(r => r._id === reviewId ? previousReview : r))
       }
     } catch (error) {
       console.error('Failed to dislike reply:', error)
       setError('Failed to dislike reply')
+      // Revert optimistic update on error
+      setReviews(prev => prev.map(r => r._id === reviewId ? previousReview : r))
     }
   }
 

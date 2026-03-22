@@ -27,6 +27,25 @@ const replySchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }],
+  // Nested reply fields
+  parentReplyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    default: null,
+    index: true
+  },
+  depth: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 4
+  },
+  mentionedUsers: [{
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    username: String
+  }],
   createdAt: {
     type: Date,
     default: Date.now
@@ -36,6 +55,10 @@ const replySchema = new mongoose.Schema({
     default: Date.now
   }
 }, { _id: true });
+
+// Add indexes for nested replies
+replySchema.index({ parentReplyId: 1 });
+replySchema.index({ 'mentionedUsers.userId': 1 });
 
 const reviewSchema = new mongoose.Schema({
   // Movie/TV Show Information
@@ -202,12 +225,15 @@ reviewSchema.virtual('replyCount').get(function() {
 });
 
 // Method to add a reply
-reviewSchema.methods.addReply = function(userId, content, spoiler = false, adult_content = false) {
+reviewSchema.methods.addReply = function(userId, content, spoiler = false, adult_content = false, parentReplyId = null, depth = 0, mentionedUsers = []) {
   this.replies.push({
     user: userId,
     content: content,
     spoiler: spoiler,
-    adult_content: adult_content
+    adult_content: adult_content,
+    parentReplyId: parentReplyId,
+    depth: depth,
+    mentionedUsers: mentionedUsers
   });
   return this.save();
 };

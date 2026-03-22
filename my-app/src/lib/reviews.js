@@ -158,7 +158,7 @@ export async function dislikeReview(reviewId) {
   }
 }
 
-export async function addReply(reviewId, content, spoiler = false) {
+export async function addReply(reviewId, content, spoiler = false, parentReplyId = null) {
   try {
     const token = localStorage.getItem('token')
     if (!token) {
@@ -171,7 +171,7 @@ export async function addReply(reviewId, content, spoiler = false) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ content, spoiler })
+      body: JSON.stringify({ content, spoiler, parentReplyId })
     })
     const data = await response.json()
     

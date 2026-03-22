@@ -784,14 +784,6 @@ export default function ProfilePage() {
                         <div>
                           <div className="flex flex-wrap items-center gap-2 mb-1">
                             <h4 className="font-bold text-foreground text-lg">{review.title || 'Review'}</h4>
-                            <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
-                              {stats?.tier || "Smallfolk"}
-                            </span>
-                            {stats?.level >= 7 && (
-                              <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-200">
-                                Boosted by Level
-                              </span>
-                            )}
                             {getReviewQualityLabel(review?.gamification?.qualityScore) && (
                               <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[11px] font-medium text-sky-200">
                                 {getReviewQualityLabel(review?.gamification?.qualityScore)}

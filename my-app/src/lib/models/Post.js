@@ -28,6 +28,25 @@ const replySchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }],
+  // Nested reply fields
+  parentReplyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    default: null,
+    index: true
+  },
+  depth: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 4
+  },
+  mentionedUsers: [{
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    username: String
+  }],
   createdAt: {
     type: Date,
     default: Date.now
@@ -37,6 +56,10 @@ const replySchema = new mongoose.Schema({
     default: Date.now
   }
 }, { _id: true });
+
+// Add indexes for nested replies
+replySchema.index({ parentReplyId: 1 });
+replySchema.index({ 'mentionedUsers.userId': 1 });
 
 const commentSchema = new mongoose.Schema({
   user: {
@@ -291,11 +314,19 @@ postSchema.methods.incrementViews = function() {
   return this.save();
 };
 
-postSchema.methods.addReply = function(commentId, userId, content, spoiler = false, adult_content = false) {
+postSchema.methods.addReply = function(commentId, userId, content, spoiler = false, adult_content = false, parentReplyId = null, depth = 0, mentionedUsers = []) {
   const comment = this.comments.id(commentId);
   if (!comment) throw new Error('Comment not found');
-  
-  comment.replies.push({ user: userId, content, spoiler, adult_content });
+
+  comment.replies.push({
+    user: userId,
+    content,
+    spoiler,
+    adult_content,
+    parentReplyId,
+    depth,
+    mentionedUsers
+  });
   return this.save();
 };
 

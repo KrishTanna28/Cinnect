@@ -6,6 +6,7 @@ import { withAuth } from '@/lib/middleware/withAuth.js'
 import { emitNotification } from '@/lib/socketServer.js'
 import { moderateText } from '@/lib/services/moderation.service.js'
 import { applyXpEvent, getProgressionSnapshot } from '@/lib/utils/gamification.js'
+import { extractAndValidateMentions } from '@/lib/utils/mentionUtils.js'
 import connectDB from '@/lib/config/database.js'
 
 // POST /api/reviews/[reviewId]/reply - Add a reply to a review
@@ -15,7 +16,7 @@ export const POST = withAuth(async (request, { user, params }) => {
 try {
     const { reviewId } = await params
     const body = await request.json()
-    const { content, spoiler } = body
+    const { content, spoiler, parentReplyId } = body
 
     if (!content || content.trim().length === 0) {
       return NextResponse.json(
@@ -32,6 +33,33 @@ try {
         { status: 404 }
       )
     }
+
+    // Validate parentReplyId and calculate depth for nested replies
+    let depth = 0
+    let parentReply = null
+
+    if (parentReplyId) {
+      parentReply = review.replies.id(parentReplyId)
+      if (!parentReply) {
+        return NextResponse.json(
+          { success: false, message: 'Parent reply not found' },
+          { status: 404 }
+        )
+      }
+
+      // Enforce max depth of 5 levels (depth 0-4)
+      if (parentReply.depth >= 4) {
+        return NextResponse.json(
+          { success: false, message: 'Maximum nesting depth reached (5 levels)' },
+          { status: 400 }
+        )
+      }
+
+      depth = parentReply.depth + 1
+    }
+
+    // Extract and validate mentions
+    const mentionedUsers = await extractAndValidateMentions(content)
 
     // Server-side spoiler detection if not explicitly checked
     let finalSpoiler = spoiler || false;
@@ -52,8 +80,8 @@ try {
       }
     }
 
-    // Add reply using model method
-    await review.addReply(user._id, content, finalSpoiler)
+    // Add reply using model method (incorporates mentionedUsers, depth, parentReplyId)
+    await review.addReply(user._id, content, finalSpoiler, false, parentReplyId, depth, mentionedUsers)
 
     // Run adult content text moderation on the reply (non-blocking)
     try {
@@ -84,14 +112,15 @@ try {
 
     await user.save()
 
-    // Send notification to review author (if not self-reply)
-    if (review.user.toString() !== user._id.toString()) {
-      try {
-        const recipient = await User.findById(review.user).select('preferences').lean()
-        const pushEnabled = recipient?.preferences?.notifications?.push !== false
+    // Send notifications (non-blocking)
+    try {
+      const notificationsToSend = []
 
-        if (pushEnabled) {
-          const notif = await Notification.create({
+      // 1. Notify review author (if replying directly to review, not a nested reply)
+      if (!parentReplyId && review.user.toString() !== user._id.toString()) {
+        const recipient = await User.findById(review.user).select('preferences').lean()
+        if (recipient?.preferences?.notifications?.push !== false) {
+          notificationsToSend.push({
             recipient: review.user,
             type: 'review_reply',
             fromUser: user._id,
@@ -100,11 +129,50 @@ try {
             image: user.avatar || '',
             link: `/reviews/${review.mediaType}/${review.mediaId}`
           })
-          emitNotification(review.user, notif.toObject())
         }
-      } catch (notifErr) {
-        console.error('Failed to create reply notification:', notifErr)
       }
+
+      // 2. Notify parent reply author (if replying to a reply)
+      if (parentReplyId && parentReply.user.toString() !== user._id.toString()) {
+        const recipient = await User.findById(parentReply.user).select('preferences').lean()
+        if (recipient?.preferences?.notifications?.push !== false) {
+          notificationsToSend.push({
+            recipient: parentReply.user,
+            type: 'reply_to_reply',
+            fromUser: user._id,
+            title: 'New Reply',
+            message: `${user.fullName || user.username} replied to your reply on a review.`,
+            image: user.avatar || '',
+            link: `/reviews/${review.mediaType}/${review.mediaId}`
+          })
+        }
+      }
+
+      // 3. Notify mentioned users
+      for (const mention of mentionedUsers) {
+        if (mention.userId.toString() !== user._id.toString()) {
+          const recipient = await User.findById(mention.userId).select('preferences').lean()
+          if (recipient?.preferences?.notifications?.push !== false) {
+            notificationsToSend.push({
+              recipient: mention.userId,
+              type: 'mention',
+              fromUser: user._id,
+              title: 'You were mentioned',
+              message: `${user.fullName || user.username} mentioned you in a review reply.`,
+              image: user.avatar || '',
+              link: `/reviews/${review.mediaType}/${review.mediaId}`
+            })
+          }
+        }
+      }
+
+      // Create and emit all notifications
+      for (const notifData of notificationsToSend) {
+        const notif = await Notification.create(notifData)
+        await emitNotification(notifData.recipient.toString(), notif.toObject())
+      }
+    } catch (notifErr) {
+      console.error('Failed to create reply notification:', notifErr)
     }
 
     // Populate the review with user data
