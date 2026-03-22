@@ -31,8 +31,10 @@ export function SocketProvider({ children }) {
     // Already connected
     if (socketRef.current?.connected) return
 
-    const socket = ioClient({
-      path: "/api/socketio",
+    // Connect to external socket server (or local in development)
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || window.location.origin
+    const socket = ioClient(socketUrl, {
+      path: socketUrl === window.location.origin ? "/api/socketio" : "/socket.io",
       auth: { token },
       transports: ["websocket", "polling"],
       reconnection: true,
