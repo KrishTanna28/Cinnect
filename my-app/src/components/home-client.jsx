@@ -188,23 +188,10 @@ export default function HomeClient({ initialData }) {
     const token = localStorage.getItem("token")
     if (!token) return
 
+    // Fetch recommendations immediately with default country
     const fetchRecs = async () => {
       try {
-        // Detect user's country via IP geolocation
-        let country = 'US'
-        let countryName = 'Your Country'
-        try {
-          const geoRes = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(3000) })
-          if (geoRes.ok) {
-            const geoData = await geoRes.json()
-            if (geoData.country_code) country = geoData.country_code
-            if (geoData.country_name) countryName = geoData.country_name
-          }
-        } catch {
-          // fallback to US
-        }
-
-        const res = await fetch(`/api/recommendations/all?country=${country}&countryName=${encodeURIComponent(countryName)}`, {
+        const res = await fetch(`/api/recommendations/all?country=US&countryName=${encodeURIComponent('United States')}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
         if (res.ok) {
@@ -220,7 +207,43 @@ export default function HomeClient({ initialData }) {
       }
     }
 
+    // Fetch geolocation in parallel and update Top 10 sections when available
+    const fetchGeoAndUpdateTop10 = async () => {
+      try {
+        const geoRes = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(3000) })
+        if (geoRes.ok) {
+          const geoData = await geoRes.json()
+          const country = geoData.country_code
+          const countryName = geoData.country_name
+
+          // Only refetch if country is different from US
+          if (country !== 'US') {
+            const res = await fetch(`/api/recommendations/all?country=${country}&countryName=${encodeURIComponent(countryName)}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            })
+            if (res.ok) {
+              const json = await res.json()
+              if (json.success && json.data) {
+                // Update only the country-specific data
+                setPersonalizedRecs(prev => ({
+                  ...prev,
+                  top10Movies: json.data.top10Movies || prev.top10Movies,
+                  top10TV: json.data.top10TV || prev.top10TV,
+                  country: json.data.country || prev.country,
+                  countryName: json.data.countryName || prev.countryName,
+                }))
+              }
+            }
+          }
+        }
+      } catch {
+        // Geolocation failed, keep US defaults
+      }
+    }
+
+    // Start both fetches in parallel
     fetchRecs()
+    fetchGeoAndUpdateTop10()
   }, [isAuthenticated, personalizedLoaded])
 
   // Keyboard navigation for featured items
