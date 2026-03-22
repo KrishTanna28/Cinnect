@@ -48,30 +48,24 @@ export const PATCH = withAuth(async (request, { params, user }) => {
     conversation.unreadCount = unreadCount;
     await conversation.save();
 
-    // Emit read receipt via socket (works on both local and Vercel via HTTP fallback)
+    // Emit read receipt via socket - fire and forget (non-blocking)
     const otherParticipant = conversation.participants.find(
       p => p.toString() !== user._id.toString()
     );
+    const otherParticipantIdStr = otherParticipant.toString();
+    const userIdStr = user._id.toString();
 
-    await emitMessagesRead(otherParticipant.toString(), {
-      conversationId,
-      userId: user._id
-    });
-
-    // Also notify our own other devices to update
-    const populatedConv = await Conversation.findById(conversationId)
-      .populate('participants', 'username fullName avatar')
-      .populate('lastMessage')
-      .lean();
-
-    await emitConversationUpdate(user._id.toString(), populatedConv);
-    await emitMessagesRead(user._id.toString(), {
-      conversationId,
-      userId: user._id
-    });
-
-    // Update the unread count in real-time
-    await emitUnreadCountUpdate(null, user._id.toString());
+    // Fire off socket emissions without awaiting
+    Promise.all([
+      emitMessagesRead(otherParticipantIdStr, { conversationId, userId: user._id }),
+      emitMessagesRead(userIdStr, { conversationId, userId: user._id }),
+      Conversation.findById(conversationId)
+        .populate('participants', 'username fullName avatar')
+        .populate('lastMessage')
+        .lean()
+        .then(populatedConv => emitConversationUpdate(userIdStr, populatedConv)),
+      emitUnreadCountUpdate(null, userIdStr),
+    ]).catch(err => console.error('Socket emit error:', err));
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -54,19 +54,22 @@ export const PATCH = withAuth(async (request, { params, user }) => {
     conversation.lastMessageAt = new Date();
     await conversation.save();
 
-    // Broadcast reaction update (works on both local and Vercel via HTTP fallback)
+    // Broadcast reaction update - fire and forget (non-blocking)
     const reactionData = {
       conversationId,
       messageId,
       reactions: message.reactions
     };
 
-    // Emit to all participants
-    for (const participant of conversation.participants) {
-      await emitMessageReaction(participant.toString(), reactionData);
-      // Also emit a general update so the conversation list updates the preview
-      await emitConversationUpdate(participant.toString(), null);
-    }
+    // Emit to all participants without awaiting
+    Promise.all(
+      conversation.participants.map(participant =>
+        Promise.all([
+          emitMessageReaction(participant.toString(), reactionData),
+          emitConversationUpdate(participant.toString(), null),
+        ])
+      )
+    ).catch(err => console.error('Socket emit error:', err));
 
     return NextResponse.json({ success: true, reactions: message.reactions });
   } catch (error) {

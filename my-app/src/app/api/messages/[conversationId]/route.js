@@ -98,31 +98,24 @@ export const GET = withAuth(async (request, { params, user }) => {
     conversation.unreadCount = unreadCount;
     await conversation.save();
 
-    // Emit read receipt via socket (works on both local and Vercel via HTTP fallback)
+    // Emit read receipt via socket - fire and forget (non-blocking)
     const otherParticipant = conversation.participants.find(
       p => p._id.toString() !== user._id.toString()
     );
+    const otherParticipantIdStr = otherParticipant._id.toString();
+    const userIdStr = user._id.toString();
 
-    // Notify other participant that messages were read
-    await emitMessagesRead(otherParticipant._id.toString(), {
-      conversationId,
-      userId: user._id
-    });
-
-    // Notify our own other devices to update
-    const populatedConv = await Conversation.findById(conversationId)
-      .populate('participants', 'username fullName avatar')
-      .populate('lastMessage')
-      .lean();
-
-    await emitConversationUpdate(user._id.toString(), populatedConv);
-    await emitMessagesRead(user._id.toString(), {
-      conversationId,
-      userId: user._id
-    });
-
-    // Update the unread count in real-time
-    await emitUnreadCountUpdate(null, user._id.toString());
+    // Fire off socket emissions without awaiting
+    Promise.all([
+      emitMessagesRead(otherParticipantIdStr, { conversationId, userId: user._id }),
+      emitMessagesRead(userIdStr, { conversationId, userId: user._id }),
+      Conversation.findById(conversationId)
+        .populate('participants', 'username fullName avatar')
+        .populate('lastMessage')
+        .lean()
+        .then(populatedConv => emitConversationUpdate(userIdStr, populatedConv)),
+      emitUnreadCountUpdate(null, userIdStr),
+    ]).catch(err => console.error('Socket emit error:', err));
 
     const total = await Message.countDocuments({
       conversation: conversationId,
@@ -264,29 +257,31 @@ export const POST = withAuth(async (request, { params, user }) => {
 
     await conversation.save();
 
-    // Emit message via WebSocket (works on both local and Vercel via HTTP fallback)
+    // Emit message via WebSocket - fire and forget (don't await to avoid delay)
     const messagePayload = {
       conversationId,
       message: message.toObject(),
       mutedBy: conversation.mutedBy || []
     };
 
-    // Emit to recipient
-    await emitMessage(otherParticipantId.toString(), messagePayload);
-    // Sync to sender's other devices
-    await emitMessage(user._id.toString(), messagePayload);
+    // Fire off socket emissions without awaiting (non-blocking)
+    const otherParticipantIdStr = otherParticipantId.toString();
+    const userIdStr = user._id.toString();
 
-    // Also emit conversation update
-    const populatedConv = await Conversation.findById(conversationId)
-      .populate('participants', 'username fullName avatar')
-      .populate('lastMessage')
-      .lean();
-
-    await emitConversationUpdate(otherParticipantId.toString(), populatedConv);
-    await emitConversationUpdate(user._id.toString(), populatedConv);
-
-    // Update the unread count in real-time
-    await emitUnreadCountUpdate(null, otherParticipantId.toString());
+    // These run in parallel in the background
+    Promise.all([
+      emitMessage(otherParticipantIdStr, messagePayload),
+      emitMessage(userIdStr, messagePayload),
+      Conversation.findById(conversationId)
+        .populate('participants', 'username fullName avatar')
+        .populate('lastMessage')
+        .lean()
+        .then(populatedConv => Promise.all([
+          emitConversationUpdate(otherParticipantIdStr, populatedConv),
+          emitConversationUpdate(userIdStr, populatedConv),
+        ])),
+      emitUnreadCountUpdate(null, otherParticipantIdStr),
+    ]).catch(err => console.error('Socket emit error:', err));
 
     return NextResponse.json({
       success: true,
@@ -348,11 +343,12 @@ export const DELETE = withAuth(async (request, { params, user }) => {
       await Conversation.findByIdAndDelete(conversationId);
     }
 
-    // Emit delete event via socket (works on both local and Vercel via HTTP fallback)
-    await emitConversationDelete(user._id.toString(), { conversationId });
-
-    // Update the unread count in real-time
-    await emitUnreadCountUpdate(null, user._id.toString());
+    // Emit delete event via socket - fire and forget (non-blocking)
+    const userIdStr = user._id.toString();
+    Promise.all([
+      emitConversationDelete(userIdStr, { conversationId }),
+      emitUnreadCountUpdate(null, userIdStr),
+    ]).catch(err => console.error('Socket emit error:', err));
 
     return NextResponse.json({ success: true, message: 'Conversation deleted' });
   } catch (error) {
