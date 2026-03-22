@@ -43,10 +43,13 @@ export default function ReviewsPage({ params }) {
   const [replyingTo, setReplyingTo] = useState(null)
   const [replyContent, setReplyContent] = useState('')
   const [replySpoiler, setReplySpoiler] = useState(false)
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false)
   const [showReplies, setShowReplies] = useState(new Set())
   const [collapsedReplies, setCollapsedReplies] = useState(new Set())
   const [mentionUser, setMentionUser] = useState(null)
   const [revealedSpoilers, setRevealedSpoilers] = useState(new Set())
+  const [highlightId, setHighlightId] = useState(null)
+  const [processedHash, setProcessedHash] = useState(null)
 
   // Media title
   const [mediaTitle, setMediaTitle] = useState('')
@@ -157,6 +160,72 @@ export default function ReviewsPage({ params }) {
   useEffect(() => {
     fetchReviews(1, sortBy)
   }, [unwrappedParams.mediaId, sortBy])
+
+  // Handle Hash Navigation
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash
+      if (hash) {
+        setProcessedHash(null) // trigger the scrolling effect
+      }
+    }
+    window.addEventListener('hashchange', handleHashChange)
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [])
+
+  useEffect(() => {
+    const hash = window.location.hash
+    if (!hash || reviews.length === 0) return
+    const id = hash.replace('#', '')
+
+    if (processedHash === id) return
+
+    let targetReviewId = null
+    for (const r of reviews) {
+      if (r._id === id) { targetReviewId = r._id; break }
+      if (r.replies && r.replies.some(rep => rep._id === id)) { targetReviewId = r._id; break }
+    }
+
+    if (targetReviewId) {
+      setProcessedHash(id)
+      
+      // Ensure the parent review thread is expanded (showReplies)
+      setShowReplies(prev => {
+        const next = new Set(prev)
+        next.add(targetReviewId)
+        return next
+      })
+
+      // Ensure that no parent reply is collapsed
+      const targetReview = reviews.find(r => r._id === targetReviewId)
+      if (targetReview && targetReview.replies && id !== targetReviewId) {
+        setCollapsedReplies(prev => {
+          const next = new Set(prev)
+          let currentReply = targetReview.replies.find(r => r._id === id)
+
+          // Walk up the tree to make sure all parents are uncollapsed
+          while (currentReply && currentReply.parentReplyId) {
+             next.delete(currentReply.parentReplyId)
+             currentReply = targetReview.replies.find(r => r._id === currentReply.parentReplyId)
+          }
+          return next
+        })
+      }
+
+      setHighlightId(id)
+
+      setTimeout(() => {
+        const el = document.getElementById(id)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 300)
+
+      setTimeout(() => {
+        setHighlightId(prev => (prev === id ? null : prev))
+      }, 3000)
+    }
+  }, [reviews, processedHash])
 
   // Load more reviews
   const loadMore = () => {
@@ -421,10 +490,12 @@ export default function ReviewsPage({ params }) {
       return
     }
 
-    if (!replyContent.trim()) return
+    if (!replyContent.trim() || isSubmittingReply) return
 
-    // Auto-detect spoiler if checkbox is not checked
-    let finalSpoiler = replySpoiler
+    setIsSubmittingReply(true)
+    try {
+      // Auto-detect spoiler if checkbox is not checked
+      let finalSpoiler = replySpoiler
     if (!finalSpoiler && replyContent.trim().length > 0) {
       try {
         const detectRes = await fetch('/api/spoiler-detect', {
@@ -492,21 +563,31 @@ export default function ReviewsPage({ params }) {
     newShowReplies.add(reviewId)
     setShowReplies(newShowReplies)
 
-    try {
-      const data = await addReply(reviewId, contentToSend, spoilerToSend, parentReplyId)
+    const data = await addReply(reviewId, contentToSend, spoilerToSend, parentReplyId)
 
-      if (data.success) {
-        // Replace temp reply with actual data from server
-        setReviews(prev => prev.map(r => r._id === reviewId ? data.data : r))
-        setShowReplies(newShowReplies)
-      }
-    } catch (error) {
-      console.error('Failed to submit reply:', error)
-      setError('Failed to submit reply')
+    if (data.success) {
+      // Clean out temp reply and append actual data from server
+      setReviews(prev => prev.map(r => {
+        if (r._id === reviewId) {
+          const otherReplies = (r.replies || []).filter(rep => !String(rep._id).startsWith('temp-'));
+          return {
+            ...r,
+            replies: [...otherReplies, data.data]
+          }
+        }
+        return r;
+      }))
+      setShowReplies(newShowReplies)
     }
+  } catch (error) {
+    console.error('Failed to submit reply:', error)
+    setError('Failed to submit reply')
+  } finally {
+    setIsSubmittingReply(false)
   }
+}
 
-  // Like a reply
+// Like a reply
   const handleLikeReply = async (reviewId, replyId) => {
     if (!user) {
       router.push('/login')
@@ -787,9 +868,14 @@ export default function ReviewsPage({ params }) {
     const shouldBlurReply = replyNode.spoiler && !replySpoilerRevealed && !isOwnReply;
     const isCollapsed = collapsedReplies.has(replyNode._id);
     const depth = replyNode.depth || 0;
+    const isHighlighted = highlightId === replyNode._id;
 
     return (
-      <div key={replyNode._id} className={`mt-3 flex gap-2 sm:gap-3 ${depth > 0 ? "pl-4 border-l-2 border-border/50" : ""}`}>
+      <div 
+        key={replyNode._id} 
+        id={replyNode._id}
+        className={`mt-3 flex gap-2 sm:gap-3 ${depth > 0 ? "pl-4 border-l-2 border-border/50" : ""} ${isHighlighted ? "bg-primary/20 transition-all duration-500 rounded p-1" : "transition-all duration-1000 p-1"}`}
+      >
         <div 
           className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0 cursor-pointer"
           onClick={() => toggleCollapse(replyNode._id)}
@@ -962,7 +1048,7 @@ export default function ReviewsPage({ params }) {
                       <Button
                         onClick={() => handleSubmitReply(reviewId, replyNode._id)}
                         size="sm"
-                        disabled={!replyContent.trim()}
+                        disabled={!replyContent.trim() || isSubmittingReply}
                       >
                         <Send className="w-4 h-4" />
                       </Button>
@@ -1237,9 +1323,14 @@ export default function ReviewsPage({ params }) {
           {reviews?.map((review) => {
             const isSpoilerRevealed = revealedSpoilers.has(review._id)
             const isOwnReview = user && review.user?._id === user._id
+            const isHighlighted = highlightId === review._id
 
             return (
-              <div key={review._id} className="bg-card rounded-lg p-4 sm:p-6">
+              <div 
+                key={review._id} 
+                id={review._id}
+                className={`bg-card rounded-lg p-4 sm:p-6 ${isHighlighted ? "ring-2 ring-primary bg-primary/5 transition-all duration-500" : "transition-all duration-1000"}`}
+              >
                 {/* Review Header */}
                 <div className="flex items-start gap-3 sm:gap-4 mb-4">
                   <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
@@ -1471,7 +1562,7 @@ export default function ReviewsPage({ params }) {
                       <Button
                         onClick={() => handleSubmitReply(review._id)}
                         size="sm"
-                        disabled={!replyContent.trim()}
+                        disabled={!replyContent.trim() || isSubmittingReply}
                       >
                         <Send className="w-4 h-4" />
                       </Button>

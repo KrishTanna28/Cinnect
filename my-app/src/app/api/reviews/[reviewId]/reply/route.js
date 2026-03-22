@@ -58,7 +58,19 @@ try {
     if (parentReplyId) {
       const parentReply = review.replies.id(parentReplyId);
       if (parentReply) {
-        depth = Math.min((parentReply.depth || 0) + 1, 5);
+        if (parentReply.deleted) {
+          return NextResponse.json(
+            { success: false, message: 'Cannot reply to a deleted comment' },
+            { status: 400 }
+          );
+        }
+        if (parentReply.depth >= 5) {
+          return NextResponse.json(
+            { success: false, message: 'Maximum nesting depth reached (5 levels)' },
+            { status: 400 }
+          );
+        }
+        depth = (parentReply.depth || 0) + 1;
       } else {
         parentReplyId = null;
       }

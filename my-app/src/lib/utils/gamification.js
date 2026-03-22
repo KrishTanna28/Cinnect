@@ -431,7 +431,7 @@ export function calculateReviewQuality(review = {}) {
       dwellScore: round(dwellScore, 2),
       dwellTimeEstimate,
       spamPenalty: round(spamPenalty, 2),
-      repeatedPhrases
+      repeatedPhrases: repetitivePhrases
     }
   }
 }

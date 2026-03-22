@@ -63,9 +63,16 @@ export const POST = withAuth(async (request, { user, params }) => {
       }
 
       // Enforce max depth of 5 levels (depth 0-4)
-      if (parentReply.depth >= 4) {
+      if (parentReply.depth >= 2) {
         return NextResponse.json(
           { success: false, message: 'Maximum nesting depth reached (5 levels)' },
+          { status: 400 }
+        )
+      }
+
+      if (parentReply.deleted) {
+        return NextResponse.json(
+          { success: false, message: 'Cannot reply to a deleted comment' },
           { status: 400 }
         )
       }

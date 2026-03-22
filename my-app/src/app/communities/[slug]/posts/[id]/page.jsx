@@ -24,6 +24,7 @@ export default function PostDetailPage() {
   const [commentText, setCommentText] = useState("")
   const [replyingTo, setReplyingTo] = useState(null)
   const [replyContent, setReplyContent] = useState("")
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false)
   const [mentionUser, setMentionUser] = useState(null)
   const [showReplies, setShowReplies] = useState(new Set())
   const [submitting, setSubmitting] = useState(false)
@@ -39,6 +40,8 @@ export default function PostDetailPage() {
   const [showReplyPagination, setShowReplyPagination] = useState({})
   const [updatingPost, setUpdatingPost] = useState(false)
   const [collapsedReplies, setCollapsedReplies] = useState(new Set())
+  const [highlightId, setHighlightId] = useState(null)
+  const [processedHash, setProcessedHash] = useState(null)
   const viewsIncremented = useRef(false)
   const votingPost = useRef(false)
   const votingComments = useRef(new Set())
@@ -76,6 +79,68 @@ export default function PostDetailPage() {
       viewsIncremented.current = true
     }
   }, [params.id])
+
+  // Handle Hash Navigation
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash
+      if (hash) {
+        setProcessedHash(null)
+      }
+    }
+    window.addEventListener('hashchange', handleHashChange)
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [])
+
+  useEffect(() => {
+    const hash = window.location.hash
+    if (!hash || allComments.length === 0) return
+    const id = hash.replace('#', '')
+
+    if (processedHash === id) return
+
+    let targetCommentId = null
+    for (const c of allComments) {
+      if (c._id === id) { targetCommentId = c._id; break }
+      if (c.replies && c.replies.some(rep => rep._id === id)) { targetCommentId = c._id; break }
+    }
+
+    if (targetCommentId) {
+      setProcessedHash(id)
+
+      setShowReplies(prev => {
+        const next = new Set(prev)
+        next.add(targetCommentId)
+        return next
+      })
+
+      const targetComment = allComments.find(c => c._id === targetCommentId)
+      if (targetComment && targetComment.replies && id !== targetCommentId) {
+        setCollapsedReplies(prev => {
+          const next = new Set(prev)
+          let currentReply = targetComment.replies.find(r => r._id === id)
+          while (currentReply && currentReply.parentReplyId) {
+            next.delete(currentReply.parentReplyId)
+            currentReply = targetComment.replies.find(r => r._id === currentReply.parentReplyId)
+          }
+          return next
+        })
+      }
+
+      setHighlightId(id)
+
+      setTimeout(() => {
+        const el = document.getElementById(id)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 300)
+
+      setTimeout(() => {
+        setHighlightId(prev => (prev === id ? null : prev))
+      }, 3000)
+    }
+  }, [allComments, processedHash])
 
   const fetchPost = async () => {
     setLoading(true)
@@ -473,28 +538,35 @@ export default function PostDetailPage() {
       return
     }
 
-    if (!replyContent.trim()) return
+    if (!replyContent.trim() || isSubmittingReply) return
 
-    // Auto-detect spoiler if checkbox is not checked
-    let finalSpoiler = replySpoiler
-    if (!finalSpoiler && replyContent.trim().length > 0) {
-      try {
-        const detectRes = await fetch('/api/spoiler-detect', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: replyContent })
-        })
-        const detectData = await detectRes.json()
-        if (detectData.success) {
-          const pct = ((detectData.data?.scores?.spoiler ?? detectData.data?.confidence ?? 0) * 100).toFixed(1)
-          console.log(`[Spoiler Detection] Reply: ${pct}% spoiler probability (threshold: 60%)`)
+    setIsSubmittingReply(true)
+    try {
+      // Auto-detect spoiler if checkbox is not checked
+      let finalSpoiler = replySpoiler
+      if (!finalSpoiler && replyContent.trim().length > 0) {
+        try {
+          const detectRes = await fetch('/api/spoiler-detect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: replyContent })
+          })
+          const detectData = await detectRes.json()
+          if (detectData.success) {
+            const pct = ((detectData.data?.scores?.spoiler ?? detectData.data?.confidence ?? 0) * 100).toFixed(1)
+            console.log(`[Spoiler Detection] Reply: ${pct}% spoiler probability (threshold: 60%)`)
+          }
+          if (detectData.success && detectData.data?.isSpoiler) {
+            finalSpoiler = true
+          }
+        } catch (detectErr) {
+          console.error('Spoiler detection failed, proceeding without:', detectErr)
         }
-        if (detectData.success && detectData.data?.isSpoiler) {
-          finalSpoiler = true
-        }
-      } catch (detectErr) {
-        console.error('Spoiler detection failed, proceeding without:', detectErr)
       }
+    } catch (error) {
+      console.error('Outer error:', error)
+    } finally {
+      setIsSubmittingReply(false)
     }
 
     // Determine current comment to estimate depth for optimistic UI
@@ -542,7 +614,7 @@ export default function PostDetailPage() {
         return c
       })
     }))
-    
+
     // Also optimistic update for allComments
     setAllComments(prev => prev.map(c => {
       if (c._id === commentId) {
@@ -570,10 +642,10 @@ export default function PostDetailPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ 
-          content: contentToSend, 
+        body: JSON.stringify({
+          content: contentToSend,
           spoiler: spoilerToSend,
-          parentReplyId: parentReplyId 
+          parentReplyId: parentReplyId
         })
       })
 
@@ -622,6 +694,8 @@ export default function PostDetailPage() {
         description: "Failed to submit reply",
         variant: "destructive"
       })
+    } finally {
+      setIsSubmittingReply(false)
     }
   }
 
@@ -896,7 +970,7 @@ export default function PostDetailPage() {
     if (!replies) return [];
     const map = new Map();
     const roots = [];
-    
+
     replies.forEach(r => {
       map.set(r._id, { ...r, children: [] });
     });
@@ -908,7 +982,7 @@ export default function PostDetailPage() {
         roots.push(map.get(r._id));
       }
     });
-    
+
     return roots;
   };
 
@@ -918,10 +992,15 @@ export default function PostDetailPage() {
     const shouldBlurReply = replyNode.spoiler && !replySpoilerRevealed && !isOwnReply;
     const isCollapsed = collapsedReplies.has(replyNode._id);
     const depth = replyNode.depth || 0;
+    const isHighlighted = highlightId === replyNode._id;
 
     return (
-      <div key={replyNode._id} className={`mt-3 flex gap-3 ${depth > 0 ? "pl-4 border-l-2 border-border/50" : ""}`}>
-        <div 
+      <div
+        key={replyNode._id}
+        id={replyNode._id}
+        className={`mt-3 flex gap-3 ${depth > 0 ? "pl-4 border-l-2 border-border/50" : ""} ${isHighlighted ? "bg-primary/20 transition-all duration-500 rounded p-1" : "transition-all duration-1000 p-1"}`}
+      >
+        <div
           className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center flex-shrink-0 cursor-pointer"
           onClick={() => toggleCollapse(replyNode._id)}
         >
@@ -936,7 +1015,7 @@ export default function PostDetailPage() {
 
         <div className="flex-1 w-full overflow-hidden">
           <div className="flex items-center gap-2 mb-1">
-            <span 
+            <span
               className="font-semibold text-xs text-foreground cursor-pointer"
               onClick={() => toggleCollapse(replyNode._id)}
             >
@@ -945,7 +1024,7 @@ export default function PostDetailPage() {
             <span className="text-xs text-muted-foreground">
               {new Date(replyNode.createdAt).toLocaleDateString()}
             </span>
-            
+
             {isCollapsed && replyNode.children?.length > 0 && (
               <span className="text-[10px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded-full cursor-pointer" onClick={() => toggleCollapse(replyNode._id)}>
                 +{replyNode.children.length} replies
@@ -1022,7 +1101,7 @@ export default function PostDetailPage() {
                   />
                   {replyNode.dislikes?.length || 0}
                 </button>
-                
+
                 {user && !post.isLocked && depth < 5 && (
                   <button
                     onClick={() => {
@@ -1048,15 +1127,6 @@ export default function PostDetailPage() {
                   {mentionUser && (
                     <div className="mb-2 text-xs text-muted-foreground flex items-center">
                       Replying to <span className="text-primary font-semibold ml-1">@{mentionUser}</span>
-                      <button
-                        onClick={() => {
-                          setReplyContent(prev => prev.replace(`@${mentionUser} `, '').replace(`@${mentionUser}`, ''))
-                          setMentionUser(null)
-                        }}
-                        className="ml-2 text-destructive hover:underline"
-                      >
-                        Cancel
-                      </button>
                     </div>
                   )}
                   <div className="flex gap-2">
@@ -1074,7 +1144,7 @@ export default function PostDetailPage() {
                       className="flex-1 text-xs min-h-[60px]"
                       style={{ borderColor: 'var(--border)' }}
                     />
-                    <div className="flex flex-col items-center gap-2">                          
+                    <div className="flex flex-col items-center gap-2">
                       <Button
                         onClick={() => handleSubmitReply(commentId, replyNode._id)}
                         size="sm"
@@ -1197,33 +1267,32 @@ export default function PostDetailPage() {
           <div className="relative">
             <div className="flex flex-wrap items-center gap-2 mb-3">
               {post.category && (
-              <CategoryBadge 
-                category={post.category} 
-                customCategory={post.custom_category} 
-                categoryColor={post.category_color} 
-              />
+                <CategoryBadge
+                  category={post.category}
+                  customCategory={post.custom_category}
+                  categoryColor={post.category_color}
+                />
               )}
               {post.spoiler && (
-                  isOwnPost ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-destructive/20 text-destructive rounded text-xs font-semibold">
-                      <AlertTriangle className="w-3 h-3" />
-                      SPOILER
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => revealSpoiler(post._id)}
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold cursor-pointer transition-colors ${
-                        postSpoilerRevealed 
-                          ? "bg-destructive/10 text-destructive hover:bg-destructive/20"
-                          : "bg-destructive/20 text-destructive hover:bg-destructive/30"
+                isOwnPost ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-destructive/20 text-destructive rounded text-xs font-semibold">
+                    <AlertTriangle className="w-3 h-3" />
+                    SPOILER
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => revealSpoiler(post._id)}
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold cursor-pointer transition-colors ${postSpoilerRevealed
+                        ? "bg-destructive/10 text-destructive hover:bg-destructive/20"
+                        : "bg-destructive/20 text-destructive hover:bg-destructive/30"
                       }`}
-                      title={postSpoilerRevealed ? "Hide spoiler" : "Contains spoilers"}
-                    >
-                      {postSpoilerRevealed ? <EyeOff className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
-                      SPOILER {postSpoilerRevealed && <span className="opacity-70">(Revealed)</span>}
-                    </button>
-                  )
-                )}
+                    title={postSpoilerRevealed ? "Hide spoiler" : "Contains spoilers"}
+                  >
+                    {postSpoilerRevealed ? <EyeOff className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
+                    SPOILER {postSpoilerRevealed && <span className="opacity-70">(Revealed)</span>}
+                  </button>
+                )
+              )}
               {post.adult_content && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-500/20 text-orange-400 rounded text-xs font-semibold">
                   <ShieldAlert className="w-3 h-3" />
@@ -1388,237 +1457,243 @@ export default function PostDetailPage() {
                 const shouldBlurComment = comment.spoiler && !commentSpoilerRevealed && !isOwnComment
                 const commentAdultRevealed = revealedSpoilers.has(`adult_${comment._id}`)
                 const shouldBlurAdultComment = comment.adult_content && !isOwnComment && !commentAdultRevealed && !isMinor
+                const isHighlighted = highlightId === comment._id
 
                 return (
-                <div key={comment._id} className="flex gap-3">
-                  <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
-                    {comment.user?.avatar ? (
-                      <img src={comment.user.avatar} alt={comment.user.username} className="w-full h-full rounded-full object-cover" />
-                    ) : (
-                      <span className="text-sm font-bold text-foreground">
-                        {comment.user?.username?.[0]?.toUpperCase() || '?'}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-sm text-foreground">{comment.user?.username || 'Unknown'}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(comment.createdAt).toLocaleDateString()}
-                      </span>
-                      {comment.spoiler && (
-                            isOwnComment ? (
-                              <span className="px-1.5 py-0.5 bg-destructive/20 text-destructive rounded text-xs font-semibold flex items-center gap-1">
-                                <AlertTriangle className="w-2.5 h-2.5" />
-                                SPOILER
-                              </span>
-                            ) : (
-                              <button
-                                onClick={() => revealSpoiler(comment._id)}
-                                className="px-1.5 py-0.5 bg-destructive/20 hover:bg-destructive/30 text-destructive rounded text-xs font-semibold flex items-center gap-1 transition-colors"
-                                title={commentSpoilerRevealed ? "Hide spoiler" : "Contains spoilers"}
-                              >
-                                {commentSpoilerRevealed ? <EyeOff className="w-2.5 h-2.5" /> : <AlertTriangle className="w-2.5 h-2.5" />}
-                                SPOILER {commentSpoilerRevealed && <span className="opacity-70">(Revealed)</span>}
-                              </button>
-                            )
-                          )}
-                      {comment.adult_content && (
-                        <span className="px-1.5 py-0.5 bg-orange-500/20 text-orange-400 rounded text-xs font-semibold flex items-center gap-1">
-                          <ShieldAlert className="w-2.5 h-2.5" />
-                          18+
+                  <div
+                    key={comment._id}
+                    id={comment._id}
+                    className={`flex gap-3 ${isHighlighted ? "ring-2 ring-primary bg-primary/5 transition-all duration-500 rounded p-2" : "transition-all duration-1000 p-2"}`}
+                  >
+                    <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
+                      {comment.user?.avatar ? (
+                        <img src={comment.user.avatar} alt={comment.user.username} className="w-full h-full rounded-full object-cover" />
+                      ) : (
+                        <span className="text-sm font-bold text-foreground">
+                          {comment.user?.username?.[0]?.toUpperCase() || '?'}
                         </span>
                       )}
                     </div>
 
-                    {isMinor && comment.adult_content ? (
-                      <p className="text-xs text-muted-foreground italic mb-2">This comment contains age-restricted content.</p>
-                    ) : (
-                    <div className="relative">
-                      <p className={`text-sm text-foreground mb-2 transition-all ${(shouldBlurComment || shouldBlurAdultComment) ? 'blur-md select-none' : ''}`}>
-                        <MentionText text={comment.content} />
-                      </p>
-                      {shouldBlurComment && (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <button
-                            onClick={() => revealSpoiler(comment._id)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive/90 hover:bg-destructive text-white rounded-lg text-xs font-semibold transition-colors shadow-lg cursor-pointer"
-                          >
-                            <Eye className="w-3 h-3" />
-                            Reveal Spoiler
-                          </button>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-semibold text-sm text-foreground">{comment.user?.username || 'Unknown'}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(comment.createdAt).toLocaleDateString()}
+                        </span>
+                        {comment.spoiler && (
+                          isOwnComment ? (
+                            <span className="px-1.5 py-0.5 bg-destructive/20 text-destructive rounded text-xs font-semibold flex items-center gap-1">
+                              <AlertTriangle className="w-2.5 h-2.5" />
+                              SPOILER
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => revealSpoiler(comment._id)}
+                              className="px-1.5 py-0.5 bg-destructive/20 hover:bg-destructive/30 text-destructive rounded text-xs font-semibold flex items-center gap-1 transition-colors"
+                              title={commentSpoilerRevealed ? "Hide spoiler" : "Contains spoilers"}
+                            >
+                              {commentSpoilerRevealed ? <EyeOff className="w-2.5 h-2.5" /> : <AlertTriangle className="w-2.5 h-2.5" />}
+                              SPOILER {commentSpoilerRevealed && <span className="opacity-70">(Revealed)</span>}
+                            </button>
+                          )
+                        )}
+                        {comment.adult_content && (
+                          <span className="px-1.5 py-0.5 bg-orange-500/20 text-orange-400 rounded text-xs font-semibold flex items-center gap-1">
+                            <ShieldAlert className="w-2.5 h-2.5" />
+                            18+
+                          </span>
+                        )}
+                      </div>
+
+                      {isMinor && comment.adult_content ? (
+                        <p className="text-xs text-muted-foreground italic mb-2">This comment contains age-restricted content.</p>
+                      ) : (
+                        <div className="relative">
+                          <p className={`text-sm text-foreground mb-2 transition-all ${(shouldBlurComment || shouldBlurAdultComment) ? 'blur-md select-none' : ''}`}>
+                            <MentionText text={comment.content} />
+                          </p>
+                          {shouldBlurComment && (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <button
+                                onClick={() => revealSpoiler(comment._id)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive/90 hover:bg-destructive text-white rounded-lg text-xs font-semibold transition-colors shadow-lg cursor-pointer"
+                              >
+                                <Eye className="w-3 h-3" />
+                                Reveal Spoiler
+                              </button>
+                            </div>
+                          )}
+                          {shouldBlurAdultComment && !shouldBlurComment && (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <button
+                                onClick={() => revealSpoiler(`adult_${comment._id}`)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-600/90 hover:bg-orange-600 text-white rounded-lg text-xs font-semibold transition-colors shadow-lg cursor-pointer"
+                              >
+                                <Eye className="w-3 h-3" />
+                                Reveal 18+ Content
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
-                      {shouldBlurAdultComment && !shouldBlurComment && (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <button
-                            onClick={() => revealSpoiler(`adult_${comment._id}`)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-600/90 hover:bg-orange-600 text-white rounded-lg text-xs font-semibold transition-colors shadow-lg cursor-pointer"
-                          >
-                            <Eye className="w-3 h-3" />
-                            Reveal 18+ Content
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    )}
 
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => handleLikeComment(comment._id)}
-                        className={`flex items-center gap-1 text-xs transition-all active:scale-95 cursor-pointer ${comment.likes?.some(id => id?.toString() === user?._id)
-                          ? 'text-primary'
-                          : 'text-muted-foreground hover:text-primary'
-                          }`}
-                      >
-                        <ThumbsUp
-                          className={`w-3 h-3 ${comment.likes?.some(id => id?.toString() === user?._id)
-                            ? 'fill-primary text-primary'
-                            : ''
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => handleLikeComment(comment._id)}
+                          className={`flex items-center gap-1 text-xs transition-all active:scale-95 cursor-pointer ${comment.likes?.some(id => id?.toString() === user?._id)
+                            ? 'text-primary'
+                            : 'text-muted-foreground hover:text-primary'
                             }`}
-                        />
-                        {comment.likes?.length || 0}
-                      </button>
+                        >
+                          <ThumbsUp
+                            className={`w-3 h-3 ${comment.likes?.some(id => id?.toString() === user?._id)
+                              ? 'fill-primary text-primary'
+                              : ''
+                              }`}
+                          />
+                          {comment.likes?.length || 0}
+                        </button>
 
-                      <button
-                        onClick={() => handleDislikeComment(comment._id)}
-                        className={`flex items-center gap-1 text-xs transition-all active:scale-95 cursor-pointer ${comment.dislikes?.some(id => id?.toString() === user?._id)
-                          ? 'text-destructive'
-                          : 'text-muted-foreground hover:text-destructive'
-                          }`}
-                      >
-                        <ThumbsDown
-                          className={`w-3 h-3 ${comment.dislikes?.some(id => id?.toString() === user?._id)
-                            ? 'fill-destructive text-destructive'
-                            : ''
+                        <button
+                          onClick={() => handleDislikeComment(comment._id)}
+                          className={`flex items-center gap-1 text-xs transition-all active:scale-95 cursor-pointer ${comment.dislikes?.some(id => id?.toString() === user?._id)
+                            ? 'text-destructive'
+                            : 'text-muted-foreground hover:text-destructive'
                             }`}
-                        />
-                        {comment.dislikes?.length || 0}
-                      </button>
+                        >
+                          <ThumbsDown
+                            className={`w-3 h-3 ${comment.dislikes?.some(id => id?.toString() === user?._id)
+                              ? 'fill-destructive text-destructive'
+                              : ''
+                              }`}
+                          />
+                          {comment.dislikes?.length || 0}
+                        </button>
 
-                      <button
-                        onClick={() => {
-                          const newShowReplies = new Set(showReplies)
-                          if (newShowReplies.has(comment._id)) {
-                            newShowReplies.delete(comment._id)
-                          } else {
-                            newShowReplies.add(comment._id)
-                          }
-                          setShowReplies(newShowReplies)
-                        }}
-                        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-all active:scale-95 cursor-pointer"
-                      >
-                        <MessageCircle className="w-3 h-3" />
-                        {comment.replies?.length || 0} {comment.replies?.length === 1 ? 'Reply' : 'Replies'}
-                      </button>
-
-                      {user && !post.isLocked && (
                         <button
                           onClick={() => {
-                            if (replyingTo === comment._id) {
-                              setReplyingTo(null);
-                              setMentionUser(null);
-                              setReplyContent("");
+                            const newShowReplies = new Set(showReplies)
+                            if (newShowReplies.has(comment._id)) {
+                              newShowReplies.delete(comment._id)
                             } else {
-                              setReplyingTo(comment._id);
-                              setMentionUser(comment.user?.username);
-                              setReplyContent(`@${comment.user?.username} `);
+                              newShowReplies.add(comment._id)
                             }
+                            setShowReplies(newShowReplies)
                           }}
-                          className="text-xs text-muted-foreground hover:text-primary transition-all active:scale-95 cursor-pointer"
+                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-all active:scale-95 cursor-pointer"
                         >
-                          Reply
+                          <MessageCircle className="w-3 h-3" />
+                          {comment.replies?.length || 0} {comment.replies?.length === 1 ? 'Reply' : 'Replies'}
                         </button>
-                      )}
-                    </div>
 
-                    {/* Reply Form */}
-                    {replyingTo === comment._id && (
-                      <div className="mt-3">
-                        {mentionUser && (
-                          <div className="mb-2 text-xs text-muted-foreground flex items-center">
-                            Replying to <span className="text-primary font-semibold ml-1">@{mentionUser}</span>
-                            <button
-                              onClick={() => {
-                                setReplyContent(prev => prev.replace(`@${mentionUser} `, '').replace(`@${mentionUser}`, ''))
-                                setMentionUser(null)
-                              }}
-                              className="ml-2 text-destructive hover:underline"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        )}
-                        <div className="flex gap-2">
-                          <Textarea
-                            autoFocus
-                            onFocus={(e) => {
-                              const val = e.currentTarget.value;
-                              e.currentTarget.value = '';
-                              e.currentTarget.value = val;
-                            }}
-                            placeholder={mentionUser ? `Reply to @${mentionUser}...` : "Write a reply..."}
-                            value={replyContent}
-                            onChange={(e) => setReplyContent(e.target.value)}
-                            rows={2}
-                            className="flex-1"
-                            style={{
-                              borderColor: 'var(--border)',
-                            }}
-                          />
-                          <div className="flex flex-col items-center gap-2">                          
-                            <Button
-                            onClick={() => handleSubmitReply(comment._id)}
-                            size="sm"
-                            disabled={!replyContent.trim() || submitting}
-                          >
-                            {submitting && replyingTo === comment._id ? (
-                              <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin"></div>
-                            ) : (
-                              <Send className="w-4 h-4" />
-                            )}
-                          </Button>
-                            <X className="w-6 h-6 text-muted-foreground hover:text-destructive cursor-pointer transition-all active:scale-90" onClick={() => setReplyingTo(null)} />
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 mt-2">
-                          <input
-                            type="checkbox"
-                            id={`reply-spoiler-${comment._id}`}
-                            checked={replySpoiler}
-                            onChange={(e) => setReplySpoiler(e.target.checked)}
-                            className="w-3.5 h-3.5"
-                          />
-                          <label htmlFor={`reply-spoiler-${comment._id}`} className="text-xs text-muted-foreground cursor-pointer">
-                            Contains Spoilers
-                          </label>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Replies */}
-                    {comment.replies && comment.replies.length > 0 && showReplies.has(comment._id) && (
-                      <div className="mt-4 border-l-2 border-border/50 pl-2">
-                        {buildReplyTree(comment.replies)
-                          .slice(0, showReplyPagination[comment._id] || 3)
-                          .map((replyRoot) => renderReplyNode(replyRoot, comment._id))
-                        }
-                        
-                        {/* Load More Replies Button */}
-                        {buildReplyTree(comment.replies).length > (showReplyPagination[comment._id] || 3) && (
+                        {user && !post.isLocked && (
                           <button
-                            onClick={() => loadMoreReplies(comment._id)}
-                            className="text-xs text-primary hover:underline ml-9 mt-4"
+                            onClick={() => {
+                              if (replyingTo === comment._id) {
+                                setReplyingTo(null);
+                                setMentionUser(null);
+                                setReplyContent("");
+                              } else {
+                                setReplyingTo(comment._id);
+                                setMentionUser(comment.user?.username);
+                                setReplyContent(`@${comment.user?.username} `);
+                              }
+                            }}
+                            className="text-xs text-muted-foreground hover:text-primary transition-all active:scale-95 cursor-pointer"
                           >
-                            Load more threads ({buildReplyTree(comment.replies).length - (showReplyPagination[comment._id] || 3)} remaining)
+                            Reply
                           </button>
                         )}
                       </div>
-                    )}
+
+                      {/* Reply Form */}
+                      {replyingTo === comment._id && (
+                        <div className="mt-3">
+                          {mentionUser && (
+                            <div className="mb-2 text-xs text-muted-foreground flex items-center">
+                              Replying to <span className="text-primary font-semibold ml-1">@{mentionUser}</span>
+                              <button
+                                onClick={() => {
+                                  setReplyContent(prev => prev.replace(`@${mentionUser} `, '').replace(`@${mentionUser}`, ''))
+                                  setMentionUser(null)
+                                }}
+                                className="ml-2 text-destructive hover:underline"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          )}
+                          <div className="flex gap-2">
+                            <Textarea
+                              autoFocus
+                              onFocus={(e) => {
+                                const val = e.currentTarget.value;
+                                e.currentTarget.value = '';
+                                e.currentTarget.value = val;
+                              }}
+                              placeholder={mentionUser ? `Reply to @${mentionUser}...` : "Write a reply..."}
+                              value={replyContent}
+                              onChange={(e) => setReplyContent(e.target.value)}
+                              rows={2}
+                              className="flex-1"
+                              style={{
+                                borderColor: 'var(--border)',
+                              }}
+                            />
+                            <div className="flex flex-col items-center gap-2">
+                              <Button
+                                onClick={() => handleSubmitReply(comment._id)}
+                                size="sm"
+                                disabled={!replyContent.trim() || submitting}
+                              >
+                                {submitting && replyingTo === comment._id ? (
+                                  <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin"></div>
+                                ) : (
+                                  <Send className="w-4 h-4" />
+                                )}
+                              </Button>
+                              <X className="w-6 h-6 text-muted-foreground hover:text-destructive cursor-pointer transition-all active:scale-90" onClick={() => setReplyingTo(null)} />
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 mt-2">
+                            <input
+                              type="checkbox"
+                              id={`reply-spoiler-${comment._id}`}
+                              checked={replySpoiler}
+                              onChange={(e) => setReplySpoiler(e.target.checked)}
+                              className="w-3.5 h-3.5"
+                            />
+                            <label htmlFor={`reply-spoiler-${comment._id}`} className="text-xs text-muted-foreground cursor-pointer">
+                              Contains Spoilers
+                            </label>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Replies */}
+                      {comment.replies && comment.replies.length > 0 && showReplies.has(comment._id) && (
+                        <div className="mt-4 border-l-2 border-border/50 pl-2">
+                          {buildReplyTree(comment.replies)
+                            .slice(0, showReplyPagination[comment._id] || 3)
+                            .map((replyRoot) => renderReplyNode(replyRoot, comment._id))
+                          }
+
+                          {/* Load More Replies Button */}
+                          {buildReplyTree(comment.replies).length > (showReplyPagination[comment._id] || 3) && (
+                            <button
+                              onClick={() => loadMoreReplies(comment._id)}
+                              className="text-xs text-primary hover:underline ml-9 mt-4"
+                            >
+                              Load more threads ({buildReplyTree(comment.replies).length - (showReplyPagination[comment._id] || 3)} remaining)
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )})}
+                )
+              })}
 
               {/* Load More Comments */}
               <div ref={loadMoreCommentsRef} className="mt-6 flex justify-center">
@@ -1638,7 +1713,7 @@ export default function PostDetailPage() {
           )}
         </div>
       </div>
-      
+
       {/* Delete Post Dialog */}
       <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
         <DialogContent className="sm:max-w-md w-[95vw] rounded-xl bg-background border-border">
