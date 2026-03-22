@@ -271,8 +271,17 @@ export default function MessagesPage() {
         {/* Conversation List */}
         <div className="flex-1 overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-muted-foreground">Loading...</p>
+            <div className="space-y-1 p-2">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3 p-3 rounded-lg animate-pulse">
+                  <div className="w-12 h-12 rounded-full bg-secondary/50 flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-32 bg-secondary/50 rounded" />
+                    <div className="h-3 w-48 bg-secondary/50 rounded" />
+                  </div>
+                  <div className="h-5 w-12 bg-secondary/50 rounded" />
+                </div>
+              ))}
             </div>
           ) : filteredConversations.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full p-8 text-center">
@@ -386,8 +395,17 @@ export default function MessagesPage() {
         {/* Conversation List - Independent Scrollbar */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden">
           {loading ? (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-muted-foreground">Loading...</p>
+            <div className="space-y-1 p-2">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3 p-3 rounded-lg animate-pulse">
+                  <div className="w-12 h-12 rounded-full bg-secondary/50 flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-32 bg-secondary/50 rounded" />
+                    <div className="h-3 w-48 bg-secondary/50 rounded" />
+                  </div>
+                  <div className="h-5 w-12 bg-secondary/50 rounded" />
+                </div>
+              ))}
             </div>
           ) : filteredConversations.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full p-8 text-center">

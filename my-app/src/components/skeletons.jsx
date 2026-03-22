@@ -399,6 +399,156 @@ export function CommunitiesFeedSkeleton() {
   return <PostListSkeleton count={5} />
 }
 
+/* ── Communities Page (with sidebars) ────────────────────── */
+
+export function CommunitiesPageSkeleton() {
+  return (
+    <PageShell className="pt-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Header with create button */}
+        <div className="flex items-center justify-between mb-6">
+          <Bone className="h-8 w-48" />
+          <Bone className="h-10 w-36 rounded-lg" />
+        </div>
+
+        {/* Desktop layout */}
+        <div className="hidden lg:grid lg:grid-cols-12 lg:gap-6">
+          {/* Left sidebar - Categories */}
+          <div className="lg:col-span-3 space-y-4">
+            <Bone className="h-7 w-32" />
+            <div className="space-y-2">
+              {[...Array(5)].map((_, i) => (
+                <Bone key={i} className="h-10 w-full rounded-lg" />
+              ))}
+            </div>
+          </div>
+
+          {/* Main feed */}
+          <div className="lg:col-span-6">
+            <PostListSkeleton count={5} />
+          </div>
+
+          {/* Right sidebar */}
+          <div className="lg:col-span-3 space-y-6">
+            {/* Trending posts */}
+            <div className="space-y-3">
+              <Bone className="h-6 w-32" />
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="animate-pulse p-3 bg-secondary/20 rounded-lg space-y-2">
+                  <Bone className="h-4 w-full" />
+                  <div className="flex items-center gap-2">
+                    <Bone className="w-5 h-5 rounded-full" />
+                    <Bone className="h-3 w-24" />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Communities */}
+            <div className="space-y-3">
+              <Bone className="h-6 w-40" />
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <Bone className="w-10 h-10 rounded-full" />
+                  <div className="flex-1 space-y-1">
+                    <Bone className="h-4 w-32" />
+                    <Bone className="h-3 w-20" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile layout */}
+        <div className="lg:hidden">
+          {/* Category tabs */}
+          <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
+            {[...Array(5)].map((_, i) => (
+              <Bone key={i} className="h-9 w-24 rounded-full flex-shrink-0" />
+            ))}
+          </div>
+
+          {/* Posts feed */}
+          <PostListSkeleton count={5} />
+        </div>
+      </div>
+    </PageShell>
+  )
+}
+
+/* ── Messages Page ───────────────────────────────────────── */
+
+export function MessagesPageSkeleton() {
+  return (
+    <PageShell className="pt-16">
+      <div className="max-w-7xl mx-auto px-0 sm:px-4 h-[calc(100vh-4rem)]">
+        <div className="flex h-full bg-background rounded-lg overflow-hidden border-t border-border sm:border">
+          {/* Conversations list - Desktop */}
+          <div className="hidden md:flex flex-col w-80 border-r border-border">
+            {/* Header */}
+            <div className="p-4 border-b border-border space-y-4">
+              <div className="flex items-center justify-between">
+                <Bone className="h-7 w-32" />
+                <Bone className="h-9 w-9 rounded-full" />
+              </div>
+              <Bone className="h-10 w-full rounded-full" />
+            </div>
+
+            {/* Conversations */}
+            <div className="flex-1 overflow-y-auto space-y-1 p-2">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3 p-3 rounded-lg animate-pulse">
+                  <Bone className="w-12 h-12 rounded-full flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <Bone className="h-4 w-32" />
+                    <Bone className="h-3 w-48" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Message thread - Desktop */}
+          <div className="hidden md:flex flex-col flex-1">
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center space-y-3">
+                <Bone className="w-16 h-16 rounded-full mx-auto" />
+                <Bone className="h-5 w-48 mx-auto" />
+                <Bone className="h-4 w-64 mx-auto" />
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile view - Conversation list only */}
+          <div className="md:hidden flex flex-col flex-1">
+            <div className="p-4 border-b border-border space-y-4">
+              <div className="flex items-center justify-between">
+                <Bone className="h-7 w-32" />
+                <Bone className="h-9 w-9 rounded-full" />
+              </div>
+              <Bone className="h-10 w-full rounded-full" />
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-1 p-2">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3 p-3 rounded-lg animate-pulse">
+                  <Bone className="w-12 h-12 rounded-full flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <Bone className="h-4 w-32" />
+                    <Bone className="h-3 w-48" />
+                  </div>
+                  <Bone className="h-5 w-12" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </PageShell>
+  )
+}
+
 /* ── Recommendations ─────────────────────────────────────── */
 
 export function RecommendationsSkeleton() {

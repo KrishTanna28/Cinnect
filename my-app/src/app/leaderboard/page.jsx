@@ -274,7 +274,14 @@ export default function LeaderboardPage() {
                   ) : (
                     <ChevronDown className="h-4 w-4" />
                   )}
-                  {isLoadingMore ? "Loading..." : "Load More"}
+                  {isLoadingMore ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading more...
+                    </>
+                  ) : (
+                    "Load More"
+                  )}
                 </button>
               </div>
             )}
