@@ -22,6 +22,7 @@ export default function NotificationBell() {
   const [loading, setLoading] = useState(false)
   const dropdownRef = useRef(null)
   const hasFetchedEntertainment = useRef(false)
+  const shownToastIds = useRef(new Set())
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -87,6 +88,17 @@ export default function NotificationBell() {
     const unsub = on("notification:new", (notif) => {
       setNotifications(prev => [notif, ...prev])
       setUnreadCount(prev => prev + 1)
+
+      // Deduplicate toasts - only show if we haven't shown this notification ID recently
+      const notifId = notif._id || notif.id
+      if (notifId && shownToastIds.current.has(notifId)) {
+        return
+      }
+      if (notifId) {
+        shownToastIds.current.add(notifId)
+        // Clear from set after 30 seconds to prevent memory buildup
+        setTimeout(() => shownToastIds.current.delete(notifId), 30000)
+      }
 
       toast({
         title: notif.title || "New Notification",

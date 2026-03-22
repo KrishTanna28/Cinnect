@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Users, FileText, Plus, Clock, ThumbsUp, MessageCircle, Pin, Lock, Film, Tv, User as UserIcon, Trash2, UserPlus, UserX, UserTick, Bell, Pencil, MoreVertical, ThumbsDown, Newspaper, X, Check, ExternalLink, AlertTriangle, ShieldAlert, EyeOff, UserMinus, Info } from "lucide-react"
+import { Users, FileText, Plus, Clock, ThumbsUp, MessageCircle, Pin, Lock, Film, Tv, User as UserIcon, Trash2, UserPlus, UserX, UserTick, Bell, Pencil, MoreVertical, ThumbsDown, Newspaper, X, Check, ExternalLink, AlertTriangle, ShieldAlert, EyeOff, UserMinus, Info, Share2 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -602,6 +602,64 @@ export default function CommunityPage() {
     }
   }
 
+  const handleShareCommunity = async (e) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+
+    const shareUrl = `${window.location.origin}/communities/${params.slug}`
+    const shareData = {
+      title: community?.name || 'Community',
+      text: `Check out ${community?.name} on Cinnect!`,
+      url: shareUrl
+    }
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData)
+      } else {
+        await navigator.clipboard.writeText(shareUrl)
+        toast({
+          title: "Link Copied",
+          description: "Community link has been copied to clipboard!"
+        })
+      }
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        console.error('Error sharing:', error)
+      }
+    }
+  }
+
+  const handleSharePost = async (e, post) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    const shareUrl = `${window.location.origin}/communities/${params.slug}/posts/${post._id}`
+    const shareData = {
+      title: post.title,
+      text: `Check out this post on Cinnect!`,
+      url: shareUrl
+    }
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData)
+      } else {
+        await navigator.clipboard.writeText(shareUrl)
+        toast({
+          title: "Link Copied",
+          description: "Post link has been copied to clipboard!"
+        })
+      }
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        console.error('Error sharing:', error)
+      }
+    }
+  }
+
   const formatNumber = (num) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`
@@ -1082,7 +1140,14 @@ export default function CommunityPage() {
                             </DropdownMenuItem>
                           </>
                         )}
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
+                          onSelect={handleShareCommunity}
+                          className="cursor-pointer"
+                        >
+                          <Share2 className="w-4 h-4" />
+                          Share
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
                           onSelect={(e) => {
                             e.preventDefault();
                             setShowMobileInfo(true);
@@ -1298,6 +1363,13 @@ export default function CommunityPage() {
                               <Clock className="w-4 h-4" />
                               <span>{post.views || 0} views</span>
                             </div>
+                            <button
+                              onClick={(e) => handleSharePost(e, post)}
+                              className="flex items-center gap-1 hover:text-primary transition-colors cursor-pointer"
+                            >
+                              <Share2 className="w-4 h-4" />
+                              <span>Share</span>
+                            </button>
                           </div>
                         </div>
                       </div>

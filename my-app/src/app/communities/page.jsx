@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Plus, Users, Film, Tv, User, FileText, Filter, ChevronDown, ChevronUp, Heart, MessageCircle, Eye, Clock, AlertTriangle, ShieldAlert, EyeOff, ThumbsUp, ThumbsDown, Video, Play } from "lucide-react"
+import { Plus, Users, Film, Tv, User, FileText, Filter, ChevronDown, ChevronUp, Heart, MessageCircle, Eye, Clock, AlertTriangle, ShieldAlert, EyeOff, ThumbsUp, ThumbsDown, Video, Play, Share2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useUser } from "@/contexts/UserContext"
 import { useToast } from "@/hooks/use-toast"
@@ -282,6 +282,34 @@ export default function CommunitiesPage() {
     e.preventDefault()
     e.stopPropagation()
     router.push(`/communities/${post.community?.slug}/posts/${post._id}?comment=true#comments`)
+  }
+
+  const handleSharePost = async (e, post) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    const shareUrl = `${window.location.origin}/communities/${post.community?.slug}/posts/${post._id}`
+    const shareData = {
+      title: post.title,
+      text: `Check out this post on Cinnect!`,
+      url: shareUrl
+    }
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData)
+      } else {
+        await navigator.clipboard.writeText(shareUrl)
+        toast({
+          title: "Link Copied",
+          description: "Post link has been copied to clipboard!"
+        })
+      }
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        console.error('Error sharing:', error)
+      }
+    }
   }
 
   const handleCommunityNameClick = (e, slug) => {
@@ -609,6 +637,13 @@ export default function CommunitiesPage() {
                                   <Eye className="w-4 h-4" />
                                   <span>{formatNumber(post.views || 0)}</span>
                                 </span>
+                                <button
+                                  onClick={(e) => handleSharePost(e, post)}
+                                  className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-all active:scale-95 cursor-pointer"
+                                >
+                                  <Share2 className="w-4 h-4" />
+                                  <span>Share</span>
+                                </button>
                               </div>
                             </div>
                           </div>

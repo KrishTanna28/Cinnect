@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, ThumbsUp, ThumbsDown, MessageCircle, Eye, Pin, Lock, Trash2, Send, Pencil, MoreVertical, Cross2, X, AlertTriangle, ShieldAlert, EyeOff } from "lucide-react"
+import { ArrowLeft, ThumbsUp, ThumbsDown, MessageCircle, Eye, Pin, Lock, Trash2, Send, Pencil, MoreVertical, Cross2, X, AlertTriangle, ShieldAlert, EyeOff, Share2 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -856,6 +856,31 @@ export default function PostDetailPage() {
     }
   }
 
+  const handleShare = async () => {
+    const shareUrl = `${window.location.origin}/communities/${params.slug}/posts/${params.id}`
+    const shareData = {
+      title: post?.title || 'Post',
+      text: `Check out this post on Cinnect!`,
+      url: shareUrl
+    }
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData)
+      } else {
+        await navigator.clipboard.writeText(shareUrl)
+        toast({
+          title: "Link Copied",
+          description: "Post link has been copied to clipboard!"
+        })
+      }
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        console.error('Error sharing:', error)
+      }
+    }
+  }
+
   const handleUpdatePost = async () => {
     setUpdatingPost(true)
     try {
@@ -1384,6 +1409,14 @@ export default function PostDetailPage() {
               <Eye className="w-4 h-4" />
               <span>{post.views || 0} views</span>
             </div>
+
+            <button
+              onClick={handleShare}
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-all active:scale-95 cursor-pointer"
+            >
+              <Share2 className="w-4 h-4" />
+              <span>Share</span>
+            </button>
           </div>
         </div>
 
