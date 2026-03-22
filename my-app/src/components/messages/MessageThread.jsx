@@ -200,6 +200,7 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const messagesContainerRef = useRef(null);
   const autoScrollOnLayout = useRef(false);
+  const scrollHeightBeforeLoad = useRef(null); // Store scroll height before loading older messages
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -249,10 +250,22 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
         fetchMessages(1, true);
       }
     }, [conversation?._id]);
+
+  // Handle scroll position after messages update
   useLayoutEffect(() => {
-    if (autoScrollOnLayout.current && messagesContainerRef.current) {
+    if (!messagesContainerRef.current) return;
+
+    // Auto-scroll to bottom for initial load or new messages sent
+    if (autoScrollOnLayout.current) {
       messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
       autoScrollOnLayout.current = false;
+    }
+    // Restore scroll position after loading older messages
+    else if (scrollHeightBeforeLoad.current !== null) {
+      const newScrollHeight = messagesContainerRef.current.scrollHeight;
+      const scrollDiff = newScrollHeight - scrollHeightBeforeLoad.current;
+      messagesContainerRef.current.scrollTop = scrollDiff;
+      scrollHeightBeforeLoad.current = null;
     }
   }, [messages]);
 
@@ -456,25 +469,14 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
             onUpdate();
           }
         } else {
-          // preserve scroll position
+          // Store scroll height before adding messages - useLayoutEffect will restore position
           if (messagesContainerRef.current) {
-             const scrollHeightBefore = messagesContainerRef.current.scrollHeight;
-             setMessages(prev => {
-                const newMsgs = data.messages.filter(nm => !prev.some(pm => pm._id === nm._id));
-                return [...newMsgs, ...prev];
-             });
-             // Use minimal delay to allow DOM to update
-             setTimeout(() => {
-                if (messagesContainerRef.current) {
-                  messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight - scrollHeightBefore;
-                }
-             }, 0);
-          } else {
-             setMessages(prev => {
-                const newMsgs = data.messages.filter(nm => !prev.some(pm => pm._id === nm._id));
-                return [...newMsgs, ...prev];
-             });
+            scrollHeightBeforeLoad.current = messagesContainerRef.current.scrollHeight;
           }
+          setMessages(prev => {
+            const newMsgs = data.messages.filter(nm => !prev.some(pm => pm._id === nm._id));
+            return [...newMsgs, ...prev];
+          });
         }
         setHasMore(data.pagination.page < data.pagination.pages);
       }
@@ -505,7 +507,32 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
     }
 
     setSelectedMediaType(type);
-    setSending(true);
+
+    // Create optimistic message for immediate display
+    const tempId = 'temp-' + Date.now();
+    const optimisticMessage = {
+      _id: tempId,
+      conversation: conversation._id,
+      sender: {
+        _id: user._id,
+        username: user.username,
+        fullName: user.fullName,
+        avatar: user.avatar
+      },
+      content: contentToSend.trim(),
+      type,
+      mediaUrl: fileData ? fileData : null, // Show base64 preview for media
+      createdAt: new Date().toISOString(),
+      readBy: [{ user: user._id, readAt: new Date().toISOString() }],
+      _isSending: true // Flag to show sending state
+    };
+
+    // Add optimistic message immediately
+    setMessages(prev => [...prev, optimisticMessage]);
+    if (type === 'text') setNewMessage('');
+    scrollToBottom();
+
+    // Send to server in background
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`/api/messages/${conversation._id}`, {
@@ -519,25 +546,27 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
 
       const data = await res.json();
       if (!data.success) {
+        // Remove optimistic message on failure
+        setMessages(prev => prev.filter(m => m._id !== tempId));
         toast({
           title: "Sending failed",
           description: data.message || "Something went wrong.",
           variant: "destructive"
         });
       } else {
+        // Replace optimistic message with real one from server
         setMessages(prev => {
-          if (prev.some(m => m._id === data.message._id)) return prev;
-          return [...prev, data.message];
+          const filtered = prev.filter(m => m._id !== tempId);
+          if (filtered.some(m => m._id === data.message._id)) return filtered;
+          return [...filtered, data.message];
         });
-        if (type === 'text') setNewMessage('');
-        scrollToBottom();
         if (onUpdate) onUpdate();
       }
     } catch (error) {
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(m => m._id !== tempId));
       console.error('Error sending message:', error);
       toast({ title: "Failed to send message", variant: "destructive" });
-    } finally {
-      setSending(false);
     }
   };
 
@@ -808,7 +837,7 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
                                 onPointerUp={handlePointerUp}
                                 onPointerLeave={handlePointerUp}
                                 onContextMenu={handleContextMenu}
-                                className={`relative cursor-pointer ${
+                                className={`relative cursor-pointer ${msg._isSending ? 'opacity-70' : ''} ${
                                   (msg.type !== 'text' && !msg.content) || (msg.type === 'text' && isOnlyEmojis(msg.content))
                                     ? '' // Only media, no padding/background
                                     : `px-4 py-2 rounded-2xl ${
@@ -872,7 +901,7 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
 
                           {isOwn && (
                             <span className="text-xs text-muted-foreground mt-3">
-                              {isRead ? 'Seen' : 'Sent'}
+                              {msg._isSending ? 'Sending...' : isRead ? 'Seen' : 'Sent'}
                             </span>
                           )}
                         </div>

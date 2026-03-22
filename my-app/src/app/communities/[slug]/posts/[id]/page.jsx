@@ -366,30 +366,61 @@ export default function PostDetailPage() {
       return
     }
 
-    setSubmitting(true)
-    try {
-      // Auto-detect spoiler if checkbox is not checked
-      let finalSpoiler = commentSpoiler
-      if (!finalSpoiler && commentText.trim().length > 0) {
-        try {
-          const detectRes = await fetch('/api/spoiler-detect', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: commentText })
-          })
-          const detectData = await detectRes.json()
-          if (detectData.success) {
-            const pct = ((detectData.data?.scores?.spoiler ?? detectData.data?.confidence ?? 0) * 100).toFixed(1)
-            console.log(`[Spoiler Detection] Comment: ${pct}% spoiler probability (threshold: 60%)`)
-          }
-          if (detectData.success && detectData.data?.isSpoiler) {
-            finalSpoiler = true
-          }
-        } catch (detectErr) {
-          console.error('Spoiler detection failed, proceeding without:', detectErr)
+    // Auto-detect spoiler if checkbox is not checked
+    let finalSpoiler = commentSpoiler
+    if (!finalSpoiler && commentText.trim().length > 0) {
+      try {
+        const detectRes = await fetch('/api/spoiler-detect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: commentText })
+        })
+        const detectData = await detectRes.json()
+        if (detectData.success) {
+          const pct = ((detectData.data?.scores?.spoiler ?? detectData.data?.confidence ?? 0) * 100).toFixed(1)
+          console.log(`[Spoiler Detection] Comment: ${pct}% spoiler probability (threshold: 60%)`)
         }
+        if (detectData.success && detectData.data?.isSpoiler) {
+          finalSpoiler = true
+        }
+      } catch (detectErr) {
+        console.error('Spoiler detection failed, proceeding without:', detectErr)
       }
+    }
 
+    // Create optimistic comment
+    const tempComment = {
+      _id: 'temp-' + Date.now(),
+      user: {
+        _id: user._id,
+        username: user.username,
+        avatar: user.avatar,
+        fullName: user.fullName
+      },
+      content: commentText,
+      spoiler: finalSpoiler,
+      likes: [],
+      dislikes: [],
+      replies: [],
+      createdAt: new Date().toISOString()
+    }
+
+    // Store values before clearing
+    const contentToSend = commentText
+    const spoilerToSend = finalSpoiler
+
+    // Optimistic update - add comment immediately
+    setPost(prev => ({
+      ...prev,
+      comments: [...(prev.comments || []), tempComment],
+      commentCount: (prev.commentCount || 0) + 1
+    }))
+
+    // Clear form immediately
+    setCommentText("")
+    setCommentSpoiler(false)
+
+    try {
       const token = localStorage.getItem('token')
       const response = await fetch(`/api/posts/${params.id}/comment`, {
         method: 'POST',
@@ -397,20 +428,20 @@ export default function PostDetailPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ content: commentText, spoiler: finalSpoiler })
+        body: JSON.stringify({ content: contentToSend, spoiler: spoilerToSend })
       })
 
       const data = await response.json()
 
       if (data.success) {
-        setCommentText("")
-        setCommentSpoiler(false)
-        setPost(data.data) // Update with the new comment
-        toast({
-          title: "Success",
-          description: "Comment added successfully"
-        })
+        setPost(data.data) // Update with actual server data
       } else {
+        // Revert optimistic update on error
+        setPost(prev => ({
+          ...prev,
+          comments: prev.comments.filter(c => c._id !== tempComment._id),
+          commentCount: Math.max(0, (prev.commentCount || 1) - 1)
+        }))
         toast({
           title: "Error",
           description: data.message || "Failed to add comment",
@@ -419,13 +450,17 @@ export default function PostDetailPage() {
       }
     } catch (error) {
       console.error('Error adding comment:', error)
+      // Revert optimistic update on error
+      setPost(prev => ({
+        ...prev,
+        comments: prev.comments.filter(c => c._id !== tempComment._id),
+        commentCount: Math.max(0, (prev.commentCount || 1) - 1)
+      }))
       toast({
         title: "Error",
         description: "Failed to add comment",
         variant: "destructive"
       })
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -437,30 +472,71 @@ export default function PostDetailPage() {
 
     if (!replyContent.trim()) return
 
-    setSubmitting(true)
-    try {
-      // Auto-detect spoiler if checkbox is not checked
-      let finalSpoiler = replySpoiler
-      if (!finalSpoiler && replyContent.trim().length > 0) {
-        try {
-          const detectRes = await fetch('/api/spoiler-detect', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: replyContent })
-          })
-          const detectData = await detectRes.json()
-          if (detectData.success) {
-            const pct = ((detectData.data?.scores?.spoiler ?? detectData.data?.confidence ?? 0) * 100).toFixed(1)
-            console.log(`[Spoiler Detection] Reply: ${pct}% spoiler probability (threshold: 60%)`)
-          }
-          if (detectData.success && detectData.data?.isSpoiler) {
-            finalSpoiler = true
-          }
-        } catch (detectErr) {
-          console.error('Spoiler detection failed, proceeding without:', detectErr)
+    // Auto-detect spoiler if checkbox is not checked
+    let finalSpoiler = replySpoiler
+    if (!finalSpoiler && replyContent.trim().length > 0) {
+      try {
+        const detectRes = await fetch('/api/spoiler-detect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: replyContent })
+        })
+        const detectData = await detectRes.json()
+        if (detectData.success) {
+          const pct = ((detectData.data?.scores?.spoiler ?? detectData.data?.confidence ?? 0) * 100).toFixed(1)
+          console.log(`[Spoiler Detection] Reply: ${pct}% spoiler probability (threshold: 60%)`)
         }
+        if (detectData.success && detectData.data?.isSpoiler) {
+          finalSpoiler = true
+        }
+      } catch (detectErr) {
+        console.error('Spoiler detection failed, proceeding without:', detectErr)
       }
+    }
 
+    // Create optimistic reply
+    const tempReply = {
+      _id: 'temp-' + Date.now(),
+      user: {
+        _id: user._id,
+        username: user.username,
+        avatar: user.avatar,
+        fullName: user.fullName
+      },
+      content: replyContent,
+      spoiler: finalSpoiler,
+      likes: [],
+      dislikes: [],
+      createdAt: new Date().toISOString()
+    }
+
+    // Store values before clearing
+    const contentToSend = replyContent
+    const spoilerToSend = finalSpoiler
+
+    // Optimistic update - add reply immediately
+    setPost(prev => ({
+      ...prev,
+      comments: prev.comments.map(c => {
+        if (c._id === commentId) {
+          return {
+            ...c,
+            replies: [...(c.replies || []), tempReply]
+          }
+        }
+        return c
+      })
+    }))
+
+    // Clear form and show replies immediately
+    setReplyContent('')
+    setReplySpoiler(false)
+    setReplyingTo(null)
+    const newShowReplies = new Set(showReplies)
+    newShowReplies.add(commentId)
+    setShowReplies(newShowReplies)
+
+    try {
       const token = localStorage.getItem('token')
       const response = await fetch(`/api/posts/${params.id}/comment/${commentId}/reply`, {
         method: 'POST',
@@ -468,33 +544,53 @@ export default function PostDetailPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ content: replyContent, spoiler: finalSpoiler })
+        body: JSON.stringify({ content: contentToSend, spoiler: spoilerToSend })
       })
 
       const data = await response.json()
 
       if (data.success) {
-        setReplyContent('')
-        setReplySpoiler(false)
-        setReplyingTo(null)
-        setPost(data.data)
-        const newShowReplies = new Set(showReplies)
-        newShowReplies.add(commentId)
-        setShowReplies(newShowReplies)
+        setPost(data.data) // Update with actual server data
+      } else {
+        // Revert optimistic update on error
+        setPost(prev => ({
+          ...prev,
+          comments: prev.comments.map(c => {
+            if (c._id === commentId) {
+              return {
+                ...c,
+                replies: c.replies.filter(r => r._id !== tempReply._id)
+              }
+            }
+            return c
+          })
+        }))
         toast({
-          title: "Success",
-          description: "Reply added successfully"
+          title: "Error",
+          description: "Failed to submit reply",
+          variant: "destructive"
         })
       }
     } catch (error) {
       console.error('Failed to submit reply:', error)
+      // Revert optimistic update on error
+      setPost(prev => ({
+        ...prev,
+        comments: prev.comments.map(c => {
+          if (c._id === commentId) {
+            return {
+              ...c,
+              replies: c.replies.filter(r => r._id !== tempReply._id)
+            }
+          }
+          return c
+        })
+      }))
       toast({
         title: "Error",
         description: "Failed to submit reply",
         variant: "destructive"
       })
-    } finally {
-      setSubmitting(false)
     }
   }
 
