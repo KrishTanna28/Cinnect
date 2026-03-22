@@ -1,36 +1,43 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import * as tmdbService from "@/lib/services/tmdb.service";
-import connectDB from '@/lib/config/database.js'
+import { buildCacheKey, remember } from "@/lib/utils/cache.js";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 export async function GET() {
-  
-  await connectDB()
 try {
-    // Fetch some trending data to give context to Gemini
-    let trendingContext = "";
-    try {
-      const [trendingMovies, trendingTV] = await Promise.all([
-        tmdbService.getTrending("movie", "day").catch(() => []),
-        tmdbService.getTrending("tv", "day").catch(() => []),
-      ]);
+    const now = new Date();
+    const cacheKey = buildCacheKey(
+      "ai-assistant",
+      "suggestions",
+      now.getUTCFullYear(),
+      now.getUTCMonth() + 1,
+      now.getUTCDate()
+    );
+
+    const payload = await remember(cacheKey, 86400, async () => {
+      let trendingContext = "";
+      try {
+        const [trendingMovies, trendingTV] = await Promise.all([
+          tmdbService.getTrending("movie", "day").catch(() => []),
+          tmdbService.getTrending("tv", "day").catch(() => []),
+        ]);
+        
+        if (trendingMovies?.length > 0) {
+          trendingContext += `Today's trending movies: ${trendingMovies.slice(0, 3).map(m => m.title).join(", ")}. `;
+        }
+        if (trendingTV?.length > 0) {
+          trendingContext += `Today's trending TV shows: ${trendingTV.slice(0, 3).map(t => t.title).join(", ")}. `;
+        }
+      } catch (error) {
+        console.error("Error fetching trending for suggestions:", error);
+      }
+
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+      const prompt = `You are C.A.S.T (Cinematic Assistant for Smart Tastes), an AI assistant for Cinnect - a movie and TV show discovery platform. 
       
-      if (trendingMovies?.length > 0) {
-        trendingContext += `Today's trending movies: ${trendingMovies.slice(0, 3).map(m => m.title).join(", ")}. `;
-      }
-      if (trendingTV?.length > 0) {
-        trendingContext += `Today's trending TV shows: ${trendingTV.slice(0, 3).map(t => t.title).join(", ")}. `;
-      }
-    } catch (error) {
-      console.error("Error fetching trending for suggestions:", error);
-    }
-
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
-    const prompt = `You are C.A.S.T (Cinematic Assistant for Smart Tastes), an AI assistant for Cinnect - a movie and TV show discovery platform. 
-    
 ${trendingContext}
 
 Generate exactly 4 short, engaging conversation starter questions that a user might want to ask about movies, TV shows, actors, or entertainment. 
@@ -45,23 +52,23 @@ Requirements:
 Return ONLY a JSON array of 4 strings, nothing else. Example format:
 ["Question 1?", "Question 2?", "Question 3?", "Question 4?"]`;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+      const cleanedText = text.replace(/```json\n?|\n?```/g, "").trim();
+      const suggestions = JSON.parse(cleanedText);
 
-    // Parse the JSON response
-    const cleanedText = text.replace(/```json\n?|\n?```/g, "").trim();
-    const suggestions = JSON.parse(cleanedText);
+      if (!Array.isArray(suggestions) || suggestions.length !== 4) {
+        throw new Error("Invalid suggestions format");
+      }
 
-    // Validate we got an array of strings
-    if (!Array.isArray(suggestions) || suggestions.length !== 4) {
-      throw new Error("Invalid suggestions format");
-    }
-
-    return NextResponse.json({
-      suggestions,
-      generatedAt: new Date().toISOString(),
+      return {
+        suggestions,
+        generatedAt: new Date().toISOString(),
+      };
     });
+
+    return NextResponse.json(payload);
   } catch (error) {
     console.error("Error generating suggestions:", error);
     // Return fallback suggestions if AI fails

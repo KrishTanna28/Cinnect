@@ -1,8 +1,9 @@
 import axios from 'axios';
+import { buildCacheKey, remember } from '@/lib/utils/cache.js';
 
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+const TMDB_BASE_URL = process.env.TMDB_BASE_URL;
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
-const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
+const TMDB_IMAGE_BASE_URL = process.env.TMDB_IMAGE_BASE_URL;
 
 // Create axios instance
 const api = axios.create({
@@ -13,6 +14,25 @@ const api = axios.create({
   },
 });
 
+const TMDB_CACHE_TTLS = {
+  trending: 1800,
+  list: 3600,
+  details: 7200,
+  search: 900,
+  discover: 1800,
+  genres: 86400,
+  providers: 3600,
+}
+
+async function cachedTmdbGet(path, params = {}, ttlSeconds = TMDB_CACHE_TTLS.list) {
+  const cacheKey = buildCacheKey('tmdb:get', path, params)
+
+  return remember(cacheKey, ttlSeconds, async () => {
+    const response = await api.get(path, { params })
+    return response.data
+  })
+}
+
   // Helper to build image URLs
 export function getImageUrl(path, size = 'original') {
     if (!path) return null;
@@ -22,8 +42,12 @@ export function getImageUrl(path, size = 'original') {
   // Get trending movies/TV shows (day or week)
 export async function getTrending(mediaType = 'all', timeWindow = 'week') {
     try {
-      const response = await api.get(`/trending/${mediaType}/${timeWindow}`);
-      return formatMediaList(response.data.results);
+      const data = await cachedTmdbGet(
+        `/trending/${mediaType}/${timeWindow}`,
+        {},
+        TMDB_CACHE_TTLS.trending
+      );
+      return formatMediaList(data.results);
     } catch (error) {
       console.error('TMDB getTrending error:', error.message);
       throw new Error('Failed to fetch trending content');
@@ -33,14 +57,12 @@ export async function getTrending(mediaType = 'all', timeWindow = 'week') {
   // Get popular movies
 export async function getPopular(page = 1) {
     try {
-      const response = await api.get('/movie/popular', {
-        params: { page },
-      });
+      const response = await cachedTmdbGet('/movie/popular', { page }, TMDB_CACHE_TTLS.list);
       return {
-        results: formatMovieList(response.data.results),
-        page: response.data.page,
-        totalPages: response.data.total_pages,
-        totalResults: response.data.total_results,
+        results: formatMovieList(response.results),
+        page: response.page,
+        totalPages: response.total_pages,
+        totalResults: response.total_results,
       };
     } catch (error) {
       console.error('TMDB getPopular error:', error.message);
@@ -51,14 +73,12 @@ export async function getPopular(page = 1) {
   // Get top rated movies
 export async function getTopRated(page = 1) {
     try {
-      const response = await api.get('/movie/top_rated', {
-        params: { page },
-      });
+      const response = await cachedTmdbGet('/movie/top_rated', { page }, TMDB_CACHE_TTLS.list);
       return {
-        results: formatMovieList(response.data.results),
-        page: response.data.page,
-        totalPages: response.data.total_pages,
-        totalResults: response.data.total_results,
+        results: formatMovieList(response.results),
+        page: response.page,
+        totalPages: response.total_pages,
+        totalResults: response.total_results,
       };
     } catch (error) {
       console.error('TMDB getTopRated error:', error.message);
@@ -69,14 +89,12 @@ export async function getTopRated(page = 1) {
   // Get now playing movies
 export async function getNowPlaying(page = 1) {
     try {
-      const response = await api.get('/movie/now_playing', {
-        params: { page },
-      });
+      const response = await cachedTmdbGet('/movie/now_playing', { page }, TMDB_CACHE_TTLS.list);
       return {
-        results: formatMovieList(response.data.results),
-        page: response.data.page,
-        totalPages: response.data.total_pages,
-        totalResults: response.data.total_results,
+        results: formatMovieList(response.results),
+        page: response.page,
+        totalPages: response.total_pages,
+        totalResults: response.total_results,
       };
     } catch (error) {
       console.error('TMDB getNowPlaying error:', error.message);
@@ -87,14 +105,12 @@ export async function getNowPlaying(page = 1) {
   // Get upcoming movies
 export async function getUpcoming(page = 1) {
     try {
-      const response = await api.get('/movie/upcoming', {
-        params: { page },
-      });
+      const response = await cachedTmdbGet('/movie/upcoming', { page }, TMDB_CACHE_TTLS.list);
       return {
-        results: formatMovieList(response.data.results),
-        page: response.data.page,
-        totalPages: response.data.total_pages,
-        totalResults: response.data.total_results,
+        results: formatMovieList(response.results),
+        page: response.page,
+        totalPages: response.total_pages,
+        totalResults: response.total_results,
       };
     } catch (error) {
       console.error('TMDB getUpcoming error:', error.message);
@@ -105,12 +121,14 @@ export async function getUpcoming(page = 1) {
   // Get movie details by ID
 export async function getMovieDetails(movieId) {
     try {
-      const response = await api.get(`/movie/${movieId}`, {
-        params: {
+      const response = await cachedTmdbGet(
+        `/movie/${movieId}`,
+        {
           append_to_response: 'credits,videos,similar,recommendations,watch/providers,release_dates',
         },
-      });
-      return formatMovieDetails(response.data);
+        TMDB_CACHE_TTLS.details
+      );
+      return formatMovieDetails(response);
     } catch (error) {
       console.error('TMDB getMovieDetails error:', error.message);
       throw new Error('Failed to fetch movie details');
@@ -120,14 +138,16 @@ export async function getMovieDetails(movieId) {
   // Search movies
 export async function searchMovies(query, page = 1) {
     try {
-      const response = await api.get('/search/movie', {
-        params: { query, page },
-      });
+      const response = await cachedTmdbGet(
+        '/search/movie',
+        { query, page },
+        TMDB_CACHE_TTLS.search
+      );
       return {
-        results: formatMovieList(response.data.results),
-        page: response.data.page,
-        totalPages: response.data.total_pages,
-        totalResults: response.data.total_results,
+        results: formatMovieList(response.results),
+        page: response.page,
+        totalPages: response.total_pages,
+        totalResults: response.total_results,
       };
     } catch (error) {
       console.error('TMDB searchMovies error:', error.message);
@@ -138,22 +158,21 @@ export async function searchMovies(query, page = 1) {
   // Discover movies with filters
 export async function discoverMovies(filters = {}) {
     try {
-      const response = await api.get('/discover/movie', {
-        params: {
-          page: filters.page || 1,
-          with_genres: filters.genres,
-          primary_release_year: filters.year,
-          with_original_language: filters.language,
-          sort_by: filters.sortBy || 'popularity.desc',
-          'vote_average.gte': filters.minRating,
-          'vote_average.lte': filters.maxRating,
-        },
-      });
+      const params = {
+        page: filters.page || 1,
+        with_genres: filters.genres,
+        primary_release_year: filters.year,
+        with_original_language: filters.language,
+        sort_by: filters.sortBy || 'popularity.desc',
+        'vote_average.gte': filters.minRating,
+        'vote_average.lte': filters.maxRating,
+      };
+      const response = await cachedTmdbGet('/discover/movie', params, TMDB_CACHE_TTLS.discover);
       return {
-        results: formatMovieList(response.data.results),
-        page: response.data.page,
-        totalPages: response.data.total_pages,
-        totalResults: response.data.total_results,
+        results: formatMovieList(response.results),
+        page: response.page,
+        totalPages: response.total_pages,
+        totalResults: response.total_results,
       };
     } catch (error) {
       console.error('TMDB discoverMovies error:', error.message);
@@ -164,8 +183,8 @@ export async function discoverMovies(filters = {}) {
   // Get movie genres
 export async function getGenres() {
     try {
-      const response = await api.get('/genre/movie/list');
-      return response.data.genres;
+      const response = await cachedTmdbGet('/genre/movie/list', {}, TMDB_CACHE_TTLS.genres);
+      return response.genres;
     } catch (error) {
       console.error('TMDB getGenres error:', error.message);
       throw new Error('Failed to fetch genres');
@@ -177,14 +196,12 @@ export async function getGenres() {
   // Get popular TV shows
 export async function getPopularTV(page = 1) {
     try {
-      const response = await api.get('/tv/popular', {
-        params: { page },
-      });
+      const response = await cachedTmdbGet('/tv/popular', { page }, TMDB_CACHE_TTLS.list);
       return {
-        results: formatMediaList(response.data.results),
-        page: response.data.page,
-        totalPages: response.data.total_pages,
-        totalResults: response.data.total_results,
+        results: formatMediaList(response.results),
+        page: response.page,
+        totalPages: response.total_pages,
+        totalResults: response.total_results,
       };
     } catch (error) {
       console.error('TMDB getPopularTV error:', error.message);
@@ -195,14 +212,12 @@ export async function getPopularTV(page = 1) {
   // Get top rated TV shows
 export async function getTopRatedTV(page = 1) {
     try {
-      const response = await api.get('/tv/top_rated', {
-        params: { page },
-      });
+      const response = await cachedTmdbGet('/tv/top_rated', { page }, TMDB_CACHE_TTLS.list);
       return {
-        results: formatMediaList(response.data.results),
-        page: response.data.page,
-        totalPages: response.data.total_pages,
-        totalResults: response.data.total_results,
+        results: formatMediaList(response.results),
+        page: response.page,
+        totalPages: response.total_pages,
+        totalResults: response.total_results,
       };
     } catch (error) {
       console.error('TMDB getTopRatedTV error:', error.message);
@@ -213,14 +228,12 @@ export async function getTopRatedTV(page = 1) {
   // Get airing today TV shows
 export async function getAiringTodayTV(page = 1) {
     try {
-      const response = await api.get('/tv/airing_today', {
-        params: { page },
-      });
+      const response = await cachedTmdbGet('/tv/airing_today', { page }, TMDB_CACHE_TTLS.list);
       return {
-        results: formatMediaList(response.data.results),
-        page: response.data.page,
-        totalPages: response.data.total_pages,
-        totalResults: response.data.total_results,
+        results: formatMediaList(response.results),
+        page: response.page,
+        totalPages: response.total_pages,
+        totalResults: response.total_results,
       };
     } catch (error) {
       console.error('TMDB getAiringTodayTV error:', error.message);
@@ -231,14 +244,12 @@ export async function getAiringTodayTV(page = 1) {
   // Get on the air TV shows
 export async function getOnTheAirTV(page = 1) {
     try {
-      const response = await api.get('/tv/on_the_air', {
-        params: { page },
-      });
+      const response = await cachedTmdbGet('/tv/on_the_air', { page }, TMDB_CACHE_TTLS.list);
       return {
-        results: formatMediaList(response.data.results),
-        page: response.data.page,
-        totalPages: response.data.total_pages,
-        totalResults: response.data.total_results,
+        results: formatMediaList(response.results),
+        page: response.page,
+        totalPages: response.total_pages,
+        totalResults: response.total_results,
       };
     } catch (error) {
       console.error('TMDB getOnTheAirTV error:', error.message);
@@ -249,12 +260,14 @@ export async function getOnTheAirTV(page = 1) {
   // Get TV show details
 export async function getTVDetails(tvId) {
     try {
-      const response = await api.get(`/tv/${tvId}`, {
-        params: {
+      const response = await cachedTmdbGet(
+        `/tv/${tvId}`,
+        {
           append_to_response: 'credits,videos,similar,recommendations,watch/providers,content_ratings',
         },
-      });
-      return formatTVDetails(response.data);
+        TMDB_CACHE_TTLS.details
+      );
+      return formatTVDetails(response);
     } catch (error) {
       console.error('TMDB getTVDetails error:', error.message);
       throw new Error('Failed to fetch TV show details');
@@ -264,11 +277,13 @@ export async function getTVDetails(tvId) {
   // Search people (actors, directors, etc.)
 export async function searchPerson(query, page = 1) {
     try {
-      const response = await api.get('/search/person', {
-        params: { query, page },
-      });
+      const response = await cachedTmdbGet(
+        '/search/person',
+        { query, page },
+        TMDB_CACHE_TTLS.search
+      );
       return {
-        results: response.data.results.map(person => ({
+        results: response.results.map(person => ({
           id: person.id,
           name: person.name,
           profilePath: getImageUrl(person.profile_path, 'w185'),
@@ -280,9 +295,9 @@ export async function searchPerson(query, page = 1) {
             mediaType: item.media_type,
           })) || [],
         })),
-        page: response.data.page,
-        totalPages: response.data.total_pages,
-        totalResults: response.data.total_results,
+        page: response.page,
+        totalPages: response.total_pages,
+        totalResults: response.total_results,
       };
     } catch (error) {
       console.error('TMDB searchPerson error:', error.message);
@@ -293,14 +308,16 @@ export async function searchPerson(query, page = 1) {
   // Search TV shows
 export async function searchTV(query, page = 1) {
     try {
-      const response = await api.get('/search/tv', {
-        params: { query, page },
-      });
+      const response = await cachedTmdbGet(
+        '/search/tv',
+        { query, page },
+        TMDB_CACHE_TTLS.search
+      );
       return {
-        results: formatMediaList(response.data.results),
-        page: response.data.page,
-        totalPages: response.data.total_pages,
-        totalResults: response.data.total_results,
+        results: formatMediaList(response.results),
+        page: response.page,
+        totalPages: response.total_pages,
+        totalResults: response.total_results,
       };
     } catch (error) {
       console.error('TMDB searchTV error:', error.message);
@@ -311,8 +328,12 @@ export async function searchTV(query, page = 1) {
   // Get TV season details
 export async function getTVSeasonDetails(tvId, seasonNumber) {
     try {
-      const response = await api.get(`/tv/${tvId}/season/${seasonNumber}`);
-      return formatSeasonDetails(response.data);
+      const response = await cachedTmdbGet(
+        `/tv/${tvId}/season/${seasonNumber}`,
+        {},
+        TMDB_CACHE_TTLS.details
+      );
+      return formatSeasonDetails(response);
     } catch (error) {
       console.error('TMDB getTVSeasonDetails error:', error.message);
       throw new Error('Failed to fetch season details');
@@ -322,12 +343,14 @@ export async function getTVSeasonDetails(tvId, seasonNumber) {
   // Search multi (movies, TV shows, people)
 export async function searchMulti(query, page = 1) {
     try {
-      const response = await api.get('/search/multi', {
-        params: { query, page },
-      });
+      const response = await cachedTmdbGet(
+        '/search/multi',
+        { query, page },
+        TMDB_CACHE_TTLS.search
+      );
       
       // Format results including people
-      const formattedResults = response.data.results.map(item => {
+      const formattedResults = response.results.map(item => {
         if (item.media_type === 'person') {
           return {
             id: item.id,
@@ -360,9 +383,9 @@ export async function searchMulti(query, page = 1) {
 
       return {
         results: formattedResults,
-        page: response.data.page,
-        totalPages: response.data.total_pages,
-        totalResults: response.data.total_results,
+        page: response.page,
+        totalPages: response.total_pages,
+        totalResults: response.total_results,
       };
     } catch (error) {
       console.error('TMDB searchMulti error:', error.message);
@@ -373,22 +396,21 @@ export async function searchMulti(query, page = 1) {
   // Discover TV shows with filters
 export async function discoverTV(filters = {}) {
     try {
-      const response = await api.get('/discover/tv', {
-        params: {
-          page: filters.page || 1,
-          with_genres: filters.genres,
-          first_air_date_year: filters.year,
-          with_original_language: filters.language,
-          sort_by: filters.sortBy || 'popularity.desc',
-          'vote_average.gte': filters.minRating,
-          'vote_average.lte': filters.maxRating,
-        },
-      });
+      const params = {
+        page: filters.page || 1,
+        with_genres: filters.genres,
+        first_air_date_year: filters.year,
+        with_original_language: filters.language,
+        sort_by: filters.sortBy || 'popularity.desc',
+        'vote_average.gte': filters.minRating,
+        'vote_average.lte': filters.maxRating,
+      };
+      const response = await cachedTmdbGet('/discover/tv', params, TMDB_CACHE_TTLS.discover);
       return {
-        results: formatMediaList(response.data.results),
-        page: response.data.page,
-        totalPages: response.data.total_pages,
-        totalResults: response.data.total_results,
+        results: formatMediaList(response.results),
+        page: response.page,
+        totalPages: response.total_pages,
+        totalResults: response.total_results,
       };
     } catch (error) {
       console.error('TMDB discoverTV error:', error.message);
@@ -667,12 +689,14 @@ export function formatSeasonDetails(season) {
   // Get person/actor details
 export async function getPersonDetails(personId) {
     try {
-      const response = await api.get(`/person/${personId}`, {
-        params: {
+      const response = await cachedTmdbGet(
+        `/person/${personId}`,
+        {
           append_to_response: 'movie_credits,tv_credits,images,external_ids',
         },
-      });
-      return formatPersonDetails(response.data);
+        TMDB_CACHE_TTLS.details
+      );
+      return formatPersonDetails(response);
     } catch (error) {
       console.error('TMDB getPersonDetails error:', error.message);
       throw new Error('Failed to fetch person details');
@@ -767,39 +791,43 @@ export function formatPersonDetails(person) {
 
   // Get movie reviews from TMDB
 export async function getMovieReviews(movieId, page = 1) {
-    try {
-      const response = await api.get(`/movie/${movieId}/reviews`, {
-        params: { page },
-      });
-      return {
-        results: formatReviews(response.data.results),
-        page: response.data.page,
-        totalPages: response.data.total_pages,
-        totalResults: response.data.total_results,
-      };
-    } catch (error) {
-      console.error('TMDB getMovieReviews error:', error.message);
-      return { results: [], page: 1, totalPages: 0, totalResults: 0 };
-    }
+  try {
+    const response = await cachedTmdbGet(
+      `/movie/${movieId}/reviews`,
+      { page },
+      TMDB_CACHE_TTLS.list
+    );
+    return {
+      results: formatReviews(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
+    };
+  } catch (error) {
+    console.error('TMDB getMovieReviews error:', error.message);
+    return { results: [], page: 1, totalPages: 0, totalResults: 0 };
   }
+}
 
   // Get TV show reviews from TMDB
 export async function getTVReviews(tvId, page = 1) {
-    try {
-      const response = await api.get(`/tv/${tvId}/reviews`, {
-        params: { page },
-      });
-      return {
-        results: formatReviews(response.data.results),
-        page: response.data.page,
-        totalPages: response.data.total_pages,
-        totalResults: response.data.total_results,
-      };
-    } catch (error) {
-      console.error('TMDB getTVReviews error:', error.message);
-      return { results: [], page: 1, totalPages: 0, totalResults: 0 };
-    }
+  try {
+    const response = await cachedTmdbGet(
+      `/tv/${tvId}/reviews`,
+      { page },
+      TMDB_CACHE_TTLS.list
+    );
+    return {
+      results: formatReviews(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
+    };
+  } catch (error) {
+    console.error('TMDB getTVReviews error:', error.message);
+    return { results: [], page: 1, totalPages: 0, totalResults: 0 };
   }
+}
 
   // Format TMDB reviews to match our schema
 export function formatReviews(reviews) {
@@ -836,18 +864,16 @@ export function formatReviews(reviews) {
 // Get movies by genre
 export async function getMoviesByGenre(genreId, page = 1) {
   try {
-    const response = await api.get('/discover/movie', {
-      params: { 
-        page, 
-        with_genres: genreId,
-        sort_by: 'popularity.desc'
-      },
-    });
+    const response = await cachedTmdbGet(
+      '/discover/movie',
+      { page, with_genres: genreId, sort_by: 'popularity.desc' },
+      TMDB_CACHE_TTLS.discover
+    );
     return {
-      results: formatMovieList(response.data.results),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMovieList(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getMoviesByGenre error:', error.message);
@@ -858,18 +884,16 @@ export async function getMoviesByGenre(genreId, page = 1) {
 // Get TV shows by genre
 export async function getTVByGenre(genreId, page = 1) {
   try {
-    const response = await api.get('/discover/tv', {
-      params: { 
-        page, 
-        with_genres: genreId,
-        sort_by: 'popularity.desc'
-      },
-    });
+    const response = await cachedTmdbGet(
+      '/discover/tv',
+      { page, with_genres: genreId, sort_by: 'popularity.desc' },
+      TMDB_CACHE_TTLS.discover
+    );
     return {
-      results: formatMediaList(response.data.results),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMediaList(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getTVByGenre error:', error.message);
@@ -880,19 +904,16 @@ export async function getTVByGenre(genreId, page = 1) {
 // Get movies from specific decade
 export async function getMoviesByDecade(startYear, endYear, page = 1) {
   try {
-    const response = await api.get('/discover/movie', {
-      params: { 
-        page,
-        'primary_release_date.gte': `${startYear}-01-01`,
-        'primary_release_date.lte': `${endYear}-12-31`,
-        sort_by: 'popularity.desc'
-      },
-    });
+    const response = await cachedTmdbGet(
+      '/discover/movie',
+      { page, 'primary_release_date.gte': `${startYear}-01-01`, 'primary_release_date.lte': `${endYear}-12-31`, sort_by: 'popularity.desc' },
+      TMDB_CACHE_TTLS.discover
+    );
     return {
-      results: formatMovieList(response.data.results),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMovieList(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getMoviesByDecade error:', error.message);
@@ -903,19 +924,16 @@ export async function getMoviesByDecade(startYear, endYear, page = 1) {
 // Get critically acclaimed movies (high rating)
 export async function getCriticallyAcclaimed(page = 1) {
   try {
-    const response = await api.get('/discover/movie', {
-      params: { 
-        page,
-        'vote_average.gte': 8,
-        'vote_count.gte': 1000,
-        sort_by: 'vote_average.desc'
-      },
-    });
+    const response = await cachedTmdbGet(
+      '/discover/movie',
+      { page, 'vote_average.gte': 8, 'vote_count.gte': 1000, sort_by: 'vote_average.desc' },
+      TMDB_CACHE_TTLS.discover
+    );
     return {
-      results: formatMovieList(response.data.results),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMovieList(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getCriticallyAcclaimed error:', error.message);
@@ -926,20 +944,16 @@ export async function getCriticallyAcclaimed(page = 1) {
 // Get hidden gems (high rating but lower vote count)
 export async function getHiddenGems(page = 1) {
   try {
-    const response = await api.get('/discover/movie', {
-      params: { 
-        page,
-        'vote_average.gte': 7.5,
-        'vote_count.gte': 100,
-        'vote_count.lte': 1000,
-        sort_by: 'vote_average.desc'
-      },
-    });
+    const response = await cachedTmdbGet(
+      '/discover/movie',
+      { page, 'vote_average.gte': 7.5, 'vote_count.gte': 100, 'vote_count.lte': 1000, sort_by: 'vote_average.desc' },
+      TMDB_CACHE_TTLS.discover
+    );
     return {
-      results: formatMovieList(response.data.results),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMovieList(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getHiddenGems error:', error.message);
@@ -950,19 +964,16 @@ export async function getHiddenGems(page = 1) {
 // Get award-winning movies (based on keywords)
 export async function getAwardWinners(page = 1) {
   try {
-    const response = await api.get('/discover/movie', {
-      params: { 
-        page,
-        'vote_average.gte': 7.5,
-        'vote_count.gte': 2000,
-        sort_by: 'vote_average.desc'
-      },
-    });
+    const response = await cachedTmdbGet(
+      '/discover/movie',
+      { page, 'vote_average.gte': 7.5, 'vote_count.gte': 2000, sort_by: 'vote_average.desc' },
+      TMDB_CACHE_TTLS.discover
+    );
     return {
-      results: formatMovieList(response.data.results),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMovieList(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getAwardWinners error:', error.message);
@@ -973,18 +984,16 @@ export async function getAwardWinners(page = 1) {
 // Get movies by original language
 export async function getMoviesByLanguage(language, page = 1) {
   try {
-    const response = await api.get('/discover/movie', {
-      params: { 
-        page,
-        with_original_language: language,
-        sort_by: 'popularity.desc'
-      },
-    });
+    const response = await cachedTmdbGet(
+      '/discover/movie',
+      { page, with_original_language: language, sort_by: 'popularity.desc' },
+      TMDB_CACHE_TTLS.discover
+    );
     return {
-      results: formatMovieList(response.data.results),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMovieList(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getMoviesByLanguage error:', error.message);
@@ -995,20 +1004,16 @@ export async function getMoviesByLanguage(language, page = 1) {
 // Get family-friendly movies
 export async function getFamilyMovies(page = 1) {
   try {
-    const response = await api.get('/discover/movie', {
-      params: { 
-        page,
-        with_genres: '10751,16', // Family and Animation
-        certification_country: 'US',
-        'certification.lte': 'PG-13',
-        sort_by: 'popularity.desc'
-      },
-    });
+    const response = await cachedTmdbGet(
+      '/discover/movie',
+      { page, with_genres: '10751,16', certification_country: 'US', 'certification.lte': 'PG-13', sort_by: 'popularity.desc' },
+      TMDB_CACHE_TTLS.discover
+    );
     return {
-      results: formatMovieList(response.data.results),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMovieList(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getFamilyMovies error:', error.message);
@@ -1019,18 +1024,16 @@ export async function getFamilyMovies(page = 1) {
 // Get documentaries
 export async function getDocumentaries(page = 1) {
   try {
-    const response = await api.get('/discover/movie', {
-      params: { 
-        page,
-        with_genres: 99, // Documentary genre ID
-        sort_by: 'popularity.desc'
-      },
-    });
+    const response = await cachedTmdbGet(
+      '/discover/movie',
+      { page, with_genres: 99, sort_by: 'popularity.desc' },
+      TMDB_CACHE_TTLS.discover
+    );
     return {
-      results: formatMovieList(response.data.results),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMovieList(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getDocumentaries error:', error.message);
@@ -1041,18 +1044,16 @@ export async function getDocumentaries(page = 1) {
 // Get movies released in a specific year
 export async function getMoviesByYear(year, page = 1) {
   try {
-    const response = await api.get('/discover/movie', {
-      params: { 
-        page,
-        primary_release_year: year,
-        sort_by: 'popularity.desc'
-      },
-    });
+    const response = await cachedTmdbGet(
+      '/discover/movie',
+      { page, primary_release_year: year, sort_by: 'popularity.desc' },
+      TMDB_CACHE_TTLS.discover
+    );
     return {
-      results: formatMovieList(response.data.results),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMovieList(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getMoviesByYear error:', error.message);
@@ -1063,8 +1064,8 @@ export async function getMoviesByYear(year, page = 1) {
 // Get TV genres
 export async function getTVGenres() {
   try {
-    const response = await api.get('/genre/tv/list');
-    return response.data.genres;
+    const response = await cachedTmdbGet('/genre/tv/list', {}, TMDB_CACHE_TTLS.genres);
+    return response.genres;
   } catch (error) {
     console.error('TMDB getTVGenres error:', error.message);
     throw new Error('Failed to fetch TV genres');
@@ -1074,14 +1075,16 @@ export async function getTVGenres() {
 // Get trending movies specifically
 export async function getTrendingMovies(timeWindow = 'week', page = 1) {
   try {
-    const response = await api.get(`/trending/movie/${timeWindow}`, {
-      params: { page },
-    });
+    const response = await cachedTmdbGet(
+      `/trending/movie/${timeWindow}`,
+      { page },
+      TMDB_CACHE_TTLS.trending
+    );
     return {
-      results: formatMovieList(response.data.results),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMovieList(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getTrendingMovies error:', error.message);
@@ -1092,14 +1095,16 @@ export async function getTrendingMovies(timeWindow = 'week', page = 1) {
 // Get trending TV shows specifically
 export async function getTrendingTV(timeWindow = 'week', page = 1) {
   try {
-    const response = await api.get(`/trending/tv/${timeWindow}`, {
-      params: { page },
-    });
+    const response = await cachedTmdbGet(
+      `/trending/tv/${timeWindow}`,
+      { page },
+      TMDB_CACHE_TTLS.trending
+    );
     return {
-      results: formatMediaList(response.data.results),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMediaList(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getTrendingTV error:', error.message);
@@ -1110,19 +1115,16 @@ export async function getTrendingTV(timeWindow = 'week', page = 1) {
 // Get movies with specific runtime (short movies under 90 min)
 export async function getShortMovies(page = 1) {
   try {
-    const response = await api.get('/discover/movie', {
-      params: { 
-        page,
-        'with_runtime.lte': 90,
-        'vote_average.gte': 6,
-        sort_by: 'popularity.desc'
-      },
-    });
+    const response = await cachedTmdbGet(
+      '/discover/movie',
+      { page, 'with_runtime.lte': 90, 'vote_average.gte': 6, sort_by: 'popularity.desc' },
+      TMDB_CACHE_TTLS.discover
+    );
     return {
-      results: formatMovieList(response.data.results),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMovieList(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getShortMovies error:', error.message);
@@ -1133,19 +1135,16 @@ export async function getShortMovies(page = 1) {
 // Get epic long movies (over 150 min)
 export async function getEpicMovies(page = 1) {
   try {
-    const response = await api.get('/discover/movie', {
-      params: { 
-        page,
-        'with_runtime.gte': 150,
-        'vote_average.gte': 7,
-        sort_by: 'popularity.desc'
-      },
-    });
+    const response = await cachedTmdbGet(
+      '/discover/movie',
+      { page, 'with_runtime.gte': 150, 'vote_average.gte': 7, sort_by: 'popularity.desc' },
+      TMDB_CACHE_TTLS.discover
+    );
     return {
-      results: formatMovieList(response.data.results),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMovieList(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getEpicMovies error:', error.message);
@@ -1158,20 +1157,22 @@ export async function getNewReleases(page = 1) {
   try {
     const today = new Date();
     const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-    
-    const response = await api.get('/discover/movie', {
-      params: { 
+
+    const response = await cachedTmdbGet(
+      '/discover/movie',
+      {
         page,
         'primary_release_date.gte': thirtyDaysAgo.toISOString().split('T')[0],
         'primary_release_date.lte': today.toISOString().split('T')[0],
         sort_by: 'popularity.desc'
       },
-    });
+      TMDB_CACHE_TTLS.trending
+    );
     return {
-      results: formatMovieList(response.data.results),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMovieList(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getNewReleases error:', error.message);
@@ -1182,19 +1183,16 @@ export async function getNewReleases(page = 1) {
 // Get movies with specific certification (R-rated, etc.)
 export async function getMoviesByCertification(certification, page = 1) {
   try {
-    const response = await api.get('/discover/movie', {
-      params: { 
-        page,
-        certification_country: 'US',
-        certification: certification,
-        sort_by: 'popularity.desc'
-      },
-    });
+    const response = await cachedTmdbGet(
+      '/discover/movie',
+      { page, certification_country: 'US', certification: certification, sort_by: 'popularity.desc' },
+      TMDB_CACHE_TTLS.discover
+    );
     return {
-      results: formatMovieList(response.data.results),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMovieList(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getMoviesByCertification error:', error.message);
@@ -1206,19 +1204,16 @@ export async function getMoviesByCertification(certification, page = 1) {
 export async function getLateNightMovies(page = 1) {
   try {
     const currentYear = new Date().getFullYear();
-    const response = await api.get('/discover/movie', {
-      params: { 
-        page,
-        with_genres: '27,53', // Horror, Thriller
-        'primary_release_date.gte': `${currentYear - 2}-01-01`,
-        sort_by: 'popularity.desc'
-      },
-    });
+    const response = await cachedTmdbGet(
+      '/discover/movie',
+      { page, with_genres: '27,53', 'primary_release_date.gte': `${currentYear - 2}-01-01`, sort_by: 'popularity.desc' },
+      TMDB_CACHE_TTLS.discover
+    );
     return {
-      results: formatMovieList(response.data.results),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMovieList(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getLateNightMovies error:', error.message);
@@ -1229,19 +1224,16 @@ export async function getLateNightMovies(page = 1) {
 // Get feel-good movies (Comedy, Romance with good ratings)
 export async function getFeelGoodMovies(page = 1) {
   try {
-    const response = await api.get('/discover/movie', {
-      params: { 
-        page,
-        with_genres: '35,10749', // Comedy, Romance
-        'vote_average.gte': 6.5,
-        sort_by: 'popularity.desc'
-      },
-    });
+    const response = await cachedTmdbGet(
+      '/discover/movie',
+      { page, with_genres: '35,10749', 'vote_average.gte': 6.5, sort_by: 'popularity.desc' },
+      TMDB_CACHE_TTLS.discover
+    );
     return {
-      results: formatMovieList(response.data.results),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMovieList(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getFeelGoodMovies error:', error.message);
@@ -1252,19 +1244,16 @@ export async function getFeelGoodMovies(page = 1) {
 // Get mind-bending movies (Sci-Fi, Mystery with high ratings)
 export async function getMindBendingMovies(page = 1) {
   try {
-    const response = await api.get('/discover/movie', {
-      params: { 
-        page,
-        with_genres: '878,9648', // Sci-Fi, Mystery
-        'vote_average.gte': 7,
-        sort_by: 'vote_average.desc'
-      },
-    });
+    const response = await cachedTmdbGet(
+      '/discover/movie',
+      { page, with_genres: '878,9648', 'vote_average.gte': 7, sort_by: 'vote_average.desc' },
+      TMDB_CACHE_TTLS.discover
+    );
     return {
-      results: formatMovieList(response.data.results),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMovieList(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getMindBendingMovies error:', error.message);
@@ -1275,19 +1264,16 @@ export async function getMindBendingMovies(page = 1) {
 // Get binge-worthy TV shows (highly rated with many episodes)
 export async function getBingeWorthyTV(page = 1) {
   try {
-    const response = await api.get('/discover/tv', {
-      params: { 
-        page,
-        'vote_average.gte': 7.5,
-        'vote_count.gte': 500,
-        sort_by: 'popularity.desc'
-      },
-    });
+    const response = await cachedTmdbGet(
+      '/discover/tv',
+      { page, 'vote_average.gte': 7.5, 'vote_count.gte': 500, sort_by: 'popularity.desc' },
+      TMDB_CACHE_TTLS.discover
+    );
     return {
-      results: formatMediaList(response.data.results),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMediaList(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getBingeWorthyTV error:', error.message);
@@ -1298,19 +1284,16 @@ export async function getBingeWorthyTV(page = 1) {
 // Get limited series (miniseries with 1 season)
 export async function getLimitedSeries(page = 1) {
   try {
-    const response = await api.get('/discover/tv', {
-      params: { 
-        page,
-        with_type: '2', // Miniseries type
-        'vote_average.gte': 7,
-        sort_by: 'popularity.desc'
-      },
-    });
+    const response = await cachedTmdbGet(
+      '/discover/tv',
+      { page, with_type: '2', 'vote_average.gte': 7, sort_by: 'popularity.desc' },
+      TMDB_CACHE_TTLS.discover
+    );
     return {
-      results: formatMediaList(response.data.results),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMediaList(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getLimitedSeries error:', error.message);
@@ -1321,19 +1304,16 @@ export async function getLimitedSeries(page = 1) {
 // Get anime movies and shows
 export async function getAnime(page = 1) {
   try {
-    const response = await api.get('/discover/movie', {
-      params: { 
-        page,
-        with_genres: 16, // Animation
-        with_original_language: 'ja', // Japanese
-        sort_by: 'popularity.desc'
-      },
-    });
+    const response = await cachedTmdbGet(
+      '/discover/movie',
+      { page, with_genres: 16, with_original_language: 'ja', sort_by: 'popularity.desc' },
+      TMDB_CACHE_TTLS.discover
+    );
     return {
-      results: formatMovieList(response.data.results),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMovieList(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getAnime error:', error.message);
@@ -1344,19 +1324,16 @@ export async function getAnime(page = 1) {
 // Get anime TV shows
 export async function getAnimeTV(page = 1) {
   try {
-    const response = await api.get('/discover/tv', {
-      params: { 
-        page,
-        with_genres: 16, // Animation
-        with_original_language: 'ja', // Japanese
-        sort_by: 'popularity.desc'
-      },
-    });
+    const response = await cachedTmdbGet(
+      '/discover/tv',
+      { page, with_genres: 16, with_original_language: 'ja', sort_by: 'popularity.desc' },
+      TMDB_CACHE_TTLS.discover
+    );
     return {
-      results: formatMediaList(response.data.results),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMediaList(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getAnimeTV error:', error.message);
@@ -1367,18 +1344,16 @@ export async function getAnimeTV(page = 1) {
 // Get reality TV shows
 export async function getRealityTV(page = 1) {
   try {
-    const response = await api.get('/discover/tv', {
-      params: { 
-        page,
-        with_genres: 10764, // Reality
-        sort_by: 'popularity.desc'
-      },
-    });
+    const response = await cachedTmdbGet(
+      '/discover/tv',
+      { page, with_genres: 10764, sort_by: 'popularity.desc' },
+      TMDB_CACHE_TTLS.discover
+    );
     return {
-      results: formatMediaList(response.data.results),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMediaList(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getRealityTV error:', error.message);
@@ -1389,19 +1364,16 @@ export async function getRealityTV(page = 1) {
 // Get crime dramas
 export async function getCrimeDramas(page = 1) {
   try {
-    const response = await api.get('/discover/tv', {
-      params: { 
-        page,
-        with_genres: '80,18', // Crime, Drama
-        'vote_average.gte': 7,
-        sort_by: 'popularity.desc'
-      },
-    });
+    const response = await cachedTmdbGet(
+      '/discover/tv',
+      { page, with_genres: '80,18', 'vote_average.gte': 7, sort_by: 'popularity.desc' },
+      TMDB_CACHE_TTLS.discover
+    );
     return {
-      results: formatMediaList(response.data.results),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMediaList(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getCrimeDramas error:', error.message);
@@ -1412,18 +1384,16 @@ export async function getCrimeDramas(page = 1) {
 // Get superhero content
 export async function getSuperheroContent(page = 1) {
   try {
-    const response = await api.get('/discover/movie', {
-      params: { 
-        page,
-        with_keywords: '9715', // Superhero keyword
-        sort_by: 'popularity.desc'
-      },
-    });
+    const response = await cachedTmdbGet(
+      '/discover/movie',
+      { page, with_keywords: '9715', sort_by: 'popularity.desc' },
+      TMDB_CACHE_TTLS.discover
+    );
     return {
-      results: formatMovieList(response.data.results),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMovieList(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getSuperheroContent error:', error.message);
@@ -1434,19 +1404,16 @@ export async function getSuperheroContent(page = 1) {
 // Get movies based on true stories
 export async function getBasedOnTrueStory(page = 1) {
   try {
-    const response = await api.get('/discover/movie', {
-      params: { 
-        page,
-        with_keywords: '9672', // Based on true story keyword
-        'vote_average.gte': 6.5,
-        sort_by: 'popularity.desc'
-      },
-    });
+    const response = await cachedTmdbGet(
+      '/discover/movie',
+      { page, with_keywords: '9672', 'vote_average.gte': 6.5, sort_by: 'popularity.desc' },
+      TMDB_CACHE_TTLS.discover
+    );
     return {
-      results: formatMovieList(response.data.results),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMovieList(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getBasedOnTrueStory error:', error.message);
@@ -1457,14 +1424,16 @@ export async function getBasedOnTrueStory(page = 1) {
 // Get trending movies in a specific region/country
 export async function getTrendingMoviesInRegion(region = 'US', page = 1) {
   try {
-    const response = await api.get('/trending/movie/day', {
-      params: { page, region },
-    });
+    const response = await cachedTmdbGet(
+      '/trending/movie/day',
+      { page, region },
+      TMDB_CACHE_TTLS.trending
+    );
     return {
-      results: formatMovieList(response.data.results).slice(0, 10),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMovieList(response.results).slice(0, 10),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getTrendingMoviesInRegion error:', error.message);
@@ -1475,14 +1444,16 @@ export async function getTrendingMoviesInRegion(region = 'US', page = 1) {
 // Get trending TV shows in a specific region/country
 export async function getTrendingTVInRegion(region = 'US', page = 1) {
   try {
-    const response = await api.get('/trending/tv/day', {
-      params: { page, region },
-    });
+    const response = await cachedTmdbGet(
+      '/trending/tv/day',
+      { page, region },
+      TMDB_CACHE_TTLS.trending
+    );
     return {
-      results: formatMediaList(response.data.results).slice(0, 10),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMediaList(response.results).slice(0, 10),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getTrendingTVInRegion error:', error.message);
@@ -1493,10 +1464,12 @@ export async function getTrendingTVInRegion(region = 'US', page = 1) {
 // Get TMDB recommendations for a specific movie
 export async function getMovieRecommendations(movieId, page = 1) {
   try {
-    const response = await api.get(`/movie/${movieId}/recommendations`, {
-      params: { page },
-    });
-    return formatMovieList(response.data.results);
+    const response = await cachedTmdbGet(
+      `/movie/${movieId}/recommendations`,
+      { page },
+      TMDB_CACHE_TTLS.list
+    );
+    return formatMovieList(response.results);
   } catch (error) {
     console.error('TMDB getMovieRecommendations error:', error.message);
     return [];
@@ -1506,10 +1479,12 @@ export async function getMovieRecommendations(movieId, page = 1) {
 // Get TMDB recommendations for a specific TV show
 export async function getTVRecommendations(tvId, page = 1) {
   try {
-    const response = await api.get(`/tv/${tvId}/recommendations`, {
-      params: { page },
-    });
-    return formatMediaList(response.data.results);
+    const response = await cachedTmdbGet(
+      `/tv/${tvId}/recommendations`,
+      { page },
+      TMDB_CACHE_TTLS.list
+    );
+    return formatMediaList(response.results);
   } catch (error) {
     console.error('TMDB getTVRecommendations error:', error.message);
     return [];
@@ -1519,18 +1494,16 @@ export async function getTVRecommendations(tvId, page = 1) {
 // Get movies from specific production companies (Netflix, Marvel, etc)
 export async function getMoviesByCompany(companyId, page = 1) {
   try {
-    const response = await api.get('/discover/movie', {
-      params: { 
-        page,
-        with_companies: companyId,
-        sort_by: 'popularity.desc'
-      },
-    });
+    const response = await cachedTmdbGet(
+      '/discover/movie',
+      { page, with_companies: companyId, sort_by: 'popularity.desc' },
+      TMDB_CACHE_TTLS.discover
+    );
     return {
-      results: formatMovieList(response.data.results),
-      page: response.data.page,
-      totalPages: response.data.total_pages,
-      totalResults: response.data.total_results,
+      results: formatMovieList(response.results),
+      page: response.page,
+      totalPages: response.total_pages,
+      totalResults: response.total_results,
     };
   } catch (error) {
     console.error('TMDB getMoviesByCompany error:', error.message);

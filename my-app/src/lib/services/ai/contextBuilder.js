@@ -12,22 +12,9 @@ import UserActivity from '@/lib/models/UserActivity';
 import { INTENTS } from './intentClassifier';
 import * as tmdbService from '@/lib/services/tmdb.service';
 import { retrieveRAGContext } from '@/lib/services/rag.service';
+import { buildCacheKey, remember } from '@/lib/utils/cache.js';
 
-// Cache for frequently accessed data
-const contextCache = new Map();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-function getCached(key) {
-  const cached = contextCache.get(key);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.data;
-  }
-  return null;
-}
-
-function setCache(key, data) {
-  contextCache.set(key, { data, timestamp: Date.now() });
-}
+const CONTEXT_CACHE_TTL = 5 * 60;
 
 /**
  * Build context based on classification and available user data
@@ -157,10 +144,17 @@ async function fetchDiscoveryContext(classification, userId) {
   const context = {};
 
   try {
-    // Get trending content
     const [trendingMovies, trendingTV] = await Promise.all([
-      tmdbService.getTrending('movie', 'week').catch(() => []),
-      tmdbService.getTrending('tv', 'week').catch(() => [])
+      remember(
+        buildCacheKey('ai-context', 'discovery', 'trending', 'movie', 'week'),
+        CONTEXT_CACHE_TTL,
+        () => tmdbService.getTrending('movie', 'week').catch(() => [])
+      ),
+      remember(
+        buildCacheKey('ai-context', 'discovery', 'trending', 'tv', 'week'),
+        CONTEXT_CACHE_TTL,
+        () => tmdbService.getTrending('tv', 'week').catch(() => [])
+      )
     ]);
 
     context.trendingMovies = formatMediaList(trendingMovies, 5);
@@ -174,11 +168,15 @@ async function fetchDiscoveryContext(classification, userId) {
       if (user?.favoriteGenres?.length > 0) {
         const genreIds = getGenreIds(user.favoriteGenres);
         if (genreIds) {
-          const recommended = await tmdbService.discoverMovies({
-            genres: genreIds,
-            sortBy: 'vote_average.desc',
-            minRating: '7'
-          }).catch(() => ({ results: [] }));
+          const recommended = await remember(
+            buildCacheKey('ai-context', 'discovery', 'genres', genreIds),
+            CONTEXT_CACHE_TTL,
+            () => tmdbService.discoverMovies({
+              genres: genreIds,
+              sortBy: 'vote_average.desc',
+              minRating: '7'
+            }).catch(() => ({ results: [] }))
+          );
 
           context.genreRecommendations = formatMediaList(recommended.results, 5);
         }
@@ -277,29 +275,26 @@ async function fetchCommunityContext(message) {
  * Fetch trending context
  */
 async function fetchTrendingContext() {
-  const cacheKey = 'trending_context';
-  const cached = getCached(cacheKey);
-  if (cached) return cached;
+  const cacheKey = buildCacheKey('ai-context', 'trending');
 
-  try {
-    const [movies, tv, posts] = await Promise.all([
-      tmdbService.getTrending('movie', 'day').catch(() => []),
-      tmdbService.getTrending('tv', 'day').catch(() => []),
-      fetchTrendingPosts()
-    ]);
+  return remember(cacheKey, CONTEXT_CACHE_TTL, async () => {
+    try {
+      const [movies, tv, posts] = await Promise.all([
+        tmdbService.getTrending('movie', 'day').catch(() => []),
+        tmdbService.getTrending('tv', 'day').catch(() => []),
+        fetchTrendingPosts()
+      ]);
 
-    const context = {
-      movies: formatMediaList(movies, 10),
-      tv: formatMediaList(tv, 10),
-      posts
-    };
-
-    setCache(cacheKey, context);
-    return context;
-  } catch (error) {
-    console.error('Error fetching trending context:', error);
-    return null;
-  }
+      return {
+        movies: formatMediaList(movies, 10),
+        tv: formatMediaList(tv, 10),
+        posts
+      };
+    } catch (error) {
+      console.error('Error fetching trending context:', error);
+      return null;
+    }
+  });
 }
 
 /**
