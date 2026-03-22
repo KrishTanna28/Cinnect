@@ -737,9 +737,6 @@ export default function Navigation() {
                   <Link href="/" className={`p-2 transition-all active:scale-90 cursor-pointer ${pathname === '/' ? 'text-primary' : 'text-foreground hover:text-primary'}`} title="Home">
                     <Home className="w-5 h-5" />
                   </Link>
-                  <Link href="/browse" className={`p-2 transition-all active:scale-90 cursor-pointer ${pathname === '/browse' ? 'text-primary' : 'text-foreground hover:text-primary'}`} title="Browse">
-                    <Compass className="w-5 h-5" />
-                  </Link>
                   <Link href="/communities" className={`p-2 transition-all active:scale-90 cursor-pointer ${pathname?.startsWith('/communities') ? 'text-primary' : 'text-foreground hover:text-primary'}`} title="Communities">
                     <Users className="w-5 h-5" />
                   </Link>
