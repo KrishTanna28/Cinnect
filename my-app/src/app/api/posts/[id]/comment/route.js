@@ -65,6 +65,27 @@ export const POST = withAuth(async (request, { user, params }) => {
     await post.populate('user', 'username avatar fullName')
     await post.populate('comments.user', 'username avatar fullName')
 
+    const addedComment = post.comments[post.comments.length - 1];
+    const addedCommentId = addedComment._id;
+
+    // Send notifications
+    try {
+      const { notifyNewReply } = await import('@/lib/services/notification.service.js')
+      await notifyNewReply({
+        actor: user,
+        ownerId: post.user,
+        url: post.community 
+          ? `/communities/${post.community._id || post.community}/post/${post._id}#${addedCommentId}`
+          : `/post/${post._id}#${addedCommentId}`,
+        mediaTitle: post.title,
+        isPost: true,
+        referenceId: post._id,
+        parentId: addedCommentId
+      })
+    } catch (notifErr) {
+      console.error('Failed to notify about post comment:', notifErr)
+    }
+
     const xpEvent = applyXpEvent(user, {
       action: 'comment_post',
       target: { content },

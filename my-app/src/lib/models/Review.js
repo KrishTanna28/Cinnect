@@ -37,7 +37,7 @@ const replySchema = new mongoose.Schema({
     type: Number,
     default: 0,
     min: 0,
-    max: 4
+    max: 5
   },
   mentionedUsers: [{
     userId: {
@@ -225,12 +225,15 @@ reviewSchema.virtual('replyCount').get(function() {
 });
 
 // Method to add a reply
-reviewSchema.methods.addReply = function(userId, content, spoiler = false, adult_content = false) {
+reviewSchema.methods.addReply = function(userId, content, spoiler = false, adult_content = false, parentReplyId = null, depth = 0, mentionedUsers = []) {
   this.replies.push({
     user: userId,
     content: content,
     spoiler: spoiler,
-    adult_content: adult_content
+    adult_content: adult_content,
+    parentReplyId: parentReplyId,
+    depth: depth,
+    mentionedUsers: mentionedUsers
   });
   return this.save();
 };

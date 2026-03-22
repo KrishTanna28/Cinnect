@@ -12,6 +12,7 @@ import { useUser } from "@/contexts/UserContext"
 import { getReviews, updateReview, createReview, likeReview, dislikeReview, addReply, likeReply, dislikeReply, deleteReview, } from "@/lib/reviews"
 import { getMovieDetails, getTVDetails } from "@/lib/movies"
 import { ReviewsPageSkeleton, InlineLoadingSkeleton } from "@/components/skeletons"
+import { MentionText } from "@/components/mention-text"
 
 export default function ReviewsPage({ params }) {
   const unwrappedParams = use(params)
@@ -43,6 +44,7 @@ export default function ReviewsPage({ params }) {
   const [replyContent, setReplyContent] = useState('')
   const [replySpoiler, setReplySpoiler] = useState(false)
   const [showReplies, setShowReplies] = useState(new Set())
+  const [collapsedReplies, setCollapsedReplies] = useState(new Set())
   const [mentionUser, setMentionUser] = useState(null)
   const [revealedSpoilers, setRevealedSpoilers] = useState(new Set())
 
@@ -413,7 +415,7 @@ export default function ReviewsPage({ params }) {
   }
 
   // Submit reply
-  const handleSubmitReply = async (reviewId) => {
+  const handleSubmitReply = async (reviewId, parentReplyId = null) => {
     if (!user) {
       router.push('/login')
       return
@@ -453,6 +455,8 @@ export default function ReviewsPage({ params }) {
       },
       content: replyContent,
       spoiler: finalSpoiler,
+      parentReplyId: parentReplyId,
+      depth: parentReplyId ? 1 : 0, // This is just for optimistic UI, server will set real depth
       likes: [],
       dislikes: [],
       createdAt: new Date().toISOString()
@@ -461,6 +465,13 @@ export default function ReviewsPage({ params }) {
     // Optimistic update - add reply immediately
     setReviews(prev => prev.map(r => {
       if (r._id === reviewId) {
+        // If it's a nested reply, find the parent to get correct depth
+        if (parentReplyId) {
+          const parentObj = r.replies?.find(rp => rp._id === parentReplyId);
+          if (parentObj) {
+             tempReply.depth = (parentObj.depth || 0) + 1;
+          }
+        }
         return {
           ...r,
           replies: [...(r.replies || []), tempReply],
@@ -482,7 +493,7 @@ export default function ReviewsPage({ params }) {
     setShowReplies(newShowReplies)
 
     try {
-      const data = await addReply(reviewId, contentToSend, spoilerToSend)
+      const data = await addReply(reviewId, contentToSend, spoilerToSend, parentReplyId)
 
       if (data.success) {
         // Replace temp reply with actual data from server
@@ -737,6 +748,288 @@ export default function ReviewsPage({ params }) {
     setReviewForm({ rating: 5, title: '', content: '', spoiler: false })
     setShowWriteReview(false)
   }
+
+  const toggleCollapse = (replyId) => {
+    setCollapsedReplies(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(replyId)) {
+        newSet.delete(replyId);
+      } else {
+        newSet.add(replyId);
+      }
+      return newSet;
+    });
+  };
+
+  const buildReplyTree = (replies) => {
+    if (!replies) return [];
+    const map = new Map();
+    const roots = [];
+    
+    replies.forEach(r => {
+      map.set(r._id, { ...r, children: [] });
+    });
+
+    replies.forEach(r => {
+      if (r.parentReplyId && map.has(r.parentReplyId)) {
+        map.get(r.parentReplyId).children.push(map.get(r._id));
+      } else {
+        roots.push(map.get(r._id));
+      }
+    });
+    
+    return roots;
+  };
+
+  const renderReplyNode = (replyNode, reviewId) => {
+    const isOwnReply = user && replyNode.user?._id === user?._id;
+    const replySpoilerRevealed = revealedSpoilers.has(replyNode._id);
+    const shouldBlurReply = replyNode.spoiler && !replySpoilerRevealed && !isOwnReply;
+    const isCollapsed = collapsedReplies.has(replyNode._id);
+    const depth = replyNode.depth || 0;
+
+    return (
+      <div key={replyNode._id} className={`mt-3 flex gap-2 sm:gap-3 ${depth > 0 ? "pl-4 border-l-2 border-border/50" : ""}`}>
+        <div 
+          className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0 cursor-pointer"
+          onClick={() => toggleCollapse(replyNode._id)}
+        >
+          {replyNode.user?.avatar ? (
+            <img src={replyNode.user.avatar} alt={replyNode.user.username} className="w-full h-full rounded-full object-cover" />
+          ) : (
+            <span className="text-sm font-bold text-foreground">
+              {replyNode.user?.username?.[0]?.toUpperCase() || '?'}
+            </span>
+          )}
+        </div>
+
+        <div className="flex-1 w-full overflow-hidden">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
+            <span 
+              className="font-semibold text-sm text-foreground cursor-pointer"
+              onClick={() => toggleCollapse(replyNode._id)}
+            >
+              {replyNode.user?.username || 'Unknown'}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {new Date(replyNode.createdAt).toLocaleDateString()}
+            </span>
+            
+            {isCollapsed && replyNode.children?.length > 0 && (
+              <span className="text-[10px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded-full cursor-pointer" onClick={() => toggleCollapse(replyNode._id)}>
+                +{replyNode.children.length} replies
+              </span>
+            )}
+
+            {replyNode.spoiler && (
+              isOwnReply ? (
+                <span className="px-1.5 py-0.5 bg-destructive/20 text-destructive rounded text-xs font-semibold flex items-center gap-1">
+                  <AlertTriangle className="w-2.5 h-2.5" />
+                  SPOILER
+                </span>
+              ) : (
+                <button
+                  onClick={() => {
+                     const newRevealed = new Set(revealedSpoilers);
+                     if (newRevealed.has(replyNode._id)) {
+                       newRevealed.delete(replyNode._id);
+                     } else {
+                       newRevealed.add(replyNode._id);
+                     }
+                     setRevealedSpoilers(newRevealed);
+                  }}
+                  className={`max-w-full px-1.5 py-0.5 rounded text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors whitespace-normal break-words text-left leading-tight ${
+                    replySpoilerRevealed
+                      ? "bg-destructive/10 text-destructive hover:bg-destructive/20"
+                      : "bg-destructive/20 text-destructive hover:bg-destructive/30"
+                  }`}
+                  title={replySpoilerRevealed ? "Hide spoiler" : "Contains spoilers"}
+                >
+                  {replySpoilerRevealed ? <EyeOff className="w-2.5 h-2.5" /> : <AlertTriangle className="w-2.5 h-2.5" />}
+                  SPOILER {replySpoilerRevealed && <span className="opacity-70">(Revealed)</span>}
+                </button>
+              )
+            )}
+          </div>
+
+          {!isCollapsed && (
+            <div className="flex flex-col gap-2">
+              <div className="relative">
+                <p className={`text-sm text-foreground mb-1 transition-all break-words ${shouldBlurReply ? 'blur-md select-none' : ''}`}>
+                  <MentionText text={replyNode.content} />
+                </p>
+                {shouldBlurReply && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <button
+                      onClick={() => {
+                        const newRevealed = new Set(revealedSpoilers);
+                        newRevealed.add(replyNode._id);
+                        setRevealedSpoilers(newRevealed);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive/90 hover:bg-destructive text-white rounded-lg text-xs font-semibold transition-colors shadow-lg cursor-pointer"
+                    >
+                      Reveal Spoiler
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 mt-1">
+                <button
+                  onClick={() => handleLikeReply(reviewId, replyNode._id)}
+                  className={`flex items-center gap-1 text-xs transition-all active:scale-95 cursor-pointer ${replyNode.likes?.some(id => id?.toString() === user?._id)
+                    ? 'text-primary'
+                    : 'text-muted-foreground hover:text-primary'
+                    }`}
+                >
+                  <ThumbsUp
+                    className={`w-3 h-3 transition-all ${replyNode.likes?.some(id => id?.toString() === user?._id)
+                      ? 'fill-current text-primary'
+                      : 'fill-none'
+                      }`}
+                  />
+                  {replyNode.likes?.length || 0}
+                </button>
+
+                <button
+                  onClick={() => handleDislikeReply(reviewId, replyNode._id)}
+                  className={`flex items-center gap-1 text-xs transition-all active:scale-95 cursor-pointer ${replyNode.dislikes?.some(id => id?.toString() === user?._id)
+                    ? 'text-destructive'
+                    : 'text-muted-foreground hover:text-destructive'
+                    }`}
+                >
+                  <ThumbsDown
+                    className={`w-3 h-3 transition-all ${replyNode.dislikes?.some(id => id?.toString() === user?._id)
+                      ? 'fill-current text-destructive'
+                      : 'fill-none'
+                      }`}
+                  />
+                  {replyNode.dislikes?.length || 0}
+                </button>
+
+                {user && depth < 5 && (
+                  <button
+                    onClick={() => {
+                      if (replyingTo === replyNode._id) {
+                         setReplyingTo(null);
+                         setMentionUser(null);
+                         setReplyContent('');
+                      } else {
+                         setReplyingTo(replyNode._id);
+                         setMentionUser(replyNode.user?.username);
+                         setReplyContent(`@${replyNode.user?.username} `);
+                      }
+                    }}
+                    className="text-xs text-muted-foreground hover:text-primary transition-all active:scale-95 cursor-pointer"
+                  >
+                    Reply
+                  </button>
+                )}
+              </div>
+
+              {replyingTo === replyNode._id && (
+                <div className="mt-2 pl-2 border-l-2 border-primary/20">
+                  {mentionUser && (
+                    <div className="mb-2 text-xs text-muted-foreground flex items-center">
+                      Replying to <span className="text-primary font-semibold ml-1">@{mentionUser}</span>
+                      <button
+                        onClick={() => {
+                          setReplyContent(prev => prev.replace(`@${mentionUser} `, '').replace(`@${mentionUser}`, ''))
+                          setMentionUser(null)
+                        }}
+                        className="ml-2 text-destructive hover:underline"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <Textarea
+                      autoFocus
+                      onFocus={(e) => {
+                        const val = e.currentTarget.value;
+                        e.currentTarget.value = '';
+                        e.currentTarget.value = val;
+                      }}
+                      placeholder={mentionUser ? `Reply to @${mentionUser}...` : "Write a reply..."}
+                      value={replyContent}
+                      onChange={(e) => setReplyContent(e.target.value)}
+                      rows={2}
+                      className="flex-1 text-sm min-h-[60px]"
+                      style={{ borderColor: 'var(--border)' }}
+                    />
+                    <div className="flex flex-col items-center gap-2">
+                      <Button
+                        onClick={() => handleSubmitReply(reviewId, replyNode._id)}
+                        size="sm"
+                        disabled={!replyContent.trim()}
+                      >
+                        <Send className="w-4 h-4" />
+                      </Button>
+                      <button 
+                         className="text-xs text-destructive hover:underline"
+                         onClick={() => {
+                           setReplyingTo(null);
+                           setMentionUser(null);
+                           setReplyContent('');
+                         }}
+                      >Cancel</button>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <input
+                      type="checkbox"
+                      id={`reply-spoiler-${replyNode._id}`}
+                      checked={replySpoiler}
+                      onChange={(e) => setReplySpoiler(e.target.checked)}
+                      className="w-3.5 h-3.5"
+                    />
+                    <label htmlFor={`reply-spoiler-${replyNode._id}`} className="text-xs text-muted-foreground cursor-pointer">
+                      Contains Spoilers
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {replyNode.children && replyNode.children.length > 0 && (
+                <div className="mt-2">
+                  {replyNode.children.map(child => renderReplyNode(child, reviewId))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Edit/Delete Buttons for replies (only for own replies) */}
+        {isOwnReply && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="cursor-pointer p-1 transition-all active:scale-90 hover:text-primary mb-auto">
+                <MoreVertical className="w-3.5 h-3.5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => {
+                  // TODO: Implement edit reply
+                  console.log('Edit reply:', replyNode._id)
+                }}
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                Edit Reply
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setDeleteConfirmation({ type: 'reply', id: replyNode._id, reviewId: reviewId })}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete Reply
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+    );
+  };
 
   if (loading) {
     return <ReviewsPageSkeleton />
@@ -1021,7 +1314,7 @@ export default function ReviewsPage({ params }) {
                       <h3 className={`text-lg font-bold text-foreground mb-2 transition-all ${review.spoiler && !isSpoilerRevealed && review.user?._id !== user._id ? 'blur-md select-none' : ''
                         }`}>{review.title}</h3>
                       <p className={`text-foreground whitespace-pre-wrap transition-all ${review.spoiler && !isSpoilerRevealed && review.user?._id !== user._id ? 'blur-md select-none' : ''
-                        }`}>{review.content}</p>
+                        }`}><MentionText text={review.content} /></p>
 
                       {/* Spoiler Reveal Button */}
                       {review.spoiler && !isSpoilerRevealed && review.user?._id !== user?._id && (
@@ -1117,7 +1410,17 @@ export default function ReviewsPage({ params }) {
 
                     {user && (
                       <button
-                        onClick={() => setReplyingTo(replyingTo === review._id ? null : review._id)}
+                        onClick={() => {
+                          if (replyingTo === review._id) {
+                            setReplyingTo(null);
+                            setMentionUser(null);
+                            setReplyContent('');
+                          } else {
+                            setReplyingTo(review._id);
+                            setMentionUser(review.user?.username);
+                            setReplyContent(`@${review.user?.username} `);
+                          }
+                        }}
                         className="w-5 h-5 rounded-full border border-muted-foreground flex items-center justify-center text-muted-foreground hover:border-primary hover:text-primary transition-all active:scale-90 cursor-pointer"
                         title={replyingTo === review._id ? 'Cancel Reply' : 'Write Reply'}
                       >
@@ -1139,8 +1442,8 @@ export default function ReviewsPage({ params }) {
                         Replying to <span className="text-primary font-semibold">@{mentionUser}</span>
                         <button
                           onClick={() => {
+                            setReplyContent(prev => prev.replace(`@${mentionUser} `, '').replace(`@${mentionUser}`, ''))
                             setMentionUser(null)
-                            setReplyContent('')
                           }}
                           className="ml-2 text-destructive hover:underline"
                         >
@@ -1150,6 +1453,12 @@ export default function ReviewsPage({ params }) {
                     )}
                     <div className="flex gap-2">
                       <Textarea
+                        autoFocus
+                        onFocus={(e) => {
+                          const val = e.currentTarget.value;
+                          e.currentTarget.value = '';
+                          e.currentTarget.value = val;
+                        }}
                         placeholder={mentionUser ? `Reply to @${mentionUser}...` : "Write a reply..."}
                         value={replyContent}
                         onChange={(e) => setReplyContent(e.target.value)}
@@ -1184,150 +1493,8 @@ export default function ReviewsPage({ params }) {
 
                 {/* Replies */}
                 {review.replies && review.replies.length > 0 && showReplies.has(review._id) && (
-                  <div className="mt-4 pl-0 sm:pl-16 space-y-4">
-                    {review.replies.map((reply) => {
-                      const isOwnReply = user && reply.user?._id === user._id
-                      const replySpoilerRevealed = revealedSpoilers.has(reply._id)
-                      const shouldBlurReply = reply.spoiler && !replySpoilerRevealed && !isOwnReply
-
-                      return (
-                      <div key={reply._id} className="flex gap-2 sm:gap-3">
-                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
-                          {reply.user?.avatar ? (
-                            <img src={reply.user.avatar} alt={reply.user.username} className="w-full h-full rounded-full object-cover" />
-                          ) : (
-                            <span className="text-sm font-bold text-foreground">
-                              {reply.user?.username?.[0]?.toUpperCase()}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex-1">
-                          <div className="flex flex-wrap items-start sm:items-center gap-2 mb-1">
-                            <span className="font-semibold text-sm text-foreground">{reply.user?.username}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(reply.createdAt).toLocaleDateString()}
-                            </span>
-                            {reply.spoiler && (
-                                  isOwnReply ? (
-                                    <span className="px-1.5 py-0.5 bg-destructive/20 text-destructive rounded text-xs font-semibold flex items-center gap-1">
-                                      <AlertTriangle className="w-2.5 h-2.5" />
-                                      SPOILER
-                                    </span>
-                                  ) : (
-                                    <button
-                                      onClick={() => {
-                                        const newRevealed = new Set(revealedSpoilers);
-                                        if (newRevealed.has(reply._id)) {
-                                          newRevealed.delete(reply._id);
-                                        } else {
-                                          newRevealed.add(reply._id);
-                                        }
-                                        setRevealedSpoilers(newRevealed);
-                                      }}
-                                      className={`max-w-full px-1.5 py-0.5 rounded text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors whitespace-normal break-words text-left leading-tight ${
-                                        replySpoilerRevealed
-                                          ? "bg-destructive/10 text-destructive hover:bg-destructive/20"
-                                          : "bg-destructive/20 text-destructive hover:bg-destructive/30"
-                                      }`}
-                                      title={replySpoilerRevealed ? "Hide spoiler" : "Contains spoilers"}
-                                    >
-                                      {replySpoilerRevealed ? <EyeOff className="w-2.5 h-2.5" /> : <AlertTriangle className="w-2.5 h-2.5" />}
-                                      SPOILER {replySpoilerRevealed && <span className="opacity-70">(Revealed)</span>}
-                                    </button>
-                                  )
-                                )}
-                          </div>
-                          <div className="relative">
-                            <p className={`text-sm text-foreground transition-all ${shouldBlurReply ? 'blur-md select-none' : ''}`}>{reply.content}</p>
-                            {shouldBlurReply && (
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <button
-                                  onClick={() => {
-                                    const newRevealed = new Set(revealedSpoilers)
-                                    newRevealed.add(reply._id)
-                                    setRevealedSpoilers(newRevealed)
-                                  }}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive/90 hover:bg-destructive text-white rounded-lg text-xs font-semibold transition-colors shadow-lg cursor-pointer"
-                                >
-                                  Reveal Spoiler
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-3 mt-2">
-                            <button
-                              onClick={() => handleLikeReply(review._id, reply._id)}
-                              className={`flex items-center gap-1 text-xs transition-all active:scale-95 cursor-pointer ${reply.likes?.some(id => id && user?._id && id?.toString() === user._id?.toString())
-                                ? 'text-primary'
-                                : 'text-muted-foreground hover:text-primary'
-                                }`}
-                            >
-                              <ThumbsUp
-                                className={`w-3 h-3 transition-all ${reply.likes?.some(id => id && user?._id && id?.toString() === user._id?.toString())
-                                  ? 'fill-current text-primary'
-                                  : 'fill-none'
-                                  }`}
-                              />
-                              {reply.likes?.length || 0}
-                            </button>
-                            <button
-                              onClick={() => handleDislikeReply(review._id, reply._id)}
-                              className={`flex items-center gap-1 text-xs transition-all active:scale-95 cursor-pointer ${reply.dislikes?.some(id => id && user?._id && id?.toString() === user._id?.toString())
-                                ? 'text-destructive'
-                                : 'text-muted-foreground hover:text-destructive'
-                                }`}
-                            >
-                              <ThumbsDown
-                                className={`w-3 h-3 transition-all ${reply.dislikes?.some(id => id && user?._id && id?.toString() === user._id?.toString())
-                                  ? 'fill-current text-destructive'
-                                  : 'fill-none'
-                                  }`}
-                              />
-                              {reply.dislikes?.length || 0}
-                            </button>
-                            <button
-                              onClick={() => {
-                                setReplyingTo(review._id)
-                                setMentionUser(reply.user?.username)
-                                setReplyContent(`@${reply.user?.username} `)
-                              }}
-                              className="text-xs text-muted-foreground hover:text-primary transition-all active:scale-95 cursor-pointer"
-                            >
-                              Reply
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Edit/Delete Buttons for replies (only for own replies) */}
-                        {user && reply.user?._id === user._id && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <button className="cursor-pointer p-1 transition-all active:scale-90 hover:text-primary">
-                                <MoreVertical className="w-3.5 h-3.5" />
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  // TODO: Implement edit reply
-                                  console.log('Edit reply:', reply._id)
-                                }}
-                              >
-                                <Pencil className="w-3.5 h-3.5" />
-                                Edit Reply
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => setDeleteConfirmation({ type: 'reply', id: reply._id, reviewId: review._id })}
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                                Delete Reply
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                      </div>
-                    )})}
+                  <div className="mt-4 pl-0 sm:pl-16 space-y-0">
+                    {buildReplyTree(review.replies).map(rootReply => renderReplyNode(rootReply, review._id))}
                   </div>
                 )}
               </div>

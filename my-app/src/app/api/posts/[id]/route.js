@@ -121,6 +121,21 @@ export const POST = withAuth(async (request, { user, params }) => {
         post.likes.splice(likeIndex, 1)
       } else {
         post.likes.push(user._id)
+        
+        // Notify owner about the like
+        try {
+          const { notifyNewLike } = await import('@/lib/services/notification.service.js')
+          await notifyNewLike({
+            actor: user,
+            ownerId: post.user,
+            url: `/communities/${post.community}/post/${post._id}`, // Assuming community URL structure
+            mediaTitle: post.title || 'post',
+            isPost: true,
+            referenceId: post._id
+          })
+        } catch (err) {
+          console.error('Failed to notify about post like:', err)
+        }
       }
     } else if (action === 'dislike') {
       // Remove from likes if present

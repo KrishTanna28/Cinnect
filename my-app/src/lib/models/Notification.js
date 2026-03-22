@@ -62,6 +62,18 @@ const notificationSchema = new mongoose.Schema({
     default: ''
   },
 
+  // Reference to the main content (Post ID, Review ID, etc) for routing
+  referenceId: {
+    type: mongoose.Schema.Types.ObjectId,
+    index: true
+  },
+
+  // Reference to a nested reply/comment (if applicable) for hash routing
+  parentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    index: true
+  },
+
   // External link to YouTube video or news article
   externalLink: {
     type: String,

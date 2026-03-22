@@ -137,12 +137,20 @@ export default function SeasonDetailsPage({ params }) {
               </div>
             </div>
 
-            {/* Overview */}
             {season.overview && (
-              <p className="text-base sm:text-lg text-muted-foreground mb-8 leading-relaxed">{season.overview}</p>
-            )}
+  <p className="hidden md:block text-base sm:text-lg text-muted-foreground mb-8 leading-relaxed">
+    {season.overview}
+  </p>
+)}
           </div>
         </div>
+        <div className="md:hidden mb-8">
+  {season.overview && (
+    <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
+      {season.overview}
+    </p>
+  )}
+</div>
 
         {/* Episodes List */}
         {season.episodes && season.episodes.length > 0 && (

@@ -60,22 +60,15 @@ try {
     // Send notification if this is a new like (not an unlike) and not self-like
     if (!wasAlreadyLiked && review.user.toString() !== user._id.toString()) {
       try {
-        // Check recipient's notification preferences
-        const recipient = await User.findById(review.user).select('preferences').lean()
-        const pushEnabled = recipient?.preferences?.notifications?.push !== false
-
-        if (pushEnabled) {
-          const notif = await Notification.create({
-            recipient: review.user,
-            type: 'review_like',
-            fromUser: user._id,
-            title: 'Review Liked',
-            message: `${user.fullName || user.username} liked your review of "${review.mediaTitle}".`,
-            image: user.avatar || '',
-            link: `/reviews/${review.mediaType}/${review.mediaId}`
-          })
-          emitNotification(review.user, notif.toObject())
-        }
+        const { notifyNewLike } = await import('@/lib/services/notification.service.js')
+        await notifyNewLike({
+          actor: user,
+          ownerId: review.user,
+          url: `/reviews/${review.mediaType}/${review.mediaId}`,
+          mediaTitle: review.mediaTitle,
+          isPost: false,
+          referenceId: review._id
+        })
       } catch (notifErr) {
         console.error('Failed to create like notification:', notifErr)
       }

@@ -98,13 +98,19 @@ export const POST = withAuth(async (request, { user, params }) => {
       const community = await Community.findById(post.community)
 
       // 1. Notify comment author (if replying directly to comment, not a nested reply)
+      const addedReplyId = comment.replies[comment.replies.length - 1]._id;
+      const baseLink = `/communities/${community.slug}/posts/${post._id}#${addedReplyId}`;
+
       if (!parentReplyId && comment.user.toString() !== user._id.toString()) {
         notificationsToSend.push({
           recipient: comment.user,
           type: 'comment_reply',
           title: 'New Reply',
           message: `${user.username} replied to your comment`,
-          link: `/communities/${community.slug}/posts/${post._id}`
+          link: baseLink,
+          referenceId: post._id,
+          parentId: addedReplyId,
+          fromUser: user._id
         })
       }
 
@@ -115,7 +121,10 @@ export const POST = withAuth(async (request, { user, params }) => {
           type: 'reply_to_reply',
           title: 'New Reply',
           message: `${user.username} replied to your reply`,
-          link: `/communities/${community.slug}/posts/${post._id}`
+          link: baseLink,
+          referenceId: post._id,
+          parentId: addedReplyId,
+          fromUser: user._id
         })
       }
 
@@ -127,7 +136,10 @@ export const POST = withAuth(async (request, { user, params }) => {
             type: 'mention',
             title: 'You were mentioned',
             message: `${user.username} mentioned you in a reply`,
-            link: `/communities/${community.slug}/posts/${post._id}`
+            link: baseLink,
+            referenceId: post._id,
+            parentId: addedReplyId,
+            fromUser: user._id
           })
         }
       }

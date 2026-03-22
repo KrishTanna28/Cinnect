@@ -856,9 +856,6 @@ export default function PublicProfilePage({ params }) {
                           <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
                             <span><ThumbsUp className="w-3.5 h-3.5 inline mr-1" />{review.likeCount || 0} likes</span>
                             <span><MessageCircle className="w-3.5 h-3.5 inline mr-1" />{review.replyCount || 0} replies</span>
-                            {typeof review?.gamification?.qualityScore === "number" && (
-                              <span>High Quality Review {Math.round(review.gamification.qualityScore * 100)}%</span>
-                            )}
                             {review.hasSpoilers && <span className="text-red-500"><AlertTriangle className="w-3.5 h-3.5 inline mr-1" />Contains spoilers</span>}
                           </div>
                         </div>

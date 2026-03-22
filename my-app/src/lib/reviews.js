@@ -158,11 +158,16 @@ export async function dislikeReview(reviewId) {
   }
 }
 
-export async function addReply(reviewId, content, spoiler = false) {
+export async function addReply(reviewId, content, spoiler = false, parentReplyId = null) {
   try {
     const token = localStorage.getItem('token')
     if (!token) {
       throw new Error('Please login to add a reply')
+    }
+
+    const payload = { content, spoiler }
+    if (parentReplyId) {
+      payload.parentReplyId = parentReplyId
     }
 
     const response = await fetch(`${API_BASE_URL}/reviews/${reviewId}/reply`, {
@@ -171,7 +176,7 @@ export async function addReply(reviewId, content, spoiler = false) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ content, spoiler })
+      body: JSON.stringify(payload)
     })
     const data = await response.json()
     

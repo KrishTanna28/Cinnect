@@ -15,7 +15,7 @@ export const POST = withAuth(async (request, { user, params }) => {
 try {
     const { reviewId } = await params
     const body = await request.json()
-    const { content, spoiler } = body
+    const { content, spoiler, parentReplyId: requestedParentId } = body
 
     if (!content || content.trim().length === 0) {
       return NextResponse.json(
@@ -52,8 +52,32 @@ try {
       }
     }
 
+    let parentReplyId = requestedParentId || null;
+    let depth = 0;
+    
+    if (parentReplyId) {
+      const parentReply = review.replies.id(parentReplyId);
+      if (parentReply) {
+        depth = Math.min((parentReply.depth || 0) + 1, 5);
+      } else {
+        parentReplyId = null;
+      }
+    }
+
+    const mentionedUsers = [];
+    const mentionRegex = /@([a-zA-Z0-9_-]+)/g;
+    const mentions = [...content.matchAll(mentionRegex)].map(m => m[1]);
+    const uniqueMentions = [...new Set(mentions)];
+    
+    if (uniqueMentions.length > 0) {
+      const users = await User.find({ username: { $in: uniqueMentions } }).select('_id username').lean();
+      users.forEach(u => {
+        mentionedUsers.push({ userId: u._id, username: u.username });
+      });
+    }
+
     // Add reply using model method
-    await review.addReply(user._id, content, finalSpoiler)
+    await review.addReply(user._id, content, finalSpoiler, false, parentReplyId, depth, mentionedUsers)
 
     // Run adult content text moderation on the reply (non-blocking)
     try {
@@ -84,36 +108,45 @@ try {
 
     await user.save()
 
-    // Send notification to review author (if not self-reply)
-    if (review.user.toString() !== user._id.toString()) {
-      try {
-        const recipient = await User.findById(review.user).select('preferences').lean()
-        const pushEnabled = recipient?.preferences?.notifications?.push !== false
+    const addedReplyId = review.replies[review.replies.length - 1]?._id;
 
-        if (pushEnabled) {
-          const notif = await Notification.create({
-            recipient: review.user,
-            type: 'review_reply',
-            fromUser: user._id,
-            title: 'New Reply',
-            message: `${user.fullName || user.username} replied to your review of "${review.mediaTitle}".`,
-            image: user.avatar || '',
-            link: `/reviews/${review.mediaType}/${review.mediaId}`
-          })
-          emitNotification(review.user, notif.toObject())
+    // Send notification to review author (if not self-reply)
+    try {
+      const { notifyNewReply } = await import('@/lib/services/notification.service.js')
+      
+      let parentReplyOwnerId = null;
+      if (parentReplyId) {
+        const parentReply = review.replies.id(parentReplyId);
+        if (parentReply) {
+          parentReplyOwnerId = parentReply.user;
         }
-      } catch (notifErr) {
-        console.error('Failed to create reply notification:', notifErr)
       }
+
+      await notifyNewReply({
+        actor: user,
+        ownerId: review.user,
+        parentReplyOwnerId,
+        mentionedUsers,
+        url: `/reviews/${review.mediaType}/${review.mediaId}#${addedReplyId}`,
+        mediaTitle: review.mediaTitle,
+        isPost: false,
+        referenceId: review._id,
+        parentId: addedReplyId
+      })
+    } catch (notifErr) {
+      console.error('Failed to create reply notification:', notifErr)
     }
 
     // Populate the review with user data
     await review.populate('replies.user', 'username avatar fullName')
+    await review.populate('replies.mentionedUsers.userId', 'username avatar fullName')
+
+    const addedReply = review.replies[review.replies.length - 1];
 
     return NextResponse.json({
       success: true,
       message: 'Reply added successfully',
-      data: review,
+      data: addedReply,
       gamification: {
         xpEvent,
         progression: getProgressionSnapshot(user)

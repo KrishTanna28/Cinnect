@@ -6,12 +6,14 @@ import { useUser } from "@/contexts/UserContext"
 import { useSocket } from "@/contexts/SocketContext"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 // Entertainment notification types that can link externally
 const ENTERTAINMENT_TYPES = new Set(["trailer", "news", "announcement", "casting_update", "interview"])
 
 export default function NotificationBell() {
   const { user } = useUser()
+  const router = useRouter()
   const { on } = useSocket() || {}
   const { toast } = useToast()
   const [open, setOpen] = useState(false)
@@ -122,8 +124,61 @@ export default function NotificationBell() {
     setOpen(next)
     if (next) {
       fetchNotifications()
-      if (unreadCount > 0) {
-        markAllRead()
+    }
+  }
+
+  // Handle clicking a generic notification (mark Read + redirect via referenceId)
+  const handleNotificationClick = async (notif, e) => {
+    if (e && e.preventDefault) e.preventDefault()
+
+    // 1. Mark as read
+    if (!notif.read) {
+      const token = localStorage.getItem("token")
+      if (token) {
+        setNotifications((prev) =>
+          prev.map((n) => (n._id === notif._id ? { ...n, read: true } : n))
+        )
+        setUnreadCount((prev) => Math.max(0, prev - 1))
+
+        fetch("/api/notifications", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ notificationIds: [notif._id] })
+        }).catch((err) => console.error("Failed to mark notification as read:", err))
+      }
+    }
+
+    setOpen(false)
+
+    // 2. Redirect
+    const isEntertainment = ENTERTAINMENT_TYPES.has(notif.type)
+    const isExternal = isEntertainment && notif.externalLink
+    let targetLink = isEntertainment && notif.externalLink ? notif.externalLink : notif.link
+
+    // Fix backend link typos if returning /post/ instead of /posts/
+    if (targetLink && targetLink.includes('/post/')) {
+       targetLink = targetLink.replace('/post/', '/posts/')
+    }
+
+    // Fallback referencing
+    if (!targetLink && notif.referenceId) {
+      if (['post_like', 'post_comment', 'comment_reply', 'reply_to_reply', 'mention'].includes(notif.type)) {
+         const slug = notif.community?.slug || 'unknown'
+         targetLink = `/communities/${slug}/posts/${notif.referenceId}`
+         if (notif.parentId) {
+            targetLink += `#${notif.parentId}`
+         }
+      }
+    }
+
+    if (targetLink) {
+      if (isExternal) {
+        window.open(targetLink, "_blank", "noopener,noreferrer")
+      } else {
+        router.push(targetLink)
       }
     }
   }
@@ -271,21 +326,19 @@ export default function NotificationBell() {
                 const isExternal = isEntertainment && notif.externalLink
                 const hasLink = !!targetLink
 
-                // For external links, use <a>; for internal, use <Link>; otherwise <div>
-                const RowTag = hasLink ? (isExternal ? "a" : Link) : "div"
-                const rowProps = hasLink
-                  ? isExternal
-                    ? { href: targetLink, target: "_blank", rel: "noopener noreferrer", onClick: () => setOpen(false) }
-                    : { href: targetLink, onClick: () => setOpen(false) }
-                  : {}
+                // We handle both redirect and mark-as-read via handleNotificationClick
+                const RowTag = "div"
+                const rowProps = {
+                  onClick: (e) => handleNotificationClick(notif, e),
+                  role: "button",
+                  tabIndex: 0
+                }
 
                 return (
                   <RowTag
                     key={notif._id}
                     {...rowProps}
-                    className={`flex gap-3 px-4 py-3 border-b border-border/50 transition-colors ${
-                      hasLink ? "cursor-pointer hover:bg-secondary/40" : ""
-                    } ${notif.read ? "bg-transparent" : "bg-primary/5"}`}
+                    className={`flex text-left gap-3 px-4 py-3 border-b border-border/50 transition-colors cursor-pointer hover:bg-secondary/40 ${notif.read ? "bg-transparent" : "bg-primary/5"}`}
                   >
                   {/* Thumbnail / Icon */}
                   <div className="flex-shrink-0 mt-0.5">
