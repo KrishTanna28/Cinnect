@@ -1,7 +1,8 @@
-﻿import Conversation from '@/lib/models/Conversation';
+import Conversation from '@/lib/models/Conversation';
+import { emitUnreadCount } from '@/lib/socketServer';
 
 export const emitUnreadCountUpdate = async (io, userIdStr) => {
-  if (!io || !userIdStr) return;
+  if (!userIdStr) return;
   try {
     const allUserConvs = await Conversation.find({ participants: userIdStr }).select('unreadCount').lean();
     let totalUnread = 0;
@@ -9,7 +10,8 @@ export const emitUnreadCountUpdate = async (io, userIdStr) => {
       const count = conv.unreadCount?.[userIdStr] || 0;
       if (count > 0) totalUnread++;
     }
-    io.to(`user:${userIdStr}`).emit('unread-count:update', { count: totalUnread });
+    // Use the socketServer utility which handles HTTP fallback for Vercel
+    await emitUnreadCount(userIdStr, totalUnread);
   } catch (err) {
     console.error('Failed to emit unread count', err);
   }

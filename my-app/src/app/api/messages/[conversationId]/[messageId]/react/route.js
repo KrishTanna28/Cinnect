@@ -3,6 +3,7 @@ import { withAuth } from '@/lib/middleware/withAuth';
 import connectDB from '@/lib/config/database';
 import Message from '@/lib/models/Message';
 import Conversation from '@/lib/models/Conversation';
+import { emitMessageReaction, emitConversationUpdate } from '@/lib/socketServer';
 
 export const PATCH = withAuth(async (request, { params, user }) => {
   try {
@@ -53,18 +54,18 @@ export const PATCH = withAuth(async (request, { params, user }) => {
     conversation.lastMessageAt = new Date();
     await conversation.save();
 
-    // Broadcast reaction update
-    const io = globalThis._io;
-    if (io) {
-      conversation.participants.forEach(p => {
-        io.to(`user:${p.toString()}`).emit('message:react', {
-          conversationId,
-          messageId,
-          reactions: message.reactions
-        });
-        // Also emit a general update so the conversation list (recent chats) updates the preview
-        io.to(`user:${p.toString()}`).emit('conversation:update');
-      });
+    // Broadcast reaction update (works on both local and Vercel via HTTP fallback)
+    const reactionData = {
+      conversationId,
+      messageId,
+      reactions: message.reactions
+    };
+
+    // Emit to all participants
+    for (const participant of conversation.participants) {
+      await emitMessageReaction(participant.toString(), reactionData);
+      // Also emit a general update so the conversation list updates the preview
+      await emitConversationUpdate(participant.toString(), null);
     }
 
     return NextResponse.json({ success: true, reactions: message.reactions });

@@ -4,6 +4,7 @@ import connectDB from '@/lib/config/database';
 import Conversation from '@/lib/models/Conversation';
 import Message from '@/lib/models/Message';
 import { emitUnreadCountUpdate } from '@/lib/utils/messages';
+import { emitMessagesRead, emitConversationUpdate } from '@/lib/socketServer';
 
 // PATCH /api/messages/[conversationId]/read - Mark messages as read
 export const PATCH = withAuth(async (request, { params, user }) => {
@@ -47,32 +48,30 @@ export const PATCH = withAuth(async (request, { params, user }) => {
     conversation.unreadCount = unreadCount;
     await conversation.save();
 
-    // Emit read receipt via socket
-    const io = globalThis._io;
-    if (io) {
-      const otherParticipant = conversation.participants.find(
-        p => p.toString() !== user._id.toString()
-      );
-      io.to(`user:${otherParticipant}`).emit('messages:read', {
-        conversationId,
-        userId: user._id
-      });
-      
-      // Also notify our own other devices to update
-      const populatedConv = await Conversation.findById(conversationId)
-        .populate('participants', 'username fullName avatar')
-        .populate('lastMessage')
-        .lean();
-        
-      io.to(`user:${user._id}`).emit('conversation:update', populatedConv);
-      io.to(`user:${user._id}`).emit('messages:read', {
-        conversationId,
-        userId: user._id
-      });
+    // Emit read receipt via socket (works on both local and Vercel via HTTP fallback)
+    const otherParticipant = conversation.participants.find(
+      p => p.toString() !== user._id.toString()
+    );
 
-      // Update the unread count in real-time
-      emitUnreadCountUpdate(io, user._id.toString());
-    }
+    await emitMessagesRead(otherParticipant.toString(), {
+      conversationId,
+      userId: user._id
+    });
+
+    // Also notify our own other devices to update
+    const populatedConv = await Conversation.findById(conversationId)
+      .populate('participants', 'username fullName avatar')
+      .populate('lastMessage')
+      .lean();
+
+    await emitConversationUpdate(user._id.toString(), populatedConv);
+    await emitMessagesRead(user._id.toString(), {
+      conversationId,
+      userId: user._id
+    });
+
+    // Update the unread count in real-time
+    await emitUnreadCountUpdate(null, user._id.toString());
 
     return NextResponse.json({ success: true });
   } catch (error) {

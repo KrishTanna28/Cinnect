@@ -37,6 +37,9 @@ async function emitViaHttp(room, event, data) {
       },
       body: JSON.stringify({ room, event, data }),
     })
+    if (!response.ok) {
+      console.error('[SOCKET] HTTP emit failed:', response.status)
+    }
     return response.ok
   } catch (error) {
     console.error('[SOCKET] Failed to emit via HTTP:', error.message)
@@ -45,36 +48,81 @@ async function emitViaHttp(room, event, data) {
 }
 
 /**
- * Emit a notification event to a specific user.
- * Uses direct Socket.IO if available, otherwise HTTP to external server.
- * @param {string} recipientId - The user's MongoDB _id
- * @param {object} notification - The notification document (lean or toObject)
+ * Generic emit function - emits to a user room with any event.
+ * @param {string} userId - The user's MongoDB _id
+ * @param {string} event - The event name
+ * @param {object} data - The data to send
  */
-export async function emitNotification(recipientId, notification) {
+export async function emitToUser(userId, event, data) {
   const io = getIO()
-  const room = `user:${recipientId.toString()}`
+  const room = `user:${userId.toString()}`
 
   if (io) {
-    // Direct emit via local Socket.IO server
-    io.to(room).emit('notification:new', notification)
+    io.to(room).emit(event, data)
   } else {
-    // Emit via HTTP to external socket server
-    await emitViaHttp(room, 'notification:new', notification)
+    await emitViaHttp(room, event, data)
   }
 }
 
 /**
- * Emit a message event to a specific user.
+ * Emit a notification event to a specific user.
  * @param {string} recipientId - The user's MongoDB _id
- * @param {object} message - The message data
+ * @param {object} notification - The notification document
  */
-export async function emitMessage(recipientId, message) {
-  const io = getIO()
-  const room = `user:${recipientId.toString()}`
+export async function emitNotification(recipientId, notification) {
+  await emitToUser(recipientId, 'notification:new', notification)
+}
 
-  if (io) {
-    io.to(room).emit('message:new', message)
-  } else {
-    await emitViaHttp(room, 'message:new', message)
-  }
+/**
+ * Emit a new message event to a specific user.
+ * @param {string} recipientId - The user's MongoDB _id
+ * @param {object} messagePayload - The message payload
+ */
+export async function emitMessage(recipientId, messagePayload) {
+  await emitToUser(recipientId, 'message:new', messagePayload)
+}
+
+/**
+ * Emit conversation update to a specific user.
+ * @param {string} userId - The user's MongoDB _id
+ * @param {object} conversation - The conversation data
+ */
+export async function emitConversationUpdate(userId, conversation) {
+  await emitToUser(userId, 'conversation:update', conversation)
+}
+
+/**
+ * Emit messages read event to a specific user.
+ * @param {string} userId - The user's MongoDB _id
+ * @param {object} data - { conversationId, userId }
+ */
+export async function emitMessagesRead(userId, data) {
+  await emitToUser(userId, 'messages:read', data)
+}
+
+/**
+ * Emit conversation delete event to a specific user.
+ * @param {string} userId - The user's MongoDB _id
+ * @param {object} data - { conversationId }
+ */
+export async function emitConversationDelete(userId, data) {
+  await emitToUser(userId, 'conversation:delete', data)
+}
+
+/**
+ * Emit unread count update to a specific user.
+ * @param {string} userId - The user's MongoDB _id
+ * @param {number} count - The unread count
+ */
+export async function emitUnreadCount(userId, count) {
+  await emitToUser(userId, 'unread-count:update', { count })
+}
+
+/**
+ * Emit message reaction update to a specific user.
+ * @param {string} userId - The user's MongoDB _id
+ * @param {object} data - { conversationId, messageId, reactions }
+ */
+export async function emitMessageReaction(userId, data) {
+  await emitToUser(userId, 'message:react', data)
 }

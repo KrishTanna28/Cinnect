@@ -6,6 +6,7 @@ import Message from '@/lib/models/Message';
 import { uploadChatMediaToCloudinary } from '@/lib/utils/cloudinaryHelper';
 import User from '@/lib/models/User';
 import { emitUnreadCountUpdate } from '@/lib/utils/messages';
+import { emitMessage, emitConversationUpdate, emitMessagesRead, emitConversationDelete } from '@/lib/socketServer';
 
 // GET /api/messages/[conversationId] - Get messages in a conversation
 export const GET = withAuth(async (request, { params, user }) => {
@@ -97,32 +98,31 @@ export const GET = withAuth(async (request, { params, user }) => {
     conversation.unreadCount = unreadCount;
     await conversation.save();
 
-    // Emit read receipt via socket
-    const io = globalThis._io;
-    if (io) {
-      const otherParticipant = conversation.participants.find(
-        p => p.toString() !== user._id.toString()
-      );
-      io.to(`user:${otherParticipant}`).emit('messages:read', {
-        conversationId,
-        userId: user._id
-      });
+    // Emit read receipt via socket (works on both local and Vercel via HTTP fallback)
+    const otherParticipant = conversation.participants.find(
+      p => p._id.toString() !== user._id.toString()
+    );
 
-      // Notify our own other devices to update
-      const populatedConv = await Conversation.findById(conversationId)
-        .populate('participants', 'username fullName avatar')
-        .populate('lastMessage')
-        .lean();
-        
-      io.to(`user:${user._id}`).emit('conversation:update', populatedConv);
-      io.to(`user:${user._id}`).emit('messages:read', {
-        conversationId,
-        userId: user._id
-      });
+    // Notify other participant that messages were read
+    await emitMessagesRead(otherParticipant._id.toString(), {
+      conversationId,
+      userId: user._id
+    });
 
-      // Update the unread count in real-time
-      emitUnreadCountUpdate(io, user._id.toString());
-    }
+    // Notify our own other devices to update
+    const populatedConv = await Conversation.findById(conversationId)
+      .populate('participants', 'username fullName avatar')
+      .populate('lastMessage')
+      .lean();
+
+    await emitConversationUpdate(user._id.toString(), populatedConv);
+    await emitMessagesRead(user._id.toString(), {
+      conversationId,
+      userId: user._id
+    });
+
+    // Update the unread count in real-time
+    await emitUnreadCountUpdate(null, user._id.toString());
 
     const total = await Message.countDocuments({
       conversation: conversationId,
@@ -158,7 +158,7 @@ export const POST = withAuth(async (request, { params, user }) => {
 
     if (!content && !mediaUrl && !fileData) {
       return NextResponse.json(
-        { success: false, message: 'Message content or media is required' },    
+        { success: false, message: 'Message content or media is required' },
         { status: 400 }
       );
     }
@@ -168,7 +168,7 @@ export const POST = withAuth(async (request, { params, user }) => {
       const base64Length = fileData.length - (fileData.indexOf(',') + 1);
       const padding = (fileData.charAt(fileData.length - 2) === '=') ? 2 : ((fileData.charAt(fileData.length - 1) === '=') ? 1 : 0);
       const sizeBytes = (base64Length * 0.75) - padding;
-      
+
       if (sizeBytes > 10 * 1024 * 1024) { // 10MB limit
         return NextResponse.json(
           { success: false, message: 'File size exceeds 10MB limit' },
@@ -196,7 +196,7 @@ export const POST = withAuth(async (request, { params, user }) => {
 
     const currentUserDoc = await User.findById(user._id).select('blockedUsers');
     const myBlockedUsers = currentUserDoc?.blockedUsers || [];
-    
+
     const otherParticipantDoc = conversation.participants.find(
       p => p._id.toString() !== user._id.toString()
     );
@@ -264,30 +264,29 @@ export const POST = withAuth(async (request, { params, user }) => {
 
     await conversation.save();
 
-    // Emit message via WebSocket
-    const io = globalThis._io;
-    if (io) {
-      const messagePayload = {
-        conversationId,
-        message: message.toObject(),
-        mutedBy: conversation.mutedBy || []
-      };
+    // Emit message via WebSocket (works on both local and Vercel via HTTP fallback)
+    const messagePayload = {
+      conversationId,
+      message: message.toObject(),
+      mutedBy: conversation.mutedBy || []
+    };
 
-      io.to(`user:${otherParticipantId.toString()}`).emit('message:new', messagePayload);
-      io.to(`user:${user._id}`).emit('message:new', messagePayload); // Sync to sender's other devices
+    // Emit to recipient
+    await emitMessage(otherParticipantId.toString(), messagePayload);
+    // Sync to sender's other devices
+    await emitMessage(user._id.toString(), messagePayload);
 
-      // Also emit conversation update
-      const populatedConv = await Conversation.findById(conversationId)
-        .populate('participants', 'username fullName avatar')
-        .populate('lastMessage')
-        .lean();
+    // Also emit conversation update
+    const populatedConv = await Conversation.findById(conversationId)
+      .populate('participants', 'username fullName avatar')
+      .populate('lastMessage')
+      .lean();
 
-      io.to(`user:${otherParticipantId.toString()}`).emit('conversation:update', populatedConv);
-      io.to(`user:${user._id}`).emit('conversation:update', populatedConv);
+    await emitConversationUpdate(otherParticipantId.toString(), populatedConv);
+    await emitConversationUpdate(user._id.toString(), populatedConv);
 
-      // Update the unread count in real-time
-      emitUnreadCountUpdate(io, otherParticipantId.toString());
-    }
+    // Update the unread count in real-time
+    await emitUnreadCountUpdate(null, otherParticipantId.toString());
 
     return NextResponse.json({
       success: true,
@@ -340,7 +339,7 @@ export const DELETE = withAuth(async (request, { params, user }) => {
 
     // Check if the conversation is deleted for everyone, if so fully delete it
     const allParticipantsDeleted = conversation.participants.every(
-      pId => conversation.deletedFor.includes(pId) || 
+      pId => conversation.deletedFor.includes(pId) ||
             conversation.deletedFor.some(df => df.toString() === pId.toString())
     );
 
@@ -349,13 +348,11 @@ export const DELETE = withAuth(async (request, { params, user }) => {
       await Conversation.findByIdAndDelete(conversationId);
     }
 
-    const io = globalThis._io;
-    if (io) {
-      io.to(`user:${user._id}`).emit('conversation:delete', { conversationId });
-      
-      // Update the unread count in real-time
-      emitUnreadCountUpdate(io, user._id.toString());
-    }
+    // Emit delete event via socket (works on both local and Vercel via HTTP fallback)
+    await emitConversationDelete(user._id.toString(), { conversationId });
+
+    // Update the unread count in real-time
+    await emitUnreadCountUpdate(null, user._id.toString());
 
     return NextResponse.json({ success: true, message: 'Conversation deleted' });
   } catch (error) {

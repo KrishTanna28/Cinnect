@@ -32,15 +32,21 @@ export function SocketProvider({ children }) {
     if (socketRef.current?.connected) return
 
     // Connect to external socket server (or local in development)
-    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || window.location.origin
-    const socket = ioClient(socketUrl, {
-      path: socketUrl === window.location.origin ? "/api/socketio" : "/socket.io",
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL
+    const isExternal = !!socketUrl
+
+    console.log("[SOCKET] Connecting to:", socketUrl || window.location.origin)
+    console.log("[SOCKET] External server:", isExternal)
+
+    const socket = ioClient(socketUrl || window.location.origin, {
+      path: isExternal ? "/socket.io" : "/api/socketio",
       auth: { token },
       transports: ["websocket", "polling"],
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 2000,
       reconnectionDelayMax: 10000,
+      withCredentials: true,
     })
 
     socket.on("connect", () => {
