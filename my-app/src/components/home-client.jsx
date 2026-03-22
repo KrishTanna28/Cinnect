@@ -180,34 +180,9 @@ export default function HomeClient({ initialData }) {
     countryName: 'Your Country',
   })
   const [personalizedLoaded, setPersonalizedLoaded] = useState(false)
-  // Track if we should wait for recommendations before showing content
-  const [waitingForRecs, setWaitingForRecs] = useState(isAuthenticated)
-  const [showContent, setShowContent] = useState(!isAuthenticated)
 
-  // For authenticated users, wait briefly for recommendations before showing content
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setShowContent(true)
-      setWaitingForRecs(false)
-      return
-    }
-
-    // Give recommendations 800ms to load, then show content anyway
-    const timeout = setTimeout(() => {
-      setShowContent(true)
-      setWaitingForRecs(false)
-    }, 800)
-
-    return () => clearTimeout(timeout)
-  }, [isAuthenticated])
-
-  // When recommendations load quickly, show content immediately
-  useEffect(() => {
-    if (personalizedLoaded && waitingForRecs) {
-      setShowContent(true)
-      setWaitingForRecs(false)
-    }
-  }, [personalizedLoaded, waitingForRecs])
+  // For authenticated users, show content only after recommendations load
+  const showContent = !isAuthenticated || personalizedLoaded
 
   // Fetch personalized recommendations when user is authenticated
   useEffect(() => {
