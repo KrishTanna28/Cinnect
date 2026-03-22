@@ -3,6 +3,7 @@ import Review from '@/lib/models/Review.js'
 import { withAuth } from '@/lib/middleware/withAuth.js'
 import { generateEmbedding } from '@/lib/services/embedding.service.js'
 import { moderateText } from '@/lib/services/moderation.service.js'
+import { notifyFriendsAboutReview } from '@/lib/services/notification.service.js'
 import { checkAdultContentAccess, getAdultContentFilter } from '@/lib/middleware/ageGate.js'
 import { applyXpEvent, calculateReviewQuality, getProgressionSnapshot } from '@/lib/utils/gamification.js'
 import connectDB from '@/lib/config/database.js'
@@ -286,6 +287,21 @@ try {
 
     // Populate user data before returning
     await review.populate('user', 'username avatar fullName')
+
+    // Notify friends about this new review (async, don't wait for it)
+    notifyFriendsAboutReview({
+      reviewerId: user._id,
+      reviewerData: {
+        username: user.username,
+        fullName: user.fullName,
+        avatar: user.avatar
+      },
+      mediaId,
+      mediaType,
+      mediaTitle,
+      genres: body.genres || [], // Pass genres if available from the frontend
+      reviewUrl: `/reviews/${review._id}`
+    }).catch(err => console.error('Failed to notify friends about review:', err));
 
     return NextResponse.json({
       success: true,

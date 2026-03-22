@@ -177,7 +177,7 @@ const WEEKLY_MIN = 5;
 const WEEKLY_MAX = 10;
 // Minimum gap between two entertainment notifications: 12–18 hours (randomized)
 const MIN_GAP_MS = 12 * 60 * 60 * 1000;
-const MAX_GAP_MS = 18 * 60 * 60 * 1000;
+const MAX_GAP_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Generate ONE entertainment notification for a single user (if eligible).
@@ -186,6 +186,17 @@ const MAX_GAP_MS = 18 * 60 * 60 * 1000;
  */
 export async function generateForUser(userId) {
   try {
+    console.log(`[EntertainmentNotif] Attempting to generate notification for user ${userId}`);
+
+    // ── Check if user has push notifications enabled ──
+    const userPrefs = await User.findById(userId).select('preferences').lean();
+    const pushEnabled = userPrefs?.preferences?.notifications?.push !== false;
+
+    if (!pushEnabled) {
+      console.log(`[EntertainmentNotif] User ${userId} has push notifications disabled, skipping`);
+      return []; // Don't send any entertainment notifications if push is disabled
+    }
+
     const entertainmentTypes = ['trailer', 'news', 'announcement', 'casting_update', 'interview'];
 
     // ── Check weekly cap (randomised between 5-10) ──
@@ -211,9 +222,16 @@ export async function generateForUser(userId) {
     }).sort({ createdAt: -1 }).select('createdAt').lean();
 
     if (lastNotif) {
+      const elapsed = Date.now() - new Date(lastNotif.createdAt).getTime();
+
+      // Safety check: prevent duplicate notifications within 5 minutes (race condition protection)
+      const fiveMinutes = 5 * 60 * 1000;
+      if (elapsed < fiveMinutes) {
+        return [];
+      }
+
       // Random required gap between 12–18 hours
       const requiredGap = MIN_GAP_MS + Math.random() * (MAX_GAP_MS - MIN_GAP_MS);
-      const elapsed = Date.now() - new Date(lastNotif.createdAt).getTime();
       if (elapsed < requiredGap) {
         return [];
       }
@@ -256,11 +274,13 @@ export async function generateForUser(userId) {
     });
 
     if (allCandidates.length === 0) {
+      console.log(`[EntertainmentNotif] No valid candidates found for user ${userId}`);
       return [];
     }
 
     // ── Pick exactly ONE random candidate ──
     const pick = allCandidates[Math.floor(Math.random() * allCandidates.length)];
+    console.log(`[EntertainmentNotif] Creating ONE notification for user ${userId}: ${pick.type} - ${pick.title}`);
 
     try {
       const notif = await Notification.create({

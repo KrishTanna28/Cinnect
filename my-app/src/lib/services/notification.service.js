@@ -1,5 +1,6 @@
 import Notification from '@/lib/models/Notification.js';
 import User from '@/lib/models/User.js';
+import Review from '@/lib/models/Review.js';
 import { emitNotification } from '@/lib/socketServer.js';
 
 /**
@@ -124,5 +125,86 @@ export async function notifyNewLike({
       referenceId,
       parentId
     });
+  }
+}
+
+/**
+ * Notify friends about a new review they might be interested in.
+ * This sends notifications randomly to a subset of friends who:
+ * - Have reviewed the same content, OR
+ * - Have similar favorite genres
+ *
+ * @param {object} params
+ */
+export async function notifyFriendsAboutReview({
+  reviewerId,
+  reviewerData,
+  mediaId,
+  mediaType,
+  mediaTitle,
+  genres = [],
+  reviewUrl
+}) {
+  try {
+    // Get the reviewer's followers (friends)
+    const reviewer = await User.findById(reviewerId).select('followers').lean();
+    if (!reviewer || !reviewer.followers || reviewer.followers.length === 0) return;
+
+    const reviewerName = reviewerData.fullName || reviewerData.username;
+
+    // Get all friends who have push notifications and newReviews enabled
+    const potentialRecipients = await User.find({
+      _id: { $in: reviewer.followers },
+      'preferences.notifications.push': { $ne: false },
+      'preferences.notifications.newReviews': { $ne: false }
+    }).select('_id preferences.favoriteGenres reviews').lean();
+
+    if (potentialRecipients.length === 0) return;
+
+    // Find friends who have reviewed the same content
+    const friendsWhoReviewed = await Review.find({
+      user: { $in: potentialRecipients.map(u => u._id) },
+      mediaId,
+      mediaType
+    }).distinct('user');
+
+    const interestedFriends = [];
+
+    for (const friend of potentialRecipients) {
+      // Priority 1: Friend has reviewed the same content
+      if (friendsWhoReviewed.some(id => id.toString() === friend._id.toString())) {
+        interestedFriends.push({ friend, priority: 'high' });
+        continue;
+      }
+
+      // Priority 2: Friend has overlapping favorite genres
+      const friendGenres = friend.preferences?.favoriteGenres || [];
+      const hasOverlap = genres.some(genre => friendGenres.includes(genre));
+      if (hasOverlap && friendGenres.length > 0) {
+        interestedFriends.push({ friend, priority: 'medium' });
+      }
+    }
+
+    if (interestedFriends.length === 0) return;
+
+    // Randomly select friends to notify (25% chance for high priority, 10% for medium)
+    for (const { friend, priority } of interestedFriends) {
+      const chance = priority === 'high' ? 0.25 : 0.10;
+      const shouldNotify = Math.random() < chance;
+
+      if (shouldNotify) {
+        await sendNotification(friend._id, reviewerId, {
+          type: 'friend_review',
+          title: 'Friend Review',
+          message: `${reviewerName} reviewed "${mediaTitle}" that you might be interested in.`,
+          image: reviewerData.avatar || '',
+          link: reviewUrl,
+          referenceId: mediaId,
+          parentId: null
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Failed to notify friends about review:', error);
   }
 }

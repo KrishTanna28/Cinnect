@@ -61,9 +61,7 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState({
     isPrivate: false,
     notifications: {
-      email: true,
       push: true,
-      watchPartyInvites: true,
       newReviews: true
     },
     theme: "dark"
@@ -629,24 +627,45 @@ export default function SettingsPage() {
                 <div>
                   <h2 className="text-xl font-bold text-foreground mb-6">Notifications</h2>
                   <div className="space-y-3">
-                    {[
-                      { key: "push", label: "Push Notifications", desc: "Get notified about new activity in real-time" },
-                      { key: "email", label: "Email Notifications", desc: "Receive updates and activity summaries via email" },
-                      { key: "newReviews", label: "New Reviews", desc: "Get notified when someone reviews content you've rated" }
-                    ].map(item => (
-                      <div key={item.key} className="bg-secondary/20 rounded-xl p-5 border border-border flex items-center justify-between gap-4">
+                    <div className="bg-secondary/20 rounded-xl p-5 border border-border flex items-center justify-between gap-4">
+                      <div>
+                        <h3 className="font-medium text-foreground text-sm">Push Notifications</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Get notified about new activity in real-time. When disabled, you won't receive any notifications.
+                        </p>
+                      </div>
+                      <Toggle
+                        value={settings.notifications?.push ?? true}
+                        onChange={(v) => updateSettings(`notifications.push`, v)}
+                        disabled={saving}
+                      />
+                    </div>
+
+                    {settings.notifications?.push && (
+                      <div className="bg-secondary/20 rounded-xl p-5 border border-border flex items-center justify-between gap-4">
                         <div>
-                          <h3 className="font-medium text-foreground text-sm">{item.label}</h3>
-                          <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
+                          <h3 className="font-medium text-foreground text-sm">Friend Reviews</h3>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Occasionally get notified when a friend reviews something you might like or have already reviewed
+                          </p>
                         </div>
                         <Toggle
-                          value={settings.notifications?.[item.key] ?? true}
-                          onChange={(v) => updateSettings(`notifications.${item.key}`, v)}
+                          value={settings.notifications?.newReviews ?? true}
+                          onChange={(v) => updateSettings(`notifications.newReviews`, v)}
                           disabled={saving}
                         />
                       </div>
-                    ))}
+                    )}
                   </div>
+
+                  {!settings.notifications?.push && (
+                    <div className="bg-amber-500/10 rounded-xl p-4 border border-amber-500/20 mt-5">
+                      <p className="text-sm text-amber-400 flex items-start gap-2">
+                        <Bell className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                        Push notifications are disabled. You won't receive any notifications until you enable them.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
