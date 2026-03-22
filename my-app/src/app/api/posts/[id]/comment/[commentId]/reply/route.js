@@ -229,33 +229,6 @@ export const PATCH = withAuth(async (request, { user, params }) => {
 
     if (action === 'like') {
       await post.likeReply(commentId, replyId, user._id)
-      
-      try {
-        const comment = post.comments.id(commentId);
-        const reply = comment?.replies?.id(replyId);
-        if (reply && reply.user.toString() !== user._id.toString()) {
-          const recipient = await User.findById(reply.user).select('preferences').lean();
-          if (recipient?.preferences?.notifications?.push !== false) {
-            let communitySlug = 'all';
-            if (post.community) {
-              const community = await Community.findById(post.community);
-              if (community) communitySlug = community.slug;
-            }
-            const notif = await Notification.create({
-              recipient: reply.user,
-              type: 'reply_like',
-              fromUser: user._id,
-              title: 'New Like',
-              message: `${user.fullName || user.username} liked your reply.`,
-              image: user.avatar || '',
-              link: `/communities/${communitySlug}/posts/${post._id}`
-            });
-            await emitNotification(reply.user.toString(), notif.toObject());
-          }
-        }
-      } catch (notifErr) {
-        console.error('Failed to create reply like notification:', notifErr)
-      }
     } else if (action === 'dislike') {
       await post.dislikeReply(commentId, replyId, user._id)
     } else {

@@ -5,9 +5,6 @@ import { withAuth } from '@/lib/middleware/withAuth.js'
 import connectDB from '@/lib/config/database.js'
 import { moderateText } from '@/lib/services/moderation.service.js'
 import { applyXpEvent, getProgressionSnapshot, getTrendingTier } from '@/lib/utils/gamification.js'
-import Notification from '@/lib/models/Notification.js'
-import { emitNotification } from '@/lib/socketServer.js'
-import Community from '@/lib/models/Community.js'
 
 await connectDB()
 
@@ -149,33 +146,6 @@ export const PATCH = withAuth(async (request, { user, params }) => {
 
     if (action === 'like') {
       await post.likeComment(commentId, user._id)
-      
-      try {
-        const comment = post.comments.id(commentId);
-        // If not self-like, send notification
-        if (comment && comment.user.toString() !== user._id.toString()) {
-          const recipient = await User.findById(comment.user).select('preferences').lean();
-          if (recipient?.preferences?.notifications?.push !== false) {
-            let communitySlug = 'all';
-            if (post.community) {
-              const community = await Community.findById(post.community);
-              if (community) communitySlug = community.slug;
-            }
-            const notif = await Notification.create({
-              recipient: comment.user,
-              type: 'comment_like',
-              fromUser: user._id,
-              title: 'New Like',
-              message: `${user.fullName || user.username} liked your comment.`,
-              image: user.avatar || '',
-              link: `/communities/${communitySlug}/posts/${post._id}`
-            });
-            await emitNotification(comment.user.toString(), notif.toObject());
-          }
-        }
-      } catch (notifErr) {
-        console.error('Failed to create comment like notification:', notifErr)
-      }
     } else if (action === 'dislike') {
       await post.dislikeComment(commentId, user._id)
     } else {

@@ -225,15 +225,12 @@ reviewSchema.virtual('replyCount').get(function() {
 });
 
 // Method to add a reply
-reviewSchema.methods.addReply = function(userId, content, spoiler = false, adult_content = false, parentReplyId = null, depth = 0, mentionedUsers = []) {
+reviewSchema.methods.addReply = function(userId, content, spoiler = false, adult_content = false) {
   this.replies.push({
     user: userId,
     content: content,
     spoiler: spoiler,
-    adult_content: adult_content,
-    parentReplyId: parentReplyId,
-    depth: depth,
-    mentionedUsers: mentionedUsers
+    adult_content: adult_content
   });
   return this.save();
 };

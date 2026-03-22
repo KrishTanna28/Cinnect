@@ -5,8 +5,6 @@ import connectDB from '@/lib/config/database.js'
 import { deleteMultipleImagesFromCloudinary } from '@/lib/utils/cloudinaryHelper.js'
 import Community from '@/lib/models/Community.js'
 import User from '@/lib/models/User.js'
-import Notification from '@/lib/models/Notification.js'
-import { emitNotification } from '@/lib/socketServer.js'
 import { applyXpEvent, getTrendingTier } from '@/lib/utils/gamification.js'
 
 await connectDB()
@@ -123,28 +121,6 @@ export const POST = withAuth(async (request, { user, params }) => {
         post.likes.splice(likeIndex, 1)
       } else {
         post.likes.push(user._id)
-        
-        // Notification logic for like
-        if (post.user.toString() !== user._id.toString()) {
-          try {
-            const recipient = await User.findById(post.user).select('preferences').lean()
-            if (recipient?.preferences?.notifications?.push !== false) {
-              const communitySlug = post.community.slug
-              const notif = await Notification.create({
-                recipient: post.user,
-                type: 'post_like',
-                fromUser: user._id,
-                title: 'New Like',
-                message: `${user.fullName || user.username} liked your post.`,
-                image: user.avatar || '',
-                link: `/communities/${communitySlug}/posts/${post._id}`
-              })
-              await emitNotification(post.user.toString(), notif.toObject())
-            }
-          } catch (notifErr) {
-            console.error('Failed to create post like notification:', notifErr)
-          }
-        }
       }
     } else if (action === 'dislike') {
       // Remove from likes if present

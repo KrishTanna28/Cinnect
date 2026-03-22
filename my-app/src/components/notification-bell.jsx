@@ -184,15 +184,8 @@ export default function NotificationBell() {
       case "lost_follower":
         return <UserMinus className="w-4 h-4 text-red-400" />
       case "review_like":
-      case "post_like":
-      case "comment_like":
-      case "reply_like":
-      case "review_reply_like":
         return <Heart className="w-4 h-4 text-pink-400" />
       case "review_reply":
-      case "comment_reply":
-      case "reply_to_reply":
-      case "mention":
         return <MessageCircle className="w-4 h-4 text-blue-400" />
       case "trailer":
         return <Play className="w-4 h-4 text-red-400" />
