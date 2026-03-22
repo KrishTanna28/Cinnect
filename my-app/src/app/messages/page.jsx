@@ -114,13 +114,47 @@ export default function MessagesPage() {
         setRequests(requestsData.conversations);
       }
 
-      // Update selected conversation if it exists
-      setSelectedConversation(prev => {
-        if (!prev) return prev;
-        const msgConv = messagesData.conversations?.find(c => c._id === prev._id);
-        const reqConv = requestsData.conversations?.find(c => c._id === prev._id);
-        return msgConv || reqConv || prev;
-      });
+      // Check pending conversation from profile page
+      const pendingConvId = localStorage.getItem('cinnect_pending_chat_conv');
+      let targetConv = null;
+      if (pendingConvId) {
+        localStorage.removeItem('cinnect_pending_chat_conv');
+        targetConv = messagesData.conversations?.find(c => c._id === pendingConvId) || requestsData.conversations?.find(c => c._id === pendingConvId);
+        
+        if (!targetConv) {
+          try {
+            const singleRes = await fetch(`/api/messages/conversations/${pendingConvId}`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            const singleData = await singleRes.json();
+            if (singleData.success) {
+              targetConv = singleData.conversation;
+              setConversations(prev => {
+                if (!prev.find(c => c._id === pendingConvId)) {
+                  return [targetConv, ...prev];
+                }
+                return prev;
+              });
+            }
+          } catch (err) {
+            console.error('Failed to fetch pending conversation', err);
+          }
+        }
+
+        if (targetConv) {
+          setSelectedConversation(targetConv);
+        }
+      }
+
+      if (!targetConv) {
+        // Update selected conversation if it exists
+        setSelectedConversation(prev => {
+          if (!prev) return prev;
+          const msgConv = messagesData.conversations?.find(c => c._id === prev._id);
+          const reqConv = requestsData.conversations?.find(c => c._id === prev._id);
+          return msgConv || reqConv || prev;
+        });
+      }
     } catch (error) {
       console.error('Error fetching conversations:', error);
     } finally {

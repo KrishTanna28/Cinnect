@@ -265,6 +265,35 @@ export default function PublicProfilePage({ params }) {
     }
   }
 
+  const handleMessageClick = async () => {
+    if (!currentUser) {
+      router.push('/login')
+      return;
+    }
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/messages/conversations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ recipientId: profile._id })
+      });
+      const data = await res.json();
+      if (data.success) {
+        localStorage.setItem('cinnect_pending_chat_conv', data.conversation._id);
+        router.push('/messages');
+      } else {
+        console.error(data.message || 'Failed to create conversation');
+        router.push('/messages');
+      }
+    } catch (err) {
+      console.error(err);
+      router.push('/messages');
+    }
+  }
+
   const handleFollowToggle = async () => {
     const token = localStorage.getItem('token')
     if (!token || !currentUser) {
@@ -353,6 +382,7 @@ export default function PublicProfilePage({ params }) {
 
     if (followStatus === 'following') {
       return (
+        <div className="flex items-center gap-2">
         <Button
           variant="secondary"
           size="sm"
@@ -369,6 +399,15 @@ export default function PublicProfilePage({ params }) {
             </>
           )}
         </Button>
+        {!profile.isPrivate && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleMessageClick}
+        >
+          Message
+      </Button>)}
+      </div>
       )
     }
 
@@ -414,7 +453,7 @@ export default function PublicProfilePage({ params }) {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => router.push(`/messages`)}
+          onClick={handleMessageClick}
         >
           Message
       </Button>)}
