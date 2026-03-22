@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import RecommendationCarousel from "@/components/recommendation-carousel"
 import Top10Carousel from "@/components/top10-carousel"
+import { HomeSkeleton } from "@/components/skeletons"
 import { useUser } from "@/contexts/UserContext"
 import * as movieAPI from "@/lib/movies"
 
@@ -452,39 +453,7 @@ export default function HomeClient({ initialData }) {
 
   // Show loading state while waiting for recommendations
   if (isAuthenticated && !showContent) {
-    return (
-      <main className="min-h-screen bg-background">
-        {/* Hero Section skeleton */}
-        <section className="relative h-[70vh] sm:h-screen flex items-end pb-16 sm:pb-32 overflow-hidden -mt-16">
-          <div className="absolute inset-0 bg-muted animate-pulse" />
-          <div className="relative z-10 w-full">
-            <div className="max-w-2xl px-4 sm:px-6 lg:px-8 sm:ml-8 lg:ml-12">
-              <div className="h-6 w-20 bg-muted-foreground/20 rounded-full mb-3 animate-pulse" />
-              <div className="h-12 w-3/4 bg-muted-foreground/20 rounded mb-4 animate-pulse" />
-              <div className="h-4 w-full bg-muted-foreground/20 rounded mb-2 animate-pulse" />
-              <div className="h-4 w-2/3 bg-muted-foreground/20 rounded animate-pulse" />
-            </div>
-          </div>
-        </section>
-        {/* Content skeleton */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="space-y-8">
-            {[1, 2, 3].map((i) => (
-              <div key={i}>
-                <div className="h-6 w-48 bg-muted rounded mb-4 animate-pulse" />
-                <div className="flex gap-4 overflow-hidden">
-                  {[1, 2, 3, 4, 5, 6].map((j) => (
-                    <div key={j} className="flex-shrink-0 w-36 sm:w-44">
-                      <div className="aspect-[2/3] bg-muted rounded-lg animate-pulse" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </main>
-    )
+    return <HomeSkeleton />
   }
 
   return (
