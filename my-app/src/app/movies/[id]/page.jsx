@@ -655,7 +655,7 @@ export default function DetailsPage({ params }) {
                 onClick={handleMarkAsWatched}
                 disabled={isUpdatingWatched}
               >
-                <Check className={`w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 ${isWatched ? "fill-current" : ""}`} />
+                <Check className={`w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 ${isWatched ? "font-bold" : ""}`} />
                 {isWatched ? "Watched" : "Watched"}
               </Button>
               <Button
@@ -746,7 +746,7 @@ export default function DetailsPage({ params }) {
               onClick={handleMarkAsWatched}
               disabled={isUpdatingWatched}
             >
-              <Check className={`w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 ${isWatched ? "fill-current" : ""}`} />
+              <Check className={`w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 ${isWatched ? "font-bold" : ""}`} />
               Watched
             </Button>
             <Button

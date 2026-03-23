@@ -49,6 +49,199 @@ const SIDEBAR_SECTIONS = [
   { id: "follow-requests", label: "Follow Requests", icon: UserCheck, group: "privacy" },
 ]
 
+// Skeleton Components
+function SettingsSkeleton({ activeSection }) {
+  return (
+    <main className="bg-background h-[calc(100vh-64px)] overflow-hidden pb-16 md:pb-0">
+      <div className="flex flex-row h-full">
+        {/* Sidebar skeleton — desktop */}
+        <aside className="hidden md:flex flex-col flex-shrink-0 w-64 border-r border-border h-full">
+          <div className="flex-1 overflow-y-auto">
+            {SIDEBAR_SECTIONS.map((section, idx) => (
+              <div
+                key={section.id}
+                className={`flex items-center gap-3 px-4 py-3 ${
+                  section.group === "privacy" && idx === 2 ? "mt-3 pt-6 border-t border-border" : ""
+                }`}
+              >
+                <div className="w-5 h-5 bg-secondary/60 rounded animate-pulse" />
+                <div className="h-4 w-24 bg-secondary/60 rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
+          <div className="border-t border-border p-4">
+            <div className="flex items-center gap-3 px-3 py-2.5">
+              <div className="w-5 h-5 bg-secondary/60 rounded animate-pulse" />
+              <div className="h-4 w-16 bg-secondary/60 rounded animate-pulse" />
+            </div>
+          </div>
+        </aside>
+
+        {/* Main Content skeleton */}
+        <div className="flex-1 h-full overflow-y-auto">
+          {/* Mobile Header */}
+          <div className="md:hidden flex items-center justify-between px-6 py-4 border-b border-border">
+            <div className="w-5 h-5 bg-secondary/60 rounded animate-pulse" />
+            <div className="h-5 w-32 bg-secondary/60 rounded animate-pulse" />
+            <div className="w-5" />
+          </div>
+
+          {/* Desktop Header */}
+          <div className="hidden md:block sticky top-0 z-30 bg-background border-b border-border px-6 py-4">
+            <div className="h-6 w-40 bg-secondary/60 rounded animate-pulse" />
+          </div>
+
+          <div className="max-w-3xl mx-auto px-6 py-6">
+            {activeSection === "edit-profile" && <EditProfileSkeleton />}
+            {activeSection === "notifications" && <NotificationsSkeleton />}
+            {activeSection === "privacy" && <PrivacySkeleton />}
+            {activeSection === "blocked-users" && <BlockedUsersSkeleton />}
+            {activeSection === "follow-requests" && <FollowRequestsSkeleton />}
+          </div>
+        </div>
+      </div>
+    </main>
+  )
+}
+
+function EditProfileSkeleton() {
+  return (
+    <div>
+      {/* Avatar section */}
+      <div className="bg-secondary/20 rounded-2xl p-5 border border-border flex flex-col items-center gap-3 mb-6">
+        <div className="w-24 h-24 rounded-full bg-secondary/60 animate-pulse" />
+        <div className="text-center space-y-2">
+          <div className="h-5 w-32 bg-secondary/60 rounded animate-pulse mx-auto" />
+          <div className="h-4 w-24 bg-secondary/60 rounded animate-pulse mx-auto" />
+        </div>
+      </div>
+
+      {/* Form fields */}
+      <div className="space-y-5">
+        {/* Name */}
+        <div>
+          <div className="h-4 w-20 bg-secondary/60 rounded animate-pulse mb-2" />
+          <div className="h-11 w-full bg-secondary/20 border border-border rounded-xl animate-pulse" />
+        </div>
+
+        {/* Bio */}
+        <div>
+          <div className="h-4 w-12 bg-secondary/60 rounded animate-pulse mb-2" />
+          <div className="h-24 w-full bg-secondary/20 border border-border rounded-xl animate-pulse" />
+        </div>
+
+        {/* Date of Birth */}
+        <div>
+          <div className="h-4 w-28 bg-secondary/60 rounded animate-pulse mb-2" />
+          <div className="h-11 w-full bg-secondary/20 border border-border rounded-xl animate-pulse" />
+        </div>
+
+        {/* Genres */}
+        <div>
+          <div className="h-4 w-32 bg-secondary/60 rounded animate-pulse mb-3" />
+          <div className="flex flex-wrap gap-2">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={i} className="h-8 w-20 bg-secondary/30 rounded-full animate-pulse" />
+            ))}
+          </div>
+        </div>
+
+        {/* Save button */}
+        <div className="h-10 w-full bg-secondary/60 rounded-lg animate-pulse" />
+      </div>
+    </div>
+  )
+}
+
+function NotificationsSkeleton() {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: 2 }).map((_, i) => (
+        <div key={i} className="bg-secondary/20 rounded-xl p-5 border border-border flex items-center justify-between gap-4">
+          <div className="flex-1 space-y-2">
+            <div className="h-4 w-36 bg-secondary/60 rounded animate-pulse" />
+            <div className="h-3 w-full max-w-md bg-secondary/60 rounded animate-pulse" />
+          </div>
+          <div className="w-11 h-6 bg-secondary/60 rounded-full animate-pulse" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function PrivacySkeleton() {
+  return (
+    <div>
+      {/* Toggle section */}
+      <div className="bg-secondary/20 rounded-xl p-5 border border-border mb-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-4 flex-1">
+            <div className="w-10 h-10 rounded-full bg-secondary/60 animate-pulse" />
+            <div className="flex-1 space-y-2">
+              <div className="h-5 w-32 bg-secondary/60 rounded animate-pulse" />
+              <div className="h-4 w-full max-w-sm bg-secondary/60 rounded animate-pulse" />
+            </div>
+          </div>
+          <div className="w-11 h-6 bg-secondary/60 rounded-full animate-pulse" />
+        </div>
+      </div>
+
+      {/* Info card */}
+      <div className="bg-secondary/10 rounded-xl p-5 border border-border/50">
+        <div className="h-5 w-40 bg-secondary/60 rounded animate-pulse mb-3" />
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <div className="w-1.5 h-1.5 rounded-full bg-secondary/60 animate-pulse" />
+              <div className="h-4 w-64 bg-secondary/60 rounded animate-pulse" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function BlockedUsersSkeleton() {
+  return (
+    <div className="space-y-4">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div key={i} className="flex items-center justify-between p-4 bg-secondary/20 rounded-xl border border-border">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-secondary/60 animate-pulse" />
+            <div className="space-y-2">
+              <div className="h-4 w-24 bg-secondary/60 rounded animate-pulse" />
+              <div className="h-3 w-20 bg-secondary/60 rounded animate-pulse" />
+            </div>
+          </div>
+          <div className="h-9 w-20 bg-secondary/60 rounded-md animate-pulse" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function FollowRequestsSkeleton() {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-3 p-4 bg-secondary/20 rounded-xl border border-border">
+          <div className="w-12 h-12 rounded-full bg-secondary/60 animate-pulse" />
+          <div className="flex-1 space-y-2">
+            <div className="h-4 w-28 bg-secondary/60 rounded animate-pulse" />
+            <div className="h-3 w-20 bg-secondary/60 rounded animate-pulse" />
+            <div className="h-3 w-24 bg-secondary/60 rounded animate-pulse" />
+          </div>
+          <div className="flex gap-2 flex-shrink-0">
+            <div className="h-8 w-16 bg-secondary/60 rounded-md animate-pulse" />
+            <div className="h-8 w-16 bg-secondary/60 rounded-md animate-pulse" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function SettingsPage() {
   const router = useRouter()
   const { user, isLoading, updateUser, logout } = useUser()
@@ -358,13 +551,7 @@ export default function SettingsPage() {
   )
 
   if (isLoading || settingsLoading || !user) {
-    return (
-      <main className="min-h-screen bg-background pt-20 pb-24">
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="w-8 h-8 text-primary animate-spin" />
-        </div>
-      </main>
-    )
+    return <SettingsSkeleton activeSection={activeSection} />
   }
 
   const sidebarContent = (

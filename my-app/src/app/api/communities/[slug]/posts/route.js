@@ -16,7 +16,7 @@ export const GET = withOptionalAuth(async (request, { params, user }) => {
     await connectDB();
     const { slug } = await params
     const { searchParams } = new URL(request.url)
-    const sortBy = searchParams.get('sort') || 'hot'  // Default to hot/trending
+    const sortBy = searchParams.get('sort') || 'recent'  // Default to recent for individual communities
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
 
@@ -118,12 +118,12 @@ export const GET = withOptionalAuth(async (request, { params, user }) => {
       case 'popular':
         pipeline.push({ $sort: { score: -1, likesCount: -1, commentsCount: -1, createdAt: -1 } })
         break
-      case 'recent':
-        pipeline.push({ $sort: { createdAt: -1 } })
-        break
       case 'hot':
-      default:
         pipeline.push({ $sort: { hotScore: -1, createdAt: -1 } })
+        break
+      case 'recent':
+      default:
+        pipeline.push({ $sort: { createdAt: -1 } })
         break
     }
 

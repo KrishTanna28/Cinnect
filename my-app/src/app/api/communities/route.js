@@ -15,7 +15,7 @@ export const GET = withOptionalAuth(async (request, { user }) => {
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
     const search = searchParams.get('search')
-    const sortBy = searchParams.get('sort') || 'popular' // popular, recent, members
+    const sortBy = searchParams.get('sort') || 'hot' // hot (default), popular, recent, members
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
 
@@ -29,32 +29,105 @@ export const GET = withOptionalAuth(async (request, { user }) => {
       ]
     }
 
-    let sort = {}
-    switch (sortBy) {
-      case 'recent':
-        sort = { createdAt: -1 }
-        break
-      case 'members':
-        sort = { memberCount: -1, createdAt: -1 }
-        break
-      case 'popular':
-      default:
-        sort = { postCount: -1, memberCount: -1 }
-        break
-    }
-
     const skip = (page - 1) * limit
 
-    const [communities, total] = await Promise.all([
-      Community.find(query)
-        .populate('creator', 'username avatar fullName')
-        .sort(sort)
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      Community.countDocuments(query)
-    ])
+    let communities, total;
 
+    if (sortBy === 'hot') {
+      // Trending/hot communities based on recent activity and growth
+      const pipeline = [
+        { $match: query },
+        {
+          $addFields: {
+            hotScore: {
+              $let: {
+                vars: {
+                  ageHours: {
+                    $max: [0.1, { $divide: [{ $subtract: [new Date(), '$createdAt'] }, 3600000] }]
+                  },
+                  recentActivity: {
+                    $add: [
+                      { $ifNull: ['$postCount', 0] },
+                      { $multiply: [{ $ifNull: ['$memberCount', 0] }, 2] }
+                    ]
+                  }
+                },
+                in: {
+                  $divide: [
+                    {
+                      $add: [
+                        '$$recentActivity',
+                        { $divide: ['$$recentActivity', '$$ageHours'] },
+                        // Boost newer communities slightly
+                        {
+                          $cond: [
+                            { $lt: ['$$ageHours', 168] }, // 7 days
+                            10,
+                            0
+                          ]
+                        }
+                      ]
+                    },
+                    { $pow: [{ $add: ['$$ageHours', 2] }, 0.8] }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        { $sort: { hotScore: -1, memberCount: -1 } },
+        { $skip: skip },
+        { $limit: limit }
+      ];
+
+      const [aggregatedCommunities, totalResult] = await Promise.all([
+        Community.aggregate(pipeline),
+        Community.countDocuments(query)
+      ]);
+
+      total = totalResult;
+
+      // Get full community documents with populated fields
+      const communityIds = aggregatedCommunities.map(c => c._id);
+      const fullCommunities = await Community.find({ _id: { $in: communityIds } })
+        .populate('creator', 'username avatar fullName')
+        .lean();
+
+      // Restore the aggregation order
+      communities = communityIds.map(id =>
+        fullCommunities.find(c => c._id.toString() === id.toString())
+      ).filter(Boolean);
+    } else {
+      // Standard sorting for non-hot sorts
+      let sort = {}
+      switch (sortBy) {
+        case 'recent':
+          sort = { createdAt: -1 }
+          break
+        case 'members':
+          sort = { memberCount: -1, createdAt: -1 }
+          break
+        case 'popular':
+        default:
+          sort = { postCount: -1, memberCount: -1 }
+          break
+      }
+
+      const results = await Promise.all([
+        Community.find(query)
+          .populate('creator', 'username avatar fullName')
+          .sort(sort)
+          .skip(skip)
+          .limit(limit)
+          .lean(),
+        Community.countDocuments(query)
+      ]);
+
+      communities = results[0];
+      total = results[1];
+    }
+
+    // Modify communities to include mutuals
     let modifiedCommunities = communities;
     if (user && user.following && user.following.length > 0) {
       const followingIds = user.following.map(id => id.toString());
