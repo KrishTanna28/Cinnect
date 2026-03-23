@@ -71,17 +71,12 @@ export async function GET(request) {
     if (user) {
       // User exists, generate token
       const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '7d' });
-      
-      // Redirect to auth callback page with token and user data
-      const userStr = encodeURIComponent(JSON.stringify({
-        _id: user._id,
-        email: user.email,
-        username: user.username,
-        fullName: user.fullName,
-        avatar: user.avatar,
-        role: user.role,
-      }));
-      
+
+      // Redirect to auth callback page with token and full user data
+      const userResponse = user.toObject();
+      delete userResponse.password; // Remove password field if present
+      const userStr = encodeURIComponent(JSON.stringify(userResponse));
+
       return NextResponse.redirect(`${FRONTEND_URL}/auth/callback?token=${token}&user=${userStr}`);
     }
 
@@ -100,18 +95,14 @@ export async function GET(request) {
       }
       
       await user.save();
-      
+
       const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '7d' });
-      
-      const userStr = encodeURIComponent(JSON.stringify({
-        _id: user._id,
-        email: user.email,
-        username: user.username,
-        fullName: user.fullName,
-        avatar: user.avatar,
-        role: user.role,
-      }));
-      
+
+      // Return full user data
+      const userResponse = user.toObject();
+      delete userResponse.password; // Remove password field if present
+      const userStr = encodeURIComponent(JSON.stringify(userResponse));
+
       return NextResponse.redirect(`${FRONTEND_URL}/auth/callback?token=${token}&user=${userStr}`);
     }
 
@@ -129,16 +120,12 @@ export async function GET(request) {
     });
 
     const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '7d' });
-    
-    const userStr = encodeURIComponent(JSON.stringify({
-      _id: user._id,
-      email: user.email,
-      username: user.username,
-      fullName: user.fullName,
-      avatar: user.avatar,
-      role: user.role,
-    }));
-    
+
+    // Return full user data
+    const userResponse = user.toObject();
+    delete userResponse.password; // Remove password field if present
+    const userStr = encodeURIComponent(JSON.stringify(userResponse));
+
     return NextResponse.redirect(`${FRONTEND_URL}/auth/callback?token=${token}&user=${userStr}`);
 
   } catch (error) {

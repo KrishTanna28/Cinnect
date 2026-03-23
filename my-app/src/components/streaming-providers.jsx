@@ -84,7 +84,7 @@ export default function StreamingProviders({ type, id }) {
           {providers.map((provider) => (
             <a
               key={provider.id}
-              href={watchLink || "#"}
+              href={provider.link || watchLink || "#"}
               target="_blank"
               rel="noopener noreferrer"
               title={`Watch on ${provider.name}`}

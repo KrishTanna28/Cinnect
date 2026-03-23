@@ -30,6 +30,7 @@ export default function TVDetailsPage({ params }) {
   const [error, setError] = useState(null)
   const [liked, setLiked] = useState(false)
   const [inWatchlist, setInWatchlist] = useState(false)
+  const [isWatched, setIsWatched] = useState(false)
   const [likeCount, setLikeCount] = useState(0)
   const [news, setNews] = useState([])
   const [loadingNews, setLoadingNews] = useState(true)
@@ -44,6 +45,9 @@ export default function TVDetailsPage({ params }) {
   const [hasMoreVideos, setHasMoreVideos] = useState(true)
   const [isLoadingMoreVideos, setIsLoadingMoreVideos] = useState(false)
   const [nextPageToken, setNextPageToken] = useState(null)
+  const [isUpdatingWatchlist, setIsUpdatingWatchlist] = useState(false)
+  const [isUpdatingFavorites, setIsUpdatingFavorites] = useState(false)
+  const [isUpdatingWatched, setIsUpdatingWatched] = useState(false)
 
   // Fetch YouTube videos about the TV show
   const fetchTVYouTubeVideos = async (tvTitle, pageNum = 1, pageToken = null) => {
@@ -221,10 +225,11 @@ export default function TVDetailsPage({ params }) {
           setTvShow(response.data)
           setLikeCount(response.data.voteCount || 0)
 
-          // Check if TV show is in watchlist/favorites
+          // Check if TV show is in watchlist/favorites/watched
           if (user) {
             checkIfInWatchlist()
             checkIfInFavorites()
+            checkIfWatched()
           }
 
           // Track this view for notification personalization
@@ -365,6 +370,111 @@ export default function TVDetailsPage({ params }) {
       }
     } catch (error) {
       console.error('Error checking favorites:', error)
+    }
+  }
+
+  const checkIfWatched = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch('/api/users/me/watched', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        const isInList = data.data.some(item => item.movieId === unwrappedParams.id)
+        setIsWatched(isInList)
+      }
+    } catch (error) {
+      console.error('Error checking watched:', error)
+    }
+  }
+
+  const handleMarkAsWatched = async () => {
+    if (!user || isUpdatingWatched) return
+
+    setIsUpdatingWatched(true)
+
+    try {
+      const token = localStorage.getItem('token')
+
+      const response = await fetch(
+        isWatched
+          ? `/api/users/me/watched/${tvShow.id}`
+          : `/api/users/me/watched`,
+        {
+          method: isWatched ? 'DELETE' : 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: isWatched ? undefined : JSON.stringify({
+            movieId: tvShow.id?.toString(),
+            mediaType: 'tv'
+          }),
+        }
+      )
+
+      const data = await response.json()
+      if (data.success) {
+        setIsWatched(!isWatched)
+        toast({
+          title: isWatched ? "Removed from watched" : "Marked as watched",
+          description: isWatched ? "TV show removed from your watch history" : "TV show added to your watch history",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || 'Watch history update failed',
+          variant: "destructive"
+        })
+      }
+    } catch (err) {
+      console.error('Watch history error:', err)
+    } finally {
+      setIsUpdatingWatched(false)
+    }
+  }
+
+  const handleShare = async () => {
+    const shareData = {
+      title: tvShow.name,
+      text: `Check out ${tvShow.name} on Cinnect!`,
+      url: window.location.href
+    }
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData)
+      } else {
+        await navigator.clipboard.writeText(window.location.href)
+        toast({
+          title: "Link Copied",
+          description: "Link has been copied to clipboard!",
+          variant: "success"
+        })
+      }
+    } catch (error) {
+      // User cancelled sharing or sharing failed - try clipboard fallback
+      if (error.name !== 'AbortError') {
+        try {
+          await navigator.clipboard.writeText(window.location.href)
+          toast({
+            title: "Link Copied",
+            description: "Link has been copied to clipboard!",
+            variant: "success"
+          })
+        } catch (clipboardError) {
+          console.error('Error copying to clipboard:', clipboardError)
+          toast({
+            title: "Error",
+            description: "Failed to copy link. Please copy the URL manually.",
+            variant: "destructive"
+          })
+        }
+      }
     }
   }
 
@@ -570,6 +680,7 @@ export default function TVDetailsPage({ params }) {
                 variant={inWatchlist ? "default" : "outline"}
                 className="gap-1 sm:gap-2 text-xs sm:text-sm md:text-base sm:px-4 sm:py-2 md:px-6 md:py-3"
                 onClick={handleAddToWatchlist}
+                disabled={isUpdatingWatchlist}
               >
                 <Bookmark className={`w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 ${inWatchlist ? "fill-current" : ""}`} />
                 Watchlist
@@ -579,11 +690,27 @@ export default function TVDetailsPage({ params }) {
                 variant={liked ? "default" : "outline"}
                 className="gap-1 sm:gap-2 text-xs sm:text-sm md:text-base sm:px-4 sm:py-2 md:px-6 md:py-3"
                 onClick={handleLike}
+                disabled={isUpdatingFavorites}
               >
                 <Heart className={`w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 ${liked ? "fill-current" : ""}`} />
                 Like
               </Button>
-              <Button size="sm" variant="outline" className="gap-1 sm:gap-2 bg-transparent text-xs sm:text-sm md:text-base sm:px-4 sm:py-2 md:px-6 md:py-3">
+              <Button
+                size="sm"
+                variant={isWatched ? "default" : "outline"}
+                className="gap-1 sm:gap-2 text-xs sm:text-sm md:text-base sm:px-4 sm:py-2 md:px-6 md:py-3"
+                onClick={handleMarkAsWatched}
+                disabled={isUpdatingWatched}
+              >
+                <Check className={`w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 ${isWatched ? "fill-current" : ""}`} />
+                {isWatched ? "Watched" : "Watched"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1 sm:gap-2 bg-transparent text-xs sm:text-sm md:text-base sm:px-4 sm:py-2 md:px-6 md:py-3"
+                onClick={handleShare}
+              >
                 <Share2 className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" />
                 Share
               </Button>
@@ -641,6 +768,7 @@ export default function TVDetailsPage({ params }) {
               variant={inWatchlist ? "default" : "outline"}
               className="gap-1 sm:gap-2 text-xs sm:text-sm md:text-base sm:px-4 sm:py-2 md:px-6 md:py-3"
               onClick={handleAddToWatchlist}
+              disabled={isUpdatingWatchlist}
             >
               <Bookmark className={`w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 ${inWatchlist ? "fill-current" : ""}`} />
               Watchlist
@@ -650,11 +778,27 @@ export default function TVDetailsPage({ params }) {
               variant={liked ? "default" : "outline"}
               className="gap-1 sm:gap-2 text-xs sm:text-sm md:text-base sm:px-4 sm:py-2 md:px-6 md:py-3"
               onClick={handleLike}
+              disabled={isUpdatingFavorites}
             >
               <Heart className={`w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 ${liked ? "fill-current" : ""}`} />
               Like
             </Button>
-            <Button size="sm" variant="outline" className="gap-1 sm:gap-2 bg-transparent text-xs sm:text-sm md:text-base sm:px-4 sm:py-2 md:px-6 md:py-3">
+            <Button
+              size="sm"
+              variant={isWatched ? "default" : "outline"}
+              className="gap-1 sm:gap-2 text-xs sm:text-sm md:text-base sm:px-4 sm:py-2 md:px-6 md:py-3"
+              onClick={handleMarkAsWatched}
+              disabled={isUpdatingWatched}
+            >
+              <Check className={`w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 ${isWatched ? "fill-current" : ""}`} />
+              Watched
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1 sm:gap-2 bg-transparent text-xs sm:text-sm md:text-base sm:px-4 sm:py-2 md:px-6 md:py-3"
+              onClick={handleShare}
+            >
               <Share2 className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" />
               Share
             </Button>

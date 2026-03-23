@@ -1,35 +1,8 @@
 import Review from '@/lib/models/Review.js'
 import User from '@/lib/models/User.js'
 
-// ===== PATTERNS =====
-
-const spamPatterns = [
-  /(.)\1{10,}/i,
-  /https?:\/\//gi,
-  /\b(buy|click|visit|download|free|win|prize)\b/gi,
-  /\b(\d{3}[-.]?\d{3}[-.]?\d{4})\b/g,
-  /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi
-]
-
-const offensivePatterns = [
-  /\b(hate|racist|sexist)\b/gi
-]
-
-const constructivePatterns = [
-  /\b(because|therefore|however|although|specifically|example|instance|reason|pacing|character|plot|cinematography|direction|acting|score|writing)\b/gi
-]
-
-const insightfulPatterns = [
-  /\b(theme|symbolism|motif|allegory|subtext|foreshadowing|development|arc|cliche|trope|nuance|perspective|juxtaposition)\b/gi
-]
-
-const promotionalPatterns = [
-  /\b(best movie ever|greatest film|must see|go watch now|buy tickets|perfect 10|flawless masterpiece)\b/gi
-]
-
-const spoilerKeywords = [
-  'dies', 'killed', 'plot twist', 'ending', 'turns out', 'final scene', 'death'
-]
+// NOTE: All content moderation is now handled by AI models in the offline cron job.
+// This file only handles duplicate detection and tagging reviews for processing.
 
 // ===== CORE MODERATION =====
 
@@ -39,25 +12,19 @@ export async function moderateReview(review, user, consensus = null) {
     const words = text.split(/\s+/).filter(w => w.length > 0)
 
     const baseFlags = {
-      isSpam: detectSpamPatterns(text) || words.length < 3,
-      isOffensive: detectOffensiveContent(text),
+      isSpam: false, // Detected by AI model offline
+      isOffensive: false, // Detected by AI model offline
       isDuplicate: await isDuplicateContent(review, user),
-      containsSpoilers: false, // Model detected offline
-      isLowEffort: words.length < 20,
-      isPromotional: (text.match(promotionalPatterns[0]) || []).length >= 1 && review.rating >= 9
-    }
-
-    if (baseFlags.isLowEffort) {
-      const constructivenessMatches = text.match(constructivePatterns[0]) || []
-      if (constructivenessMatches.length >= 2 && words.length > 30) baseFlags.isLowEffort = false
+      containsSpoilers: false, // Detected by AI model offline
+      isLowEffort: false, // Detected by AI model offline
+      isPromotional: false // Detected by AI model offline
     }
 
     const uniqueWords = new Set(words).size
     const diversityRatio = words.length > 0 ? (uniqueWords / words.length) : 0
 
-    let qualityScore = 50
-    if (baseFlags.isSpam || baseFlags.isLowEffort) qualityScore = 10
-    else qualityScore = Math.min(100, (diversityRatio * 40) + (words.length / 500 * 20) + 40)
+    // Basic quality score based on diversity and length - AI will refine this
+    let qualityScore = Math.min(100, (diversityRatio * 40) + (words.length / 500 * 20) + 40)
 
     const scores = {
       qualityScore,
@@ -65,11 +32,8 @@ export async function moderateReview(review, user, consensus = null) {
       toxicityScore: 0    // Injected by offline cron
     }
 
-    // Take automated actions without impacting points directly
-    if (baseFlags.isSpam || baseFlags.isOffensive) {
-      review.isRemoved = true
-      review.removalReason = baseFlags.isSpam ? 'Spam detected' : 'Offensive content detected'
-    } else if (baseFlags.isDuplicate) {
+    // Only flag duplicates immediately - all other moderation handled by AI models
+    if (baseFlags.isDuplicate) {
       review.isFlagged = true
       review.flagReason = 'Potential duplicate content'
     }
@@ -79,6 +43,11 @@ export async function moderateReview(review, user, consensus = null) {
     if (review.aiAnalysis) {
       scores.similarityScore = review.aiAnalysis.similarityScore || 0
       scores.toxicityScore = review.aiAnalysis.toxicityScore || 0
+      // Apply AI-detected flags
+      if (review.aiAnalysis.isSpam) flags.isSpam = true
+      if (review.aiAnalysis.isOffensive) flags.isOffensive = true
+      if (review.aiAnalysis.isLowEffort) flags.isLowEffort = true
+      if (review.aiAnalysis.isPromotional) flags.isPromotional = true
     }
 
     review.needsProcessing = true // Tag for offline embedding & ML
@@ -95,21 +64,11 @@ export async function moderateReview(review, user, consensus = null) {
   }
 }
 
-// ===== HELPERS =====
-
-function detectSpamPatterns(content) {
-  return spamPatterns.some(p => p.test(content))
-}
-
-function detectOffensiveContent(content) {
-  return offensivePatterns.some(p => p.test(content))
-}
-
 // ===== DUPLICATE CHECK =====
 
 async function isDuplicateContent(review, user) {
   if (!user || !user._id) return false
-  
+
   const userReviews = await Review.find({
     user: user._id,
     _id: { $ne: review._id }
@@ -131,18 +90,11 @@ async function isDuplicateContent(review, user) {
 // ===== REPLY MODERATION =====
 
 export async function moderateReply(reply, review, user) {
-  let removed = false
-
-  if (detectSpamPatterns(reply.content) || detectOffensiveContent(reply.content)) {
-    removed = true
-  }
-
-  if (removed) {
-    review.replies = review.replies.filter(r => r._id?.toString() !== reply._id?.toString())
-    await review.save()
-  }
-
-  return { success: true, removed }
+  // All moderation is now handled by AI models in the offline cron job
+  // Replies are tagged for processing and will be moderated asynchronously
+  reply.needsProcessing = true
+  await review.save()
+  return { success: true, removed: false }
 }
 
 // ===== BATCH MODERATION =====

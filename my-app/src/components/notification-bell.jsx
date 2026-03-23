@@ -11,6 +11,9 @@ import { useRouter } from "next/navigation"
 // Entertainment notification types that can link externally
 const ENTERTAINMENT_TYPES = new Set(["trailer", "news", "announcement", "casting_update", "interview"])
 
+// Request types that should only be marked as read when action is taken
+const REQUEST_TYPES = new Set(["follow_request", "community_join_request"])
+
 export default function NotificationBell() {
   const { user } = useUser()
   const router = useRouter()
@@ -108,10 +111,18 @@ export default function NotificationBell() {
     return unsub
   }, [on, toast])
 
-  // ─── Mark all as read when dropdown is opened ───
-  const markAllRead = useCallback(async () => {
+  // ─── Mark non-request notifications as read when dropdown is opened ───
+  const markNonRequestNotificationsRead = useCallback(async () => {
     const token = localStorage.getItem("token")
     if (!token) return
+
+    // Get IDs of unread non-request notifications
+    const nonRequestUnreadIds = notifications
+      .filter(n => !n.read && !REQUEST_TYPES.has(n.type))
+      .map(n => n._id)
+
+    if (nonRequestUnreadIds.length === 0) return
+
     try {
       const res = await fetch("/api/notifications", {
         method: "PATCH",
@@ -119,23 +130,32 @@ export default function NotificationBell() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ markAllRead: true })
+        body: JSON.stringify({ notificationIds: nonRequestUnreadIds })
       })
       if (res.ok) {
-        setNotifications(prev => prev.map(n => ({ ...n, read: true })))
-        setUnreadCount(0)
+        const json = await res.json()
+        // Update local state - mark only non-request notifications as read
+        setNotifications(prev => prev.map(n =>
+          nonRequestUnreadIds.includes(n._id) ? { ...n, read: true } : n
+        ))
+        if (json.data?.unreadCount !== undefined) {
+          setUnreadCount(json.data.unreadCount)
+        }
       }
     } catch {
       // ignore
     }
-  }, [])
+  }, [notifications])
 
   // Toggle dropdown
   const toggleDropdown = () => {
     const next = !open
     setOpen(next)
     if (next) {
-      fetchNotifications()
+      fetchNotifications().then(() => {
+        // After fetching, mark non-request notifications as seen
+        setTimeout(() => markNonRequestNotificationsRead(), 100)
+      })
     }
   }
 
@@ -143,8 +163,11 @@ export default function NotificationBell() {
   const handleNotificationClick = async (notif, e) => {
     if (e && e.preventDefault) e.preventDefault()
 
-    // 1. Mark as read
-    if (!notif.read) {
+    // Don't mark request notifications as read on click - only on accept/reject action
+    const isRequest = REQUEST_TYPES.has(notif.type)
+
+    // 1. Mark as read (only for non-request notifications)
+    if (!notif.read && !isRequest) {
       const token = localStorage.getItem("token")
       if (token) {
         setNotifications((prev) =>

@@ -44,6 +44,20 @@ export async function GET(request) {
       // Trending-style score aligned with community posts, with review-specific moderation penalties.
       const pipeline = [
         { $match: query },
+        // Lookup user data to get rank/level
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'user',
+            foreignField: '_id',
+            as: 'userData'
+          }
+        },
+        {
+          $addFields: {
+            userData: { $arrayElemAt: ['$userData', 0] }
+          }
+        },
         {
           $addFields: {
             likesCount: { $size: { $ifNull: ['$likes', []] } },
@@ -78,6 +92,13 @@ export async function GET(request) {
                       }
                     ]
                   },
+                  // User rank boost: Higher level users get a small boost
+                  userRankBoost: {
+                    $multiply: [
+                      { $ifNull: ['$userData.level', 1] },
+                      0.5  // Each level adds 0.5 to the score
+                    ]
+                  },
                   penalties: {
                     $add: [
                       { $cond: [{ $ifNull: ['$spoiler', false] }, 1.5, 0] },
@@ -101,6 +122,7 @@ export async function GET(request) {
                           $add: [
                             '$$engagement',
                             '$$quality',
+                            '$$userRankBoost',
                             { $divide: ['$$engagement', '$$ageHours'] }
                           ]
                         },

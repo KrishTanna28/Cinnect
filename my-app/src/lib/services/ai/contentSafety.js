@@ -1,26 +1,13 @@
 /**
  * Cinnect AI Assistant - Content Safety Module
- * Integrates existing ML models for content moderation and spoiler detection
+ * All content moderation is handled by AI models.
+ * No hardcoded pattern detection - everything goes through ML models.
  */
 
 import { moderateText } from '@/lib/services/moderation.service';
 
 // HuggingFace API for spoiler detection
 const SPOILER_MODEL_URL = 'https://router.huggingface.co/hf-inference/models/facebook/bart-large-mnli';
-
-// Spam patterns (from moderationBot.js)
-const SPAM_PATTERNS = [
-  /(.)\1{10,}/i,                               // Repeated characters
-  /https?:\/\//gi,                             // URLs
-  /\b(buy|click|visit|download|free|win|prize)\b/gi, // Promotional keywords
-  /\b(\d{3}[-.]?\d{3}[-.]?\d{4})\b/g,         // Phone numbers
-  /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi // Emails
-];
-
-// Offensive patterns
-const OFFENSIVE_PATTERNS = [
-  /\b(hate|racist|sexist)\b/gi
-];
 
 // Thresholds - higher = more lenient
 const TOXICITY_THRESHOLD = 0.7;
@@ -38,8 +25,8 @@ export async function detectSpoilersML(text) {
 
   const apiToken = process.env.HUGGINGFACE_API_TOKEN;
   if (!apiToken) {
-    console.warn('[ContentSafety] HUGGINGFACE_API_TOKEN not set, falling back to pattern detection');
-    return detectSpoilersPattern(text);
+    console.warn('[ContentSafety] HUGGINGFACE_API_TOKEN not set, spoiler detection unavailable');
+    return { isSpoiler: false, confidence: 0, needsProcessing: true };
   }
 
   try {
@@ -62,8 +49,8 @@ export async function detectSpoilersML(text) {
 
     if (!response.ok) {
       if (response.status === 503) {
-        // Model loading, fall back to pattern detection
-        return detectSpoilersPattern(text);
+        // Model loading, mark for later processing
+        return { isSpoiler: false, confidence: 0, needsProcessing: true };
       }
       return { isSpoiler: false, confidence: 0 };
     }
@@ -98,30 +85,8 @@ export async function detectSpoilersML(text) {
     };
   } catch (error) {
     console.error('[ContentSafety] Spoiler detection error:', error);
-    return detectSpoilersPattern(text);
+    return { isSpoiler: false, confidence: 0, needsProcessing: true };
   }
-}
-
-/**
- * Pattern-based spoiler detection (fallback) - conservative approach
- */
-function detectSpoilersPattern(text) {
-  const lowerText = text.toLowerCase();
-
-  // Only flag explicit spoiler phrases, not single words
-  const spoilerPhrases = [
-    'dies at the end', 'gets killed', 'turns out to be', 'the twist is',
-    'in the final scene', 'reveals that', 'actually was the',
-    'the secret is', 'ending is when'
-  ];
-
-  const matches = spoilerPhrases.filter(phrase => lowerText.includes(phrase));
-
-  // Need at least one full phrase match to flag as spoiler
-  return {
-    isSpoiler: matches.length > 0,
-    confidence: matches.length > 0 ? 0.8 : 0
-  };
 }
 
 /**
@@ -143,42 +108,24 @@ export async function detectToxicity(text) {
     };
   } catch (error) {
     console.error('[ContentSafety] Toxicity detection error:', error);
-    // Fall back to pattern detection
-    return detectToxicityPattern(text);
+    // Mark for offline processing instead of using patterns
+    return { isToxic: false, score: 0, labels: {}, needsProcessing: true };
   }
 }
 
 /**
- * Pattern-based toxicity detection (fallback)
- */
-function detectToxicityPattern(text) {
-  const isToxic = OFFENSIVE_PATTERNS.some(p => p.test(text));
-  return {
-    isToxic,
-    score: isToxic ? 0.8 : 0,
-    labels: {}
-  };
-}
-
-/**
- * Check text for spam patterns
+ * Check text for spam - handled by AI models in offline processing
  * @param {string} text - Text to analyze
- * @returns {{isSpam: boolean, patterns: string[]}}
+ * @returns {{isSpam: boolean, needsProcessing: boolean}}
  */
 export function detectSpam(text) {
-  if (!text) return { isSpam: false, patterns: [] };
+  if (!text) return { isSpam: false, needsProcessing: false };
 
-  const matchedPatterns = [];
-
-  if (SPAM_PATTERNS[0].test(text)) matchedPatterns.push('repeated_chars');
-  if (SPAM_PATTERNS[1].test(text)) matchedPatterns.push('urls');
-  if (SPAM_PATTERNS[2].test(text)) matchedPatterns.push('promotional');
-  if (SPAM_PATTERNS[3].test(text)) matchedPatterns.push('phone_numbers');
-  if (SPAM_PATTERNS[4].test(text)) matchedPatterns.push('emails');
-
+  // Spam detection is handled by AI models in the offline cron job
+  // Return false here and mark for processing
   return {
-    isSpam: matchedPatterns.length > 0,
-    patterns: matchedPatterns
+    isSpam: false,
+    needsProcessing: true
   };
 }
 
@@ -200,10 +147,10 @@ export async function checkContentSafety(message) {
     toxicity,
     spam,
     shouldWarn: toxicity.score > 0.3 && toxicity.score < TOXICITY_THRESHOLD,
-    shouldBlock: toxicity.isToxic || spam.isSpam,
+    shouldBlock: toxicity.isToxic,
+    needsProcessing: toxicity.needsProcessing || spam.needsProcessing,
     reason: !isSafe ? (
-      toxicity.isToxic ? 'toxic_content' :
-      spam.isSpam ? 'spam_detected' : null
+      toxicity.isToxic ? 'toxic_content' : null
     ) : null
   };
 }
@@ -214,13 +161,6 @@ export async function checkContentSafety(message) {
 export function getUnsafeContentResponse(safetyResult) {
   if (safetyResult.toxicity?.isToxic) {
     return "I'm here to help with movies and entertainment! Let's keep our conversation friendly and respectful. What would you like to know about movies or TV shows?";
-  }
-
-  if (safetyResult.spam?.isSpam) {
-    if (safetyResult.spam.patterns.includes('urls')) {
-      return "I noticed you shared a link. For security, I can't process external URLs. If you want me to look up a movie or show, just tell me its name!";
-    }
-    return "I'm C.A.S.T, your movie assistant! I'm here to help you discover great content. What would you like to watch?";
   }
 
   return "Let's talk about movies and TV shows! What are you interested in?";

@@ -472,12 +472,23 @@ export default function SettingsPage() {
           <div className="flex-1 h-full overflow-y-auto">
             {/* Mobile Header / Menu Toggle */}
             <div className="md:hidden flex items-center justify-between px-6 py-4 border-b border-border bg-background sticky top-0 z-30">
-               <button 
-                  onClick={() => setIsMobileSidebarOpen(true)} 
+               <button
+                  onClick={() => setIsMobileSidebarOpen(true)}
                   className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer"
                >
                   <Menu className="w-5 h-5 flex-shrink-0" />
                </button>
+               <h2 className="text-base font-semibold text-foreground">
+                 {SIDEBAR_SECTIONS.find(s => s.id === activeSection)?.label || "Settings"}
+               </h2>
+               <div className="w-5" />
+            </div>
+
+            {/* Desktop Section Header - sticky on desktop */}
+            <div className="hidden md:block sticky top-0 z-30 bg-background border-b border-border px-6 py-4">
+              <h2 className="text-xl font-bold text-foreground">
+                {SIDEBAR_SECTIONS.find(s => s.id === activeSection)?.label || "Settings"}
+              </h2>
             </div>
 
             <div className="max-w-3xl mx-auto px-6 py-6">
@@ -485,7 +496,6 @@ export default function SettingsPage() {
               {/* ─── EDIT PROFILE ─── */}
               {activeSection === "edit-profile" && (
                 <div>
-                  <h2 className="text-xl font-bold text-foreground mb-6">Edit Profile</h2>
 
                   {/* Avatar section */}
                   <div className="bg-secondary/20 rounded-2xl p-5 border border-border flex flex-col items-center gap-3 mb-6">
@@ -625,7 +635,6 @@ export default function SettingsPage() {
               {/* ─── NOTIFICATIONS ─── */}
               {activeSection === "notifications" && (
                 <div>
-                  <h2 className="text-xl font-bold text-foreground mb-6">Notifications</h2>
                   <div className="space-y-3">
                     <div className="bg-secondary/20 rounded-xl p-5 border border-border flex items-center justify-between gap-4">
                       <div>
@@ -672,7 +681,6 @@ export default function SettingsPage() {
               {/* ─── ACCOUNT PRIVACY ─── */}
               {activeSection === "privacy" && (
                 <div>
-                  <h2 className="text-xl font-bold text-foreground mb-6">Account Privacy</h2>
 
                   {/* Toggle */}
                   <div className="bg-secondary/20 rounded-xl p-5 border border-border mb-5">
@@ -736,8 +744,6 @@ export default function SettingsPage() {
                 {/* ─── BLOCKED USERS ─── */}
                 {activeSection === "blocked-users" && (
                   <div>
-                    <h2 className="text-xl font-bold text-foreground mb-6">Blocked Users</h2>
-                    
                     {blockedLoading ? (
                       <div className="flex justify-center py-10">
                         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -782,7 +788,6 @@ export default function SettingsPage() {
               {/* ─── FOLLOW REQUESTS ─── */}
               {activeSection === "follow-requests" && (
                 <div>
-                  <h2 className="text-xl font-bold text-foreground mb-6">Follow Requests</h2>
 
                   {!settings.isPrivate ? (
                     <div className="flex flex-col items-center justify-center py-16 text-center">
