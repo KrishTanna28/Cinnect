@@ -309,6 +309,11 @@ const userSchema = new mongoose.Schema({
       type: String,
       required: true
     },
+    mediaType: {
+      type: String,
+      enum: ['movie', 'tv'],
+      default: 'movie'
+    },
     watchedAt: {
       type: Date,
       default: Date.now
@@ -558,6 +563,22 @@ userSchema.methods.addToFavorites = function(movieId) {
 // Method to remove from favorites
 userSchema.methods.removeFromFavorites = function(movieId) {
   this.favorites = this.favorites.filter(item => item.movieId !== movieId);
+  return this.save();
+};
+
+// Method to mark as watched
+userSchema.methods.markAsWatched = function(movieId, mediaType = 'movie') {
+  const exists = this.watchHistory.some(item => item.movieId === movieId);
+  if (!exists) {
+    this.watchHistory.push({ movieId, mediaType, completed: true });
+    return this.save();
+  }
+  return Promise.resolve(this);
+};
+
+// Method to remove from watched
+userSchema.methods.removeFromWatched = function(movieId) {
+  this.watchHistory = this.watchHistory.filter(item => item.movieId !== movieId);
   return this.save();
 };
 

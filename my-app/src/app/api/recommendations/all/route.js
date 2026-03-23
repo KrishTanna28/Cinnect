@@ -320,8 +320,9 @@ async function fetchMetadataBatch(items, batchSize = 5) {
 export const GET = withAuth(async (request, { user }) => {
   try {
     const { searchParams } = new URL(request.url);
-    const country = searchParams.get('country') || 'US';
-    const countryName = searchParams.get('countryName') || 'Your Country';
+    const country = searchParams.get('country') || 'worldwide';
+    const countryName = searchParams.get('countryName') || 'Worldwide';
+    const isWorldwide = country === 'worldwide' || country === 'WORLDWIDE';
     const filterAdult = user?.dateOfBirth ? !isUserAdult(user.dateOfBirth) : false;
 
     const cacheKey = buildCacheKey(
@@ -339,6 +340,7 @@ export const GET = withAuth(async (request, { user }) => {
       const [
         userFavorites,
         userWatchlist,
+        userWatchHistory,
         userReviews,
         userRatings,
         userSearchHistory,
@@ -348,6 +350,7 @@ export const GET = withAuth(async (request, { user }) => {
       ] = await Promise.all([
         Promise.resolve(user.favorites || []),
         Promise.resolve(user.watchlist || []),
+        Promise.resolve(user.watchHistory || []),
         Review.find({ user: user._id })
           .sort({ createdAt: -1 })
           .limit(20)
@@ -376,8 +379,13 @@ export const GET = withAuth(async (request, { user }) => {
       const userInteractedIds = new Set();
       userFavorites.forEach(f => userInteractedIds.add(`movie-${f.movieId}`));
       userWatchlist.forEach(w => userInteractedIds.add(`movie-${w.movieId}`));
+      userWatchHistory.forEach(w => userInteractedIds.add(`${w.mediaType || 'movie'}-${w.movieId}`));
       userReviews.forEach(r => userInteractedIds.add(`${r.mediaType || 'movie'}-${r.mediaId}`));
       userRatings.forEach(r => userInteractedIds.add(`movie-${r.movieId}`));
+
+      // Build a set of watched items to filter out from recommendations
+      const watchedIds = new Set();
+      userWatchHistory.forEach(w => watchedIds.add(`${w.mediaType || 'movie'}-${w.movieId}`));
 
       let recommended = [];
       const allUserSignals = [];
@@ -459,6 +467,7 @@ export const GET = withAuth(async (request, { user }) => {
           scoredCandidates.sort((a, b) => b.score - a.score);
           recommended = scoredCandidates
             .filter(item => !filterAdult || !item.adult)
+            .filter(item => !watchedIds.has(`${item.mediaType}-${item.id}`))
             .slice(0, 20)
             .map(item => ({
               id: item.id,
@@ -480,24 +489,17 @@ export const GET = withAuth(async (request, { user }) => {
         }
       }
 
-      const goodReviews = userReviews.filter(review => review.rating >= 7);
-      const allLikedOrReviewed = [
-        ...goodReviews.map(review => ({
-          id: review.mediaId,
-          type: review.mediaType || 'movie',
-          title: review.mediaTitle,
-        })),
-        ...userFavorites.slice(0, 10).map(favorite => ({
-          id: favorite.movieId,
-          type: 'movie',
-          title: favorite.movieId,
-        })),
-      ];
+      // "Because You Liked" - Only use favorites (liked items), not reviews
+      const likedItems = userFavorites.slice(0, 15).map(favorite => ({
+        id: favorite.movieId,
+        type: 'movie',
+        title: favorite.movieId,
+      }));
 
       let becauseYouLiked = null;
-      if (allLikedOrReviewed.length > 0) {
+      if (likedItems.length > 0) {
         const dayHash = hashSeed(getDailySeed() + user._id.toString());
-        const anchor = allLikedOrReviewed[dayHash % allLikedOrReviewed.length];
+        const anchor = likedItems[dayHash % likedItems.length];
         const anchorMetadata = await fetchDetailedMetadata(anchor.id, anchor.type);
 
         if (anchorMetadata) {
@@ -512,6 +514,7 @@ export const GET = withAuth(async (request, { user }) => {
             }))
             .sort((a, b) => b.score - a.score)
             .filter(item => !filterAdult || !item.adult)
+            .filter(item => !watchedIds.has(`${item.mediaType}-${item.id}`))
             .slice(0, 20)
             .map(item => ({
               id: item.id,
@@ -573,6 +576,7 @@ export const GET = withAuth(async (request, { user }) => {
             })
             .sort((a, b) => b.score - a.score)
             .filter(item => !filterAdult || !item.adult)
+            .filter(item => !watchedIds.has(`${item.mediaType}-${item.id}`))
             .slice(0, 20)
             .map(item => ({
               id: item.id,

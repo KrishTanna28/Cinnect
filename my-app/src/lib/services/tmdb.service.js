@@ -1421,12 +1421,15 @@ export async function getBasedOnTrueStory(page = 1) {
   }
 }
 
-// Get trending movies in a specific region/country
-export async function getTrendingMoviesInRegion(region = 'US', page = 1) {
+// Get trending movies in a specific region/country (or worldwide if no region specified)
+export async function getTrendingMoviesInRegion(region = null, page = 1) {
   try {
+    const isWorldwide = !region || region === 'worldwide' || region === 'WORLDWIDE';
+    const params = isWorldwide ? { page } : { page, region };
+
     const response = await cachedTmdbGet(
       '/trending/movie/day',
-      { page, region },
+      params,
       TMDB_CACHE_TTLS.trending
     );
     return {
@@ -1441,12 +1444,15 @@ export async function getTrendingMoviesInRegion(region = 'US', page = 1) {
   }
 }
 
-// Get trending TV shows in a specific region/country
-export async function getTrendingTVInRegion(region = 'US', page = 1) {
+// Get trending TV shows in a specific region/country (or worldwide if no region specified)
+export async function getTrendingTVInRegion(region = null, page = 1) {
   try {
+    const isWorldwide = !region || region === 'worldwide' || region === 'WORLDWIDE';
+    const params = isWorldwide ? { page } : { page, region };
+
     const response = await cachedTmdbGet(
       '/trending/tv/day',
-      { page, region },
+      params,
       TMDB_CACHE_TTLS.trending
     );
     return {

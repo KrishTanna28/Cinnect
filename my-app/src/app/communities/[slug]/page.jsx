@@ -632,6 +632,13 @@ export default function CommunityPage() {
     }
   }
 
+  const handleUserNameClick = (e, userId) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!userId) return
+    router.push(`/profile/${userId}`)
+  }
+
   const handleSharePost = async (e, post) => {
     e.preventDefault()
     e.stopPropagation()
@@ -1312,8 +1319,8 @@ export default function CommunityPage() {
                               <Lock className="w-4 h-4 text-muted-foreground" />
                             )}
                             {post.user?.avatar ? (
-                              <img 
-                                src={post.user?.avatar} 
+                              <img
+                                src={post.user?.avatar}
                                 alt={post.user?.username}
                                 className="w-8 h-8 rounded-full object-cover"
                               />
@@ -1323,7 +1330,12 @@ export default function CommunityPage() {
                               </div>
                             )}
                             <span className="text-xs text-muted-foreground">
-                              u/<span className="font-bold text-primary">{post.user?.username || 'Unknown'}</span> • {formatTimeAgo(post.createdAt)}
+                              u/<button
+                                onClick={(e) => handleUserNameClick(e, post.user?._id)}
+                                className="font-bold text-primary hover:underline cursor-pointer"
+                              >
+                                {post.user?.username || 'Unknown'}
+                              </button> • {formatTimeAgo(post.createdAt)}
                             </span>
                           </div>
 

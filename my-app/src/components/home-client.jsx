@@ -177,8 +177,8 @@ export default function HomeClient({ initialData }) {
     trendingInCircles: [],
     top10Movies: [],
     top10TV: [],
-    country: 'US',
-    countryName: 'Your Country',
+    country: 'worldwide',
+    countryName: 'Worldwide',
   })
   const [personalizedLoaded, setPersonalizedLoaded] = useState(false)
 
@@ -192,10 +192,10 @@ export default function HomeClient({ initialData }) {
     const token = localStorage.getItem("token")
     if (!token) return
 
-    // Fetch recommendations immediately with default country
+    // Fetch recommendations immediately with global/worldwide data (no country filter)
     const fetchRecs = async () => {
       try {
-        const res = await fetch(`/api/recommendations/all?country=US&countryName=${encodeURIComponent('United States')}`, {
+        const res = await fetch(`/api/recommendations/all?country=worldwide&countryName=Worldwide`, {
           headers: { Authorization: `Bearer ${token}` },
         })
         if (res.ok) {
@@ -220,8 +220,8 @@ export default function HomeClient({ initialData }) {
           const country = geoData.country_code
           const countryName = geoData.country_name
 
-          // Only refetch if country is different from US
-          if (country !== 'US') {
+          // Only refetch if we successfully got a country (not worldwide)
+          if (country && countryName) {
             const res = await fetch(`/api/recommendations/all?country=${country}&countryName=${encodeURIComponent(countryName)}`, {
               headers: { Authorization: `Bearer ${token}` },
             })
@@ -241,7 +241,7 @@ export default function HomeClient({ initialData }) {
           }
         }
       } catch {
-        // Geolocation failed, keep US defaults
+        // Geolocation failed, keep worldwide defaults (not US)
       }
     }
 
@@ -555,7 +555,9 @@ export default function HomeClient({ initialData }) {
             {/* 4. Top 10 Trending Movies in [Country] */}
             {personalizedRecs.top10Movies.length > 0 && (
               <Top10Carousel
-                title={`Top 10 Movies in ${personalizedRecs.countryName} Today`}
+                title={personalizedRecs.country === 'worldwide'
+                  ? "Top 10 Trending Movies"
+                  : `Top 10 Movies in ${personalizedRecs.countryName} Today`}
                 movies={personalizedRecs.top10Movies}
               />
             )}
@@ -563,7 +565,9 @@ export default function HomeClient({ initialData }) {
             {/* 5. Top 10 Trending Shows in [Country] */}
             {personalizedRecs.top10TV.length > 0 && (
               <Top10Carousel
-                title={`Top 10 Shows in ${personalizedRecs.countryName} Today`}
+                title={personalizedRecs.country === 'worldwide'
+                  ? "Top 10 Trending Shows"
+                  : `Top 10 Shows in ${personalizedRecs.countryName} Today`}
                 movies={personalizedRecs.top10TV}
               />
             )}

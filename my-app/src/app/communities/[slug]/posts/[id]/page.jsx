@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
+import Link from "next/link"
 import { ArrowLeft, ThumbsUp, ThumbsDown, MessageCircle, Eye, Pin, Lock, Trash2, Send, Pencil, MoreVertical, Cross2, X, AlertTriangle, ShieldAlert, EyeOff, Share2 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
@@ -856,6 +857,15 @@ export default function PostDetailPage() {
     }
   }
 
+  const handleUserNameClick = (e, userId) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    if (!userId) return
+    router.push(`/profile/${userId}`)
+  }
+
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}/communities/${params.slug}/posts/${params.id}`
     const shareData = {
@@ -1015,6 +1025,8 @@ export default function PostDetailPage() {
     const isOwnReply = user && replyNode.user?._id === user?._id;
     const replySpoilerRevealed = revealedSpoilers.has(replyNode._id);
     const shouldBlurReply = replyNode.spoiler && !replySpoilerRevealed && !isOwnReply;
+    const replyAdultRevealed = revealedSpoilers.has(`adult_${replyNode._id}`);
+    const shouldBlurAdultReply = replyNode.adult_content && !isOwnReply && !replyAdultRevealed && !isMinor;
     const isCollapsed = collapsedReplies.has(replyNode._id);
     const depth = replyNode.depth || 0;
     const isHighlighted = highlightId === replyNode._id;
@@ -1040,12 +1052,13 @@ export default function PostDetailPage() {
 
         <div className="flex-1 w-full overflow-hidden">
           <div className="flex items-center gap-2 mb-1">
-            <span
-              className="font-semibold text-xs text-foreground cursor-pointer"
-              onClick={() => toggleCollapse(replyNode._id)}
+            <Link
+              href={`/profile/${replyNode.user?._id}`}
+              onClick={(e) => e.stopPropagation()}
+              className="font-semibold text-xs text-foreground hover:text-primary hover:underline"
             >
               {replyNode.user?.username || 'Unknown'}
-            </span>
+            </Link>
             <span className="text-xs text-muted-foreground">
               {new Date(replyNode.createdAt).toLocaleDateString()}
             </span>
@@ -1073,26 +1086,47 @@ export default function PostDetailPage() {
                 </button>
               )
             )}
+            {replyNode.adult_content && (
+              <span className="px-1.5 py-0.5 bg-orange-500/20 text-orange-400 rounded text-xs font-semibold flex items-center gap-1">
+                <ShieldAlert className="w-2.5 h-2.5" />
+                18+
+              </span>
+            )}
           </div>
 
           {!isCollapsed && (
             <div className="flex flex-col gap-2">
-              <div className="relative">
-                <p className={`text-xs text-foreground mb-1 transition-all break-words ${shouldBlurReply ? 'blur-md select-none' : ''}`}>
-                  <MentionText text={replyNode.content} />
-                </p>
-                {shouldBlurReply && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <button
-                      onClick={() => revealSpoiler(replyNode._id)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive/90 hover:bg-destructive text-white rounded-lg text-xs font-semibold transition-colors shadow-lg cursor-pointer"
-                    >
-                      <Eye className="w-3 h-3" />
-                      Reveal
-                    </button>
-                  </div>
-                )}
-              </div>
+              {isMinor && replyNode.adult_content ? (
+                <p className="text-xs text-muted-foreground italic mb-1">This reply contains age-restricted content.</p>
+              ) : (
+                <div className="relative">
+                  <p className={`text-xs text-foreground mb-1 transition-all break-words ${(shouldBlurReply || shouldBlurAdultReply) ? 'blur-md select-none' : ''}`}>
+                    <MentionText text={replyNode.content} />
+                  </p>
+                  {shouldBlurReply && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <button
+                        onClick={() => revealSpoiler(replyNode._id)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive/90 hover:bg-destructive text-white rounded-lg text-xs font-semibold transition-colors shadow-lg cursor-pointer"
+                      >
+                        <Eye className="w-3 h-3" />
+                        Reveal Spoiler
+                      </button>
+                    </div>
+                  )}
+                  {shouldBlurAdultReply && !shouldBlurReply && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <button
+                        onClick={() => revealSpoiler(`adult_${replyNode._id}`)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-600/90 hover:bg-orange-600 text-white rounded-lg text-xs font-semibold transition-colors shadow-lg cursor-pointer"
+                      >
+                        <Eye className="w-3 h-3" />
+                        Reveal 18+ Content
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="flex items-center gap-3">
                 <button
@@ -1243,15 +1277,23 @@ export default function PostDetailPage() {
                 {/* Stacked text */}
                 <span className="flex flex-col leading-tight">
                   <div>
-                    c/<span className="font-bold text-primary">
+                    c/<Link
+                      href={`/communities/${post.community?.slug || params.slug}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="font-bold text-primary hover:underline cursor-pointer"
+                    >
                       {post.community?.name || 'Unknown'}
-                    </span>
+                    </Link>
                   </div>
 
                   <div className="text-sm text-muted-foreground">
-                    u/<span className="font-medium">
+                    u/<Link
+                      href={`/profile/${post.user?._id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="font-medium hover:text-primary hover:underline cursor-pointer"
+                    >
                       {post.user?.username || 'Unknown'}
-                    </span>
+                    </Link>
                     {' • '}
                     {formatTimeAgo(post.createdAt)}
                   </div>
@@ -1367,10 +1409,10 @@ export default function PostDetailPage() {
           )}
 
           {/* Post Actions */}
-          <div className="flex items-center gap-4 pt-4 border-t border-border">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4 pt-4 border-t border-border">
             <button
               onClick={handleLikePost}
-              className={`flex items-center gap-2 text-sm transition-all active:scale-95 cursor-pointer ${post.likes?.some(id => id?.toString() === user?._id)
+              className={`flex items-center gap-1.5 sm:gap-2 text-sm transition-all active:scale-95 cursor-pointer ${post.likes?.some(id => id?.toString() === user?._id)
                 ? "text-primary font-bold"
                 : "text-muted-foreground hover:text-primary"
                 }`}
@@ -1386,7 +1428,7 @@ export default function PostDetailPage() {
 
             <button
               onClick={handleDislikePost}
-              className={`flex items-center gap-2 text-sm transition-all active:scale-95 cursor-pointer ${post.dislikes?.some(id => id?.toString() === user?._id)
+              className={`flex items-center gap-1.5 sm:gap-2 text-sm transition-all active:scale-95 cursor-pointer ${post.dislikes?.some(id => id?.toString() === user?._id)
                 ? "text-destructive"
                 : "text-muted-foreground hover:text-destructive"
                 }`}
@@ -1400,19 +1442,21 @@ export default function PostDetailPage() {
               <span>{post.dislikes?.length || 0}</span>
             </button>
 
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-sm text-muted-foreground">
               <MessageCircle className="w-4 h-4" />
-              <span>{post.comments?.length || 0} {post.comments?.length === 1 ? 'Comment' : 'Comments'}</span>
+              <span className="hidden xs:inline">{post.comments?.length || 0} {post.comments?.length === 1 ? 'Comment' : 'Comments'}</span>
+              <span className="xs:hidden">{post.comments?.length || 0}</span>
             </div>
 
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-sm text-muted-foreground">
               <Eye className="w-4 h-4" />
-              <span>{post.views || 0} views</span>
+              <span className="hidden xs:inline">{post.views || 0} views</span>
+              <span className="xs:hidden">{post.views || 0}</span>
             </div>
 
             <button
               onClick={handleShare}
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-all active:scale-95 cursor-pointer"
+              className="flex items-center gap-1.5 sm:gap-2 text-sm text-muted-foreground hover:text-primary transition-all active:scale-95 cursor-pointer"
             >
               <Share2 className="w-4 h-4" />
               <span>Share</span>
@@ -1510,7 +1554,13 @@ export default function PostDetailPage() {
 
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold text-sm text-foreground">{comment.user?.username || 'Unknown'}</span>
+                        <Link
+                          href={`/profile/${comment.user?._id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="font-semibold text-sm text-foreground hover:text-primary hover:underline"
+                        >
+                          {comment.user?.username || 'Unknown'}
+                        </Link>
                         <span className="text-xs text-muted-foreground">
                           {new Date(comment.createdAt).toLocaleDateString()}
                         </span>

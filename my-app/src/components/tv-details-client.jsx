@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Play, Share2, Heart, Clock, Award, Calendar, Film, Star, Bookmark, Check, Tv } from "lucide-react"
+import { Play, Share2, Heart, Clock, Award, Calendar, Film, Star, Bookmark, Check, Tv, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "@/hooks/use-toast"
 import Link from "next/link"
@@ -14,10 +14,11 @@ import ReviewPreview from "./review-preview"
 import VideosGrid from "./videos-grid"
 import NewsCarousel from "./news-carousel"
 
-export default function TVDetailsClient({ 
-  show, 
-  initialLiked, 
+export default function TVDetailsClient({
+  show,
+  initialLiked,
   initialInWatchlist,
+  initialWatched = false,
   videos = [],
   news = []
 }) {
@@ -25,6 +26,7 @@ export default function TVDetailsClient({
   const router = useRouter()
   const [liked, setLiked] = useState(initialLiked)
   const [inWatchlist, setInWatchlist] = useState(initialInWatchlist)
+  const [watched, setWatched] = useState(initialWatched)
   const [likeCount, setLikeCount] = useState(show.voteCount || 0)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedVideo, setSelectedVideo] = useState(null)
@@ -115,6 +117,48 @@ export default function TVDetailsClient({
     }
   }
 
+  const handleWatched = async () => {
+    if (!user) {
+      router.push('/login')
+      return
+    }
+
+    const wasWatched = watched
+    setWatched(!watched)
+
+    try {
+      const token = localStorage.getItem('token')
+
+      if (wasWatched) {
+        const response = await fetch(`/api/users/me/watched/${show.id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        const data = await response.json()
+        if (!data.success) throw new Error(data.message)
+      } else {
+        const response = await fetch('/api/users/me/watched', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ movieId: show.id?.toString(), mediaType: 'tv' })
+        })
+        const data = await response.json()
+        if (!data.success) throw new Error(data.message)
+      }
+    } catch (error) {
+      console.error('Error updating watched status:', error)
+      setWatched(wasWatched)
+      toast({
+        title: "Error",
+        description: "Failed to update watched status. Please try again.",
+        variant: "destructive"
+      })
+    }
+  }
+
   const handleShare = async () => {
     const shareData = {
       title: show.name,
@@ -134,7 +178,24 @@ export default function TVDetailsClient({
         })
       }
     } catch (error) {
-      console.error('Error sharing:', error)
+      // User cancelled sharing or sharing failed - try clipboard fallback
+      if (error.name !== 'AbortError') {
+        try {
+          await navigator.clipboard.writeText(window.location.href)
+          toast({
+            title: "Link Copied",
+            description: "Link has been copied to clipboard!",
+            variant: "success"
+          })
+        } catch (clipboardError) {
+          console.error('Error copying to clipboard:', clipboardError)
+          toast({
+            title: "Error",
+            description: "Failed to copy link. Please copy the URL manually.",
+            variant: "destructive"
+          })
+        }
+      }
     }
   }
 
@@ -211,6 +272,10 @@ export default function TVDetailsClient({
                   <Button onClick={handleWatchlist} variant="outline" size="lg" className="gap-2">
                     {inWatchlist ? <Check className="w-5 h-5" /> : <Bookmark className="w-5 h-5" />}
                     {inWatchlist ? 'In Watchlist' : 'Watchlist'}
+                  </Button>
+                  <Button onClick={handleWatched} variant="outline" size="lg" className="gap-2">
+                    <Eye className={`w-5 h-5 ${watched ? 'text-green-500' : ''}`} />
+                    {watched ? 'Watched' : 'Mark Watched'}
                   </Button>
                   <Button onClick={handleShare} variant="outline" size="lg">
                     <Share2 className="w-5 h-5" />
