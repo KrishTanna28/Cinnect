@@ -87,7 +87,8 @@ export default function ReviewsPage({ params }) {
           `/api/reviews?mediaType=${unwrappedParams.mediaType}&mediaId=${unwrappedParams.mediaId}&userId=${user._id}&page=1&limit=1&sortBy=latest`
         )
         const data = await response.json()
-        setHasReviewed(!!data?.data?.length)
+        // Updated to match new API response format
+        setHasReviewed(!!(data?.data?.reviews?.length))
       } catch (existingReviewError) {
         console.error('Failed to check existing review:', existingReviewError)
       }
@@ -139,15 +140,19 @@ export default function ReviewsPage({ params }) {
         sortBy
       )
 
-      if (data.success) {
+      if (data.success && data.data) {
+        // Updated to match new API response format
+        const reviewsData = data.data.reviews || []
+        const pagination = data.data.pagination || {}
+
         if (pageNum === 1) {
-          setReviews(data.data)
+          setReviews(reviewsData)
         } else {
-          setReviews(prev => [...prev, ...data.data])
+          setReviews(prev => [...prev, ...reviewsData])
         }
-        setHasMore(data.pagination.page < data.pagination.pages)
+        setHasMore(pagination.page < pagination.pages)
       }
-      console.log('Fetched reviews:', data.data)
+      console.log('Fetched reviews:', data.data?.reviews)
     } catch (error) {
       console.error('Failed to fetch reviews:', error)
       setError('Failed to load reviews')

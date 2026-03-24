@@ -1,7 +1,6 @@
 "use client"
 
 import { useRef, useCallback } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import useInfiniteScroll from "@/hooks/useInfiniteScroll"

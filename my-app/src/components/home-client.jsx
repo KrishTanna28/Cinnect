@@ -476,7 +476,7 @@ export default function HomeClient({ initialData }) {
           </div>
 
           <Link
-            href={user ? featuredItem.mediaType === 'tv' ? `/tv/${featuredItem.id}` : `/movies/${featuredItem.id}` : "/login"}
+            href={featuredItem.mediaType === 'tv' ? `/tv/${featuredItem.id}` : `/movies/${featuredItem.id}`}
             className="relative z-10 w-full cursor-pointer group"
             onClick={(e) => {
               // Prevent navigation if user was swiping

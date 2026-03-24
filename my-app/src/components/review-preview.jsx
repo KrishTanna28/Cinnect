@@ -26,15 +26,22 @@ export default function ReviewPreview({ mediaId, mediaType, mediaTitle }) {
         )
         const data = await response.json()
 
-        if (data.success) {
-          setReviews(data.data)
+        if (data.success && data.data) {
+          // Updated to match new API response format
+          const reviewsData = data.data.reviews || []
+          const pagination = data.data.pagination || { total: 0 }
+
+          setReviews(reviewsData)
           setStats({
-            total: data.pagination.total,
-            averageRating: calculateAverageRating(data.data)
+            total: pagination.total,
+            averageRating: calculateAverageRating(reviewsData)
           })
         }
       } catch (error) {
         console.error('Failed to fetch reviews:', error)
+        // Set default values on error
+        setReviews([])
+        setStats({ total: 0, averageRating: 0 })
       } finally {
         setLoading(false)
       }
