@@ -75,6 +75,12 @@ export async function GET(request) {
       const accessToken = generateAccessToken(user._id)
       const refreshToken = generateRefreshToken(user._id, tokenId)
 
+      console.log('[OAuth] User found, setting cookies and redirecting:', {
+        userId: user._id.toString(),
+        rememberMe: true,
+        frontendUrl: FRONTEND_URL
+      })
+
       // Update last login
       user.lastLogin = new Date()
       await user.save()
@@ -84,6 +90,8 @@ export async function GET(request) {
 
       // Set httpOnly cookies (default to persistent for Google OAuth)
       setAuthCookies(response, accessToken, refreshToken, true)
+
+      console.log('[OAuth] Cookies set, response ready')
 
       return response
     }
