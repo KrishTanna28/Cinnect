@@ -14,7 +14,7 @@ export function setAuthCookies(response, accessToken, refreshToken, rememberMe =
   const cookieSettings = {
     httpOnly: true, // Prevents XSS attacks
     secure: process.env.NODE_ENV === 'production', // HTTPS only in production
-    sameSite: 'strict', // CSRF protection
+    sameSite: 'lax', // Changed from 'strict' to 'lax' for better compatibility
     path: '/' // Available site-wide
   }
 
@@ -45,7 +45,7 @@ export function clearAuthCookies(response) {
   const cookieSettings = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: 'lax', // Changed from 'strict' to 'lax' for consistency
     path: '/'
   }
 

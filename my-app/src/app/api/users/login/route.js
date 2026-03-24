@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server'
 import User from '@/lib/models/User.js'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
@@ -67,16 +68,21 @@ export async function POST(request) {
     const userResponse = user.toObject()
     delete userResponse.password
 
-    // Create response and set auth cookies
-    const response = success({
-      user: userResponse,
-      gamification: {
-        xpEvent,
-        progression: getProgressionSnapshot(user)
+    // Create response data
+    const responseData = {
+      success: true,
+      message: 'Login successful',
+      data: {
+        user: userResponse,
+        gamification: {
+          xpEvent,
+          progression: getProgressionSnapshot(user)
+        }
       }
-    }, 'Login successful')
+    }
 
-    // Set httpOnly cookies (session or persistent based on rememberMe)
+    // Create NextResponse and set auth cookies
+    const response = NextResponse.json(responseData)
     setAuthCookies(response, accessToken, refreshToken, rememberMe)
 
     return response

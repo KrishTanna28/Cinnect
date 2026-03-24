@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
+import { generateAccessToken, generateRefreshToken } from '@/lib/utils/jwt.js';
+import { setAuthCookies } from '@/lib/utils/cookies.js';
 import User from '@/lib/models/User.js';
 import connectDB from '@/lib/config/database.js';
+import crypto from 'crypto';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URL;
-const JWT_SECRET = process.env.JWT_SECRET;
 const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL;
 
 export async function GET(request) {
@@ -69,27 +70,22 @@ export async function GET(request) {
     let user = await User.findOne({ googleId: googleUser.id });
 
     if (user) {
-      // User exists, generate token
-      const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '7d' });
+      // User exists, generate new access and refresh tokens
+      const tokenId = crypto.randomUUID()
+      const accessToken = generateAccessToken(user._id)
+      const refreshToken = generateRefreshToken(user._id, tokenId)
 
-      // Redirect to auth callback page with token and full user data
-      const userResponse = user.toObject();
-      delete userResponse.password; // Remove password field if present
-      const userStr = encodeURIComponent(JSON.stringify(userResponse));
+      // Update last login
+      user.lastLogin = new Date()
+      await user.save()
 
-      const redirectUrl = new URL(`${FRONTEND_URL}/auth/callback?token=${token}&user=${userStr}`);
-      const response = NextResponse.redirect(redirectUrl);
+      // Redirect directly to home page, cookies will handle authentication
+      const response = NextResponse.redirect(`${FRONTEND_URL}/`)
 
-      // Set HTTP-only cookie for middleware authentication
-      response.cookies.set('token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60, // 7 days
-        path: '/'
-      });
+      // Set httpOnly cookies (default to persistent for Google OAuth)
+      setAuthCookies(response, accessToken, refreshToken, true)
 
-      return response;
+      return response
     }
 
     // Check if user exists with this email (from regular registration)
@@ -100,39 +96,33 @@ export async function GET(request) {
       user.googleId = googleUser.id;
       user.authProvider = 'google';
       user.emailVerified = true;
-      
+
       // Update avatar if not set
       if (!user.avatar || user.avatar === 'https://via.placeholder.com/150') {
         user.avatar = googleUser.picture || user.avatar;
       }
-      
+
+      // Update last login
+      user.lastLogin = new Date()
       await user.save();
 
-      const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '7d' });
+      // Generate new access and refresh tokens
+      const tokenId = crypto.randomUUID()
+      const accessToken = generateAccessToken(user._id)
+      const refreshToken = generateRefreshToken(user._id, tokenId)
 
-      // Return full user data
-      const userResponse = user.toObject();
-      delete userResponse.password; // Remove password field if present
-      const userStr = encodeURIComponent(JSON.stringify(userResponse));
+      // Redirect directly to home page
+      const response = NextResponse.redirect(`${FRONTEND_URL}/`)
 
-      const redirectUrl = new URL(`${FRONTEND_URL}/auth/callback?token=${token}&user=${userStr}`);
-      const response = NextResponse.redirect(redirectUrl);
+      // Set httpOnly cookies (default to persistent for Google OAuth)
+      setAuthCookies(response, accessToken, refreshToken, true)
 
-      // Set HTTP-only cookie for middleware authentication
-      response.cookies.set('token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60, // 7 days
-        path: '/'
-      });
-
-      return response;
+      return response
     }
 
     // Create new user
     const username = googleUser.email.split('@')[0] + Math.floor(Math.random() * 1000);
-    
+
     user = await User.create({
       googleId: googleUser.id,
       email: googleUser.email,
@@ -141,28 +131,21 @@ export async function GET(request) {
       avatar: googleUser.picture || 'https://via.placeholder.com/150',
       authProvider: 'google',
       emailVerified: true,
+      lastLogin: new Date()
     });
 
-    const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '7d' });
+    // Generate new access and refresh tokens
+    const tokenId = crypto.randomUUID()
+    const accessToken = generateAccessToken(user._id)
+    const refreshToken = generateRefreshToken(user._id, tokenId)
 
-    // Return full user data
-    const userResponse = user.toObject();
-    delete userResponse.password; // Remove password field if present
-    const userStr = encodeURIComponent(JSON.stringify(userResponse));
+    // Redirect directly to home page
+    const response = NextResponse.redirect(`${FRONTEND_URL}/`)
 
-    const redirectUrl = new URL(`${FRONTEND_URL}/auth/callback?token=${token}&user=${userStr}`);
-    const response = NextResponse.redirect(redirectUrl);
+    // Set httpOnly cookies (default to persistent for Google OAuth)
+    setAuthCookies(response, accessToken, refreshToken, true)
 
-    // Set HTTP-only cookie for middleware authentication
-    response.cookies.set('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60, // 7 days
-      path: '/'
-    });
-
-    return response;
+    return response
 
   } catch (error) {
     console.error('Google OAuth callback error:', error);
