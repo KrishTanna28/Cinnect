@@ -10,10 +10,8 @@ export default function PrivacyPolicyPage() {
       <div className="max-w-4xl mx-auto px-4 py-12">
         {/* Back Button */}
         <Link href="/">
-          <Button variant="ghost" className="mb-8 gap-2">
             <ArrowLeft className="w-4 h-4" />
             Back to Home
-          </Button>
         </Link>
 
         {/* Header */}
@@ -207,7 +205,7 @@ export default function PrivacyPolicyPage() {
             </p>
           </section>
 
-          <section>
+          {/* <section>
             <h2 className="text-2xl font-semibold text-foreground mb-4">12. Contact Us</h2>
             <p className="text-muted-foreground leading-relaxed">
               If you have questions or concerns about this Privacy Policy or our data practices, please contact us at:
@@ -216,7 +214,7 @@ export default function PrivacyPolicyPage() {
               <p className="text-primary">Email: privacy@cinnect.com</p>
               <p className="text-primary">Support: support@cinnect.com</p>
             </div>
-          </section>
+          </section> */}
         </div>
 
         {/* Footer Links */}

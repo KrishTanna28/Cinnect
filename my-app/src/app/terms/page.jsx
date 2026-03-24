@@ -10,10 +10,8 @@ export default function TermsOfServicePage() {
       <div className="max-w-4xl mx-auto px-4 py-12">
         {/* Back Button */}
         <Link href="/">
-          <Button variant="ghost" className="mb-8 gap-2">
             <ArrowLeft className="w-4 h-4" />
             Back to Home
-          </Button>
         </Link>
 
         {/* Header */}
@@ -137,13 +135,13 @@ export default function TermsOfServicePage() {
             </p>
           </section>
 
-          <section>
+          {/* <section>
             <h2 className="text-2xl font-semibold text-foreground mb-4">12. Contact Us</h2>
             <p className="text-muted-foreground leading-relaxed">
               If you have any questions about these Terms of Service, please contact us at:
             </p>
             <p className="text-primary mt-4">support@cinnect.com</p>
-          </section>
+          </section> */}
         </div>
 
         {/* Footer Links */}
