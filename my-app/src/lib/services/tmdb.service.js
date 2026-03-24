@@ -487,10 +487,10 @@ export function formatMovieDetails(movie) {
       homepage: movie.homepage,
       imdbId: movie.imdb_id,
       originalLanguage: movie.original_language,
-      spokenLanguages: movie.spoken_languages,
-      productionCompanies: movie.production_companies,
-      productionCountries: movie.production_countries,
-      genres: movie.genres,
+      spokenLanguages: movie.spoken_languages || [],
+      productionCompanies: movie.production_companies || [],
+      productionCountries: movie.production_countries || [],
+      genres: movie.genres || [],
       poster: getImageUrl(movie.poster_path, 'w500'),
       backdrop: getImageUrl(movie.backdrop_path, 'original'),
       // Credits
@@ -499,14 +499,14 @@ export function formatMovieDetails(movie) {
         name: person.name,
         character: person.character,
         profilePath: getImageUrl(person.profile_path, 'w185'),
-      })),
+      })) || [],
       crew: movie.credits?.crew?.slice(0, 50).map((person) => ({
         id: person.id,
         name: person.name,
         job: person.job,
         department: person.department,
         profilePath: getImageUrl(person.profile_path, 'w185'),
-      })),
+      })) || [],
       // Videos (trailers, teasers)
       videos: movie.videos?.results?.map((video) => ({
         id: video.id,
@@ -515,7 +515,7 @@ export function formatMovieDetails(movie) {
         site: video.site,
         type: video.type,
         official: video.official,
-      })),
+      })) || [],
       // Similar and recommended movies
       similar: formatMovieList(movie.similar?.results || []),
       recommendations: formatMovieList(movie.recommendations?.results || []),
@@ -598,11 +598,11 @@ export function formatTVDetails(tv) {
       homepage: tv.homepage,
       inProduction: tv.in_production,
       originalLanguage: tv.original_language,
-      spokenLanguages: tv.spoken_languages,
-      productionCompanies: tv.production_companies,
-      productionCountries: tv.production_countries,
-      networks: tv.networks,
-      genres: tv.genres,
+      spokenLanguages: tv.spoken_languages || [],
+      productionCompanies: tv.production_companies || [],
+      productionCountries: tv.production_countries || [],
+      networks: tv.networks || [],
+      genres: tv.genres || [],
       poster: getImageUrl(tv.poster_path, 'w500'),
       backdrop: getImageUrl(tv.backdrop_path, 'original'),
       // Credits
@@ -611,14 +611,14 @@ export function formatTVDetails(tv) {
         name: person.name,
         character: person.character,
         profilePath: getImageUrl(person.profile_path, 'w185'),
-      })),
+      })) || [],
       crew: tv.credits?.crew?.slice(0, 50).map((person) => ({
         id: person.id,
         name: person.name,
         job: person.job,
         department: person.department,
         profilePath: getImageUrl(person.profile_path, 'w185'),
-      })),
+      })) || [],
       // Videos (trailers, teasers)
       videos: tv.videos?.results?.map((video) => ({
         id: video.id,
@@ -627,7 +627,7 @@ export function formatTVDetails(tv) {
         site: video.site,
         type: video.type,
         official: video.official,
-      })),
+      })) || [],
       // Similar and recommended TV shows
       similar: formatMediaList(tv.similar?.results || []),
       recommendations: formatMediaList(tv.recommendations?.results || []),
@@ -641,7 +641,7 @@ export function formatTVDetails(tv) {
         airDate: season.air_date,
         rating: season.vote_average,
         poster: getImageUrl(season.poster_path, 'w500'),
-      })),
+      })) || [],
       // Watch providers
       watchProviders: formatWatchProviders(tv['watch/providers']?.results),
     };
@@ -673,14 +673,14 @@ export function formatSeasonDetails(season) {
           name: person.name,
           job: person.job,
           department: person.department,
-        })),
+        })) || [],
         guestStars: episode.guest_stars?.slice(0, 5).map((person) => ({
           id: person.id,
           name: person.name,
           character: person.character,
           profilePath: getImageUrl(person.profile_path, 'w185'),
-        })),
-      })),
+        })) || [],
+      })) || [],
     };
   }
 
