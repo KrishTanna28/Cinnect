@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/config/database.js';
 import { generateForAllUsers } from '@/lib/services/entertainmentNotification.service.js';
+import { success, unauthorized, handleError } from '@/lib/utils/apiResponse.js';
 
 /**
  * POST /api/notifications/generate-all
@@ -9,22 +10,28 @@ import { generateForAllUsers } from '@/lib/services/entertainmentNotification.se
  * Protected by a shared secret header.
  */
 export async function POST(request) {
-  await connectDB();
   try {
     const secret = request.headers.get('x-scheduler-secret');
-    const expected = process.env.SCHEDULER_SECRET || 'internal-scheduler';
-    if (secret !== expected) {
-      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    const expected = process.env.SCHEDULER_SECRET;
+
+    // Require SCHEDULER_SECRET to be configured
+    if (!expected) {
+      console.error('[Scheduler] SCHEDULER_SECRET not configured');
+      return NextResponse.json(
+        { success: false, message: 'Server configuration error' },
+        { status: 500 }
+      );
     }
 
+    if (secret !== expected) {
+      return unauthorized();
+    }
+
+    await connectDB();
     await generateForAllUsers();
 
-    return NextResponse.json({ success: true, processed: true });
-  } catch (error) {
-    console.error('Generate-all notifications error:', error);
-    return NextResponse.json(
-      { success: false, message: error.message || 'Failed to generate notifications' },
-      { status: 500 }
-    );
+    return success({ processed: true }, 'Notifications generated successfully');
+  } catch (err) {
+    return handleError(err, 'Generate-all notifications');
   }
 }

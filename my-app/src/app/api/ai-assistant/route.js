@@ -4,9 +4,10 @@
  */
 
 import { GoogleGenAI } from '@google/genai';
-import { NextResponse } from 'next/server';
 import { withOptionalAuth } from '@/lib/middleware/withAuth';
 import connectDB from '@/lib/config/database.js';
+import { success, error, handleError } from '@/lib/utils/apiResponse.js';
+import { checkRateLimit, RATE_LIMITS } from '@/lib/utils/rateLimit.js';
 
 // Import AI modules
 import { SYSTEM_PROMPT } from '@/lib/services/ai/systemPrompt';
@@ -106,8 +107,14 @@ Use this to personalize responses when relevant.`;
  * Main POST handler
  */
 async function handler(request, context) {
-  await connectDB()
+  // Apply rate limiting for AI calls (expensive operation)
+  const rateLimitResult = checkRateLimit(request, 'ai-assistant', RATE_LIMITS.AI)
+  if (!rateLimitResult.allowed) {
+    return rateLimitResult.response
+  }
+
   try {
+    await connectDB()
     const { message, conversationHistory = [] } = await request.json();
     const user = context?.user || null;
     const userId = user?._id?.toString() || null;
@@ -117,18 +124,21 @@ async function handler(request, context) {
       favoriteGenres: user.favoriteGenres
     } : null;
 
-    if (!message) {
-      return NextResponse.json({ error: 'Message is required' }, { status: 400 });
+    if (!message || typeof message !== 'string' || message.trim().length === 0) {
+      return error('Message is required', 400);
+    }
+
+    if (message.length > 2000) {
+      return error('Message is too long. Please keep it under 2000 characters.', 400);
     }
 
     // Step 1: Content safety check on user message using ML models
     const safetyCheck = await checkContentSafety(message);
 
     if (!safetyCheck.isSafe) {
-      return NextResponse.json({
+      return success({
         message: getUnsafeContentResponse(safetyCheck),
         blocked: true,
-        reason: safetyCheck.reason,
         intent: 'safety_violation'
       });
     }
@@ -138,14 +148,14 @@ async function handler(request, context) {
 
     // Step 3: Handle special cases without LLM
     if (classification.intent === INTENTS.OUT_OF_DOMAIN) {
-      return NextResponse.json({
+      return success({
         message: getOutOfDomainResponse(),
         intent: classification.intent
       });
     }
 
     if (classification.intent === INTENTS.GREETING) {
-      return NextResponse.json({
+      return success({
         message: getGreetingResponse(user?.username),
         intent: classification.intent
       });
@@ -269,19 +279,14 @@ async function handler(request, context) {
       responseText = "I apologize, but I couldn't generate an appropriate response. Could you rephrase your question?";
     }
 
-    return NextResponse.json({
+    return success({
       message: responseText,
       intent: classification.intent,
-      confidence: classification.confidence,
-      safetyChecked: true
+      confidence: classification.confidence
     });
 
-  } catch (error) {
-    console.error('AI Assistant Error:', error);
-    return NextResponse.json(
-      { error: 'Failed to process your request. Please try again.' },
-      { status: 500 }
-    );
+  } catch (err) {
+    return handleError(err, 'AI Assistant');
   }
 }
 

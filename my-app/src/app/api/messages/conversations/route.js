@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/middleware/withAuth';
 import connectDB from '@/lib/config/database';
 import Conversation from '@/lib/models/Conversation';
 import Message from '@/lib/models/Message';
 import User from '@/lib/models/User';
+import { success, error, handleError, notFound, forbidden } from '@/lib/utils/apiResponse.js';
 
 // GET /api/messages/conversations - Get all conversations for current user
 export const GET = withAuth(async (request, { user }) => {
@@ -35,7 +35,7 @@ export const GET = withAuth(async (request, { user }) => {
       }
       // If !isUserPrivate, public user sees all conversations (including requests to them) in the messages tab
     }
-    
+
     // Do not show conversations that user has deleted
     query.deletedFor = { $ne: user._id };
 
@@ -81,24 +81,17 @@ export const GET = withAuth(async (request, { user }) => {
         lastMessage: conv.lastMessage,
         lastMessageAt: conv.lastMessageAt,
         isRequest: isUserPrivate ? (conv.isRequest && conv.requestFor?.toString() === user._id.toString()) : false,
-        unreadCount: (conv.unreadCount && typeof conv.unreadCount.get === 'function') 
-          ? conv.unreadCount.get(user._id.toString()) 
+        unreadCount: (conv.unreadCount && typeof conv.unreadCount.get === 'function')
+          ? conv.unreadCount.get(user._id.toString())
           : (conv.unreadCount?.[user._id.toString()] || 0),
         mutedBy: conv.mutedBy || [],
         createdAt: conv.createdAt
       };
     });
 
-    return NextResponse.json({
-      success: true,
-      conversations: formattedConversations
-    });
-  } catch (error) {
-    console.error('Error fetching conversations:', error);
-    return NextResponse.json(
-      { success: false, message: 'Failed to fetch conversations' },
-      { status: 500 }
-    );
+    return success({ conversations: formattedConversations });
+  } catch (err) {
+    return handleError(err, 'Fetch conversations');
   }
 });
 
@@ -110,19 +103,13 @@ export const POST = withAuth(async (request, { user }) => {
     const { recipientId } = await request.json();
 
     if (!recipientId) {
-      return NextResponse.json(
-        { success: false, message: 'Recipient ID is required' },
-        { status: 400 }
-      );
+      return error('Recipient is required', 400);
     }
 
     // Check if recipient exists
     const recipient = await User.findById(recipientId);
     if (!recipient) {
-      return NextResponse.json(
-        { success: false, message: 'Recipient not found' },
-        { status: 404 }
-      );
+      return notFound('User not found');
     }
 
     const currentUserDoc = await User.findById(user._id).select('blockedUsers');
@@ -131,10 +118,7 @@ export const POST = withAuth(async (request, { user }) => {
     const didIBlockThem = myBlockedUsers.some(id => id.toString() === recipientId.toString());
 
     if (isBlockedByThem || didIBlockThem) {
-      return NextResponse.json(
-        { success: false, message: 'Not available' },
-        { status: 403 }
-      );
+      return forbidden('Cannot message this user');
     }
 
     // Check if conversation already exists
@@ -148,17 +132,16 @@ export const POST = withAuth(async (request, { user }) => {
       let otherParticipant = conversation.participants.find(
         p => p._id.toString() !== user._id.toString()
       );
-      
-      return NextResponse.json({
-        success: true,
+
+      return success({
         conversation: {
           _id: conversation._id,
           participant: otherParticipant,
           lastMessage: conversation.lastMessage,
           lastMessageAt: conversation.lastMessageAt,
           isRequest: currentUserDoc.isPrivate ? (conversation.isRequest && conversation.requestFor?.toString() === user._id.toString()) : false,
-          unreadCount: (conversation.unreadCount && typeof conversation.unreadCount.get === 'function') 
-            ? conversation.unreadCount.get(user._id.toString()) 
+          unreadCount: (conversation.unreadCount && typeof conversation.unreadCount.get === 'function')
+            ? conversation.unreadCount.get(user._id.toString())
             : (conversation.unreadCount?.[user._id.toString()] || 0),
           mutedBy: conversation.mutedBy || [],
           createdAt: conversation.createdAt
@@ -184,13 +167,12 @@ export const POST = withAuth(async (request, { user }) => {
     });
 
     conversation = await conversation.populate('participants', 'username fullName avatar');
-    
+
     let newOtherParticipant = conversation.participants.find(
         p => p._id.toString() !== user._id.toString()
     );
 
-    return NextResponse.json({
-      success: true,
+    return success({
       conversation: {
           _id: conversation._id,
           participant: newOtherParticipant,
@@ -203,11 +185,7 @@ export const POST = withAuth(async (request, { user }) => {
       },
       isNew: true
     });
-  } catch (error) {
-    console.error('Error creating conversation:', error);
-    return NextResponse.json(
-      { success: false, message: 'Failed to create conversation' },
-      { status: 500 }
-    );
+  } catch (err) {
+    return handleError(err, 'Create conversation');
   }
 });

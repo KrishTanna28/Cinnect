@@ -1,49 +1,49 @@
-import { NextResponse } from 'next/server'
 import User from '@/lib/models/User.js'
 import bcrypt from 'bcryptjs'
 import { generateToken } from '@/lib/utils/jwt.js'
 import { applyXpEvent, getProgressionSnapshot } from '@/lib/utils/gamification.js'
 import connectDB from '@/lib/config/database.js'
+import { success, error, handleError } from '@/lib/utils/apiResponse.js'
+import { checkRateLimit, RATE_LIMITS } from '@/lib/utils/rateLimit.js'
+import { validate, loginSchema } from '@/lib/utils/validation.js'
 
 export async function POST(request) {
-  await connectDB()
-  try {
-    const { email, password } = await request.json()
+  // Apply rate limiting for login attempts (brute force protection)
+  const rateLimitResult = checkRateLimit(request, 'login', RATE_LIMITS.AUTH)
+  if (!rateLimitResult.allowed) {
+    return rateLimitResult.response
+  }
 
-    if (!email || !password) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Email and password are required'
-        },
-        { status: 400 }
-      )
+  try {
+    await connectDB()
+    const body = await request.json()
+
+    // Validate input
+    const validation = validate(loginSchema, body)
+    if (!validation.success) {
+      return validation.response
     }
+
+    const { email, password } = validation.data
 
     // Find user by email
     const user = await User.findOne({ email }).select('+password')
 
     if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Invalid email or password'
-        },
-        { status: 401 }
-      )
+      // Use generic message to prevent email enumeration
+      return error('Invalid email or password', 401)
+    }
+
+    // Check if user has a password (might be Google-only account)
+    if (!user.password) {
+      return error('Please sign in with Google', 400)
     }
 
     // Check password
     const isPasswordValid = await bcrypt.compare(password, user.password)
 
     if (!isPasswordValid) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Invalid email or password'
-        },
-        { status: 401 }
-      )
+      return error('Invalid email or password', 401)
     }
 
     // Generate token
@@ -62,26 +62,15 @@ export async function POST(request) {
     const userResponse = user.toObject()
     delete userResponse.password
 
-    return NextResponse.json({
-      success: true,
-      message: 'Login successful',
-      data: {
-        token,
-        user: userResponse
-      },
+    return success({
+      token,
+      user: userResponse,
       gamification: {
         xpEvent,
         progression: getProgressionSnapshot(user)
       }
-    })
-  } catch (error) {
-    console.error('Login error:', error)
-    return NextResponse.json(
-      {
-        success: false,
-        message: error.message || 'Login failed'
-      },
-      { status: 500 }
-    )
+    }, 'Login successful')
+  } catch (err) {
+    return handleError(err, 'Login')
   }
 }

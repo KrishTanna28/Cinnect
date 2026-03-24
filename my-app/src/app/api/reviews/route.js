@@ -1,4 +1,3 @@
-import { NextResponse } from 'next/server'
 import Review from '@/lib/models/Review.js'
 import { withAuth } from '@/lib/middleware/withAuth.js'
 import { generateEmbedding } from '@/lib/services/embedding.service.js'
@@ -7,18 +6,20 @@ import { notifyFriendsAboutReview } from '@/lib/services/notification.service.js
 import { checkAdultContentAccess, getAdultContentFilter } from '@/lib/middleware/ageGate.js'
 import { applyXpEvent, calculateReviewQuality, getProgressionSnapshot } from '@/lib/utils/gamification.js'
 import connectDB from '@/lib/config/database.js'
+import { success, error, handleError } from '@/lib/utils/apiResponse.js'
+import { checkRateLimit, RATE_LIMITS } from '@/lib/utils/rateLimit.js'
 
 // GET /api/reviews - Get reviews with optional filters
 export async function GET(request) {
-  await connectDB()
   try {
+    await connectDB()
     const { searchParams } = new URL(request.url)
     const mediaId = searchParams.get('mediaId')
     const mediaType = searchParams.get('mediaType')
     const userId = searchParams.get('userId')
     const sortByParam = searchParams.get('sortBy') || 'top'
-    const limit = parseInt(searchParams.get('limit')) || 10
-    const page = parseInt(searchParams.get('page')) || 1
+    const limit = Math.min(parseInt(searchParams.get('limit')) || 10, 50) // Cap at 50
+    const page = Math.max(parseInt(searchParams.get('page')) || 1, 1)
     const skip = (page - 1) * limit
     const sortBy =
       sortByParam === 'popular' ? 'top' :
@@ -151,14 +152,14 @@ export async function GET(request) {
           path: 'replies.user',
           select: 'username avatar fullName'
         })
-      
+
       // Re-sort the populated documents into the aggregation order
       reviews = ids.map(id => unsortedReviews.find(r => r._id.equals(id))).filter(Boolean)
     } else {
       const sortOption = sortBy === 'rating'
         ? { rating: -1, createdAt: -1 }
         : { createdAt: -1 }
-      
+
       reviews = await Review.find(query)
         .populate('user', 'username avatar fullName')
         .populate({
@@ -170,9 +171,8 @@ export async function GET(request) {
         .skip(skip)
     }
 
-    return NextResponse.json({
-      success: true,
-      data: reviews,
+    return success({
+      reviews,
       pagination: {
         total,
         page,
@@ -180,32 +180,46 @@ export async function GET(request) {
         limit
       }
     })
-  } catch (error) {
-    console.error('Get reviews error:', error)
-    return NextResponse.json(
-      {
-        success: false,
-        message: error.message || 'Failed to get reviews'
-      },
-      { status: 500 }
-    )
+  } catch (err) {
+    return handleError(err, 'Get reviews')
   }
 }
 
 // POST /api/reviews - Create a new review
 export const POST = withAuth(async (request, { user }) => {
-  
+  // Apply rate limiting for review creation
+  const rateLimitResult = checkRateLimit(request, 'review-create', RATE_LIMITS.CONTENT)
+  if (!rateLimitResult.allowed) {
+    return rateLimitResult.response
+  }
+
+  try {
     await connectDB()
-try {
     const body = await request.json()
     const { mediaId, mediaType, mediaTitle, rating, title, content, spoiler } = body
 
-    if (!mediaId || !mediaType || !mediaTitle || rating === undefined || rating === null || !title || !content) {
-      console.log('Missing fields in review creation:', { mediaId, mediaType, mediaTitle, rating, title, content })
-      return NextResponse.json(
-        { success: false, message: 'Missing required fields' },
-        { status: 400 }
-      )
+    // Validate required fields
+    if (!mediaId || !mediaType || !mediaTitle) {
+      return error('Media information is required', 400)
+    }
+    if (rating === undefined || rating === null) {
+      return error('Rating is required', 400)
+    }
+    if (!title || !content) {
+      return error('Review title and content are required', 400)
+    }
+
+    // Validate rating range
+    if (rating < 0.5 || rating > 5) {
+      return error('Rating must be between 0.5 and 5', 400)
+    }
+
+    // Validate content length
+    if (title.length > 200) {
+      return error('Title must be under 200 characters', 400)
+    }
+    if (content.length > 5000) {
+      return error('Review content must be under 5000 characters', 400)
     }
 
     // Check if user already reviewed this media
@@ -216,10 +230,7 @@ try {
     })
 
     if (existingReview) {
-      return NextResponse.json(
-        { success: false, message: 'You have already reviewed this media' },
-        { status: 400 }
-      )
+      return error('You have already reviewed this', 400)
     }
 
     // Server-side spoiler detection if not explicitly checked by user
@@ -325,23 +336,14 @@ try {
       reviewUrl: `/reviews/${review._id}`
     }).catch(err => console.error('Failed to notify friends about review:', err));
 
-    return NextResponse.json({
-      success: true,
-      message: 'Review created successfully',
-      data: review,
+    return success({
+      review,
       gamification: {
         xpEvent,
         progression: getProgressionSnapshot(user)
       }
-    })
-  } catch (error) {
-    console.error('Create review error:', error)
-    return NextResponse.json(
-      {
-        success: false,
-        message: error.message || 'Failed to create review'
-      },
-      { status: 500 }
-    )
+    }, 'Review created successfully')
+  } catch (err) {
+    return handleError(err, 'Create review')
   }
 })

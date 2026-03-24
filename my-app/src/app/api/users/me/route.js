@@ -1,43 +1,41 @@
-import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/middleware/withAuth.js'
 import { getProgressionSnapshot } from '@/lib/utils/gamification.js'
 import connectDB from '@/lib/config/database.js'
+import { success, error, handleError } from '@/lib/utils/apiResponse.js'
 
 // GET /api/users/me - Get current user profile
 export const GET = withAuth(async (request, { user }) => {
-  
+  try {
     await connectDB()
-try {
-    return NextResponse.json({
-      success: true,
-      data: {
-        ...user.toObject(),
-        progression: getProgressionSnapshot(user)
-      }
+    return success({
+      ...user.toObject(),
+      progression: getProgressionSnapshot(user)
     })
-  } catch (error) {
-    console.error('Get profile error:', error)
-    return NextResponse.json(
-      {
-        success: false,
-        message: error.message || 'Failed to get profile'
-      },
-      { status: 500 }
-    )
+  } catch (err) {
+    return handleError(err, 'Get profile')
   }
 })
 
 // PATCH /api/users/me - Update current user profile
 export const PATCH = withAuth(async (request, { user }) => {
-  
+  try {
     await connectDB()
-try {
     const formData = await request.formData()
     const fullName = formData.get('fullName')
     const bio = formData.get('bio')
     const avatarFile = formData.get('avatar')
     const favoriteGenresRaw = formData.get('favoriteGenres')
     const dateOfBirth = formData.get('dateOfBirth')
+
+    // Validate bio length
+    if (bio !== null && bio !== undefined && bio.length > 500) {
+      return error('Bio must be under 500 characters', 400)
+    }
+
+    // Validate name length
+    if (fullName !== null && fullName !== undefined && fullName.length > 50) {
+      return error('Name must be under 50 characters', 400)
+    }
 
     // Update allowed fields (use !== null so empty strings can clear fields)
     if (fullName !== null && fullName !== undefined) user.fullName = fullName
@@ -78,6 +76,11 @@ try {
 
     // Handle avatar upload if provided
     if (!removeAvatar && avatarFile && typeof avatarFile !== 'string' && avatarFile.size > 0) {
+      // Validate file size (5MB limit)
+      if (avatarFile.size > 5 * 1024 * 1024) {
+        return error('Avatar image must be under 5MB', 400)
+      }
+
       try {
         const { uploadAvatarToCloudinary } = await import('@/lib/utils/cloudinaryHelper.js')
         const avatarBuffer = Buffer.from(await avatarFile.arrayBuffer())
@@ -85,31 +88,17 @@ try {
         user.avatar = avatarUrl
       } catch (uploadError) {
         console.error('Avatar upload failed:', uploadError)
-        return NextResponse.json(
-          { success: false, message: 'Failed to upload avatar image' },
-          { status: 500 }
-        )
+        return error('Failed to upload avatar image. Please try again.', 500)
       }
     }
 
     await user.save()
 
-    return NextResponse.json({
-      success: true,
-      message: 'Profile updated successfully',
-      data: {
-        ...user.toObject(),
-        progression: getProgressionSnapshot(user)
-      }
-    })
-  } catch (error) {
-    console.error('Update profile error:', error)
-    return NextResponse.json(
-      {
-        success: false,
-        message: error.message || 'Failed to update profile'
-      },
-      { status: 500 }
-    )
+    return success({
+      ...user.toObject(),
+      progression: getProgressionSnapshot(user)
+    }, 'Profile updated successfully')
+  } catch (err) {
+    return handleError(err, 'Update profile')
   }
 })

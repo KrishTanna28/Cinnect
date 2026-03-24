@@ -77,7 +77,19 @@ export async function GET(request) {
       delete userResponse.password; // Remove password field if present
       const userStr = encodeURIComponent(JSON.stringify(userResponse));
 
-      return NextResponse.redirect(`${FRONTEND_URL}/auth/callback?token=${token}&user=${userStr}`);
+      const redirectUrl = new URL(`${FRONTEND_URL}/auth/callback?token=${token}&user=${userStr}`);
+      const response = NextResponse.redirect(redirectUrl);
+
+      // Set HTTP-only cookie for middleware authentication
+      response.cookies.set('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60, // 7 days
+        path: '/'
+      });
+
+      return response;
     }
 
     // Check if user exists with this email (from regular registration)
@@ -103,7 +115,19 @@ export async function GET(request) {
       delete userResponse.password; // Remove password field if present
       const userStr = encodeURIComponent(JSON.stringify(userResponse));
 
-      return NextResponse.redirect(`${FRONTEND_URL}/auth/callback?token=${token}&user=${userStr}`);
+      const redirectUrl = new URL(`${FRONTEND_URL}/auth/callback?token=${token}&user=${userStr}`);
+      const response = NextResponse.redirect(redirectUrl);
+
+      // Set HTTP-only cookie for middleware authentication
+      response.cookies.set('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60, // 7 days
+        path: '/'
+      });
+
+      return response;
     }
 
     // Create new user
@@ -126,7 +150,19 @@ export async function GET(request) {
     delete userResponse.password; // Remove password field if present
     const userStr = encodeURIComponent(JSON.stringify(userResponse));
 
-    return NextResponse.redirect(`${FRONTEND_URL}/auth/callback?token=${token}&user=${userStr}`);
+    const redirectUrl = new URL(`${FRONTEND_URL}/auth/callback?token=${token}&user=${userStr}`);
+    const response = NextResponse.redirect(redirectUrl);
+
+    // Set HTTP-only cookie for middleware authentication
+    response.cookies.set('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60, // 7 days
+      path: '/'
+    });
+
+    return response;
 
   } catch (error) {
     console.error('Google OAuth callback error:', error);

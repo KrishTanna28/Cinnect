@@ -1,14 +1,65 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 
 const UserContext = createContext(undefined)
+
+// Routes that don't require authentication
+const PUBLIC_ROUTES = [
+  '/',
+  '/login',
+  '/signup',
+  '/forgot-password',
+  '/reset-password',
+  '/auth/callback',
+  '/leaderboard',
+]
+
+// Check if a path matches public routes
+function isPublicRoute(pathname) {
+  // Exact matches
+  if (PUBLIC_ROUTES.includes(pathname)) return true
+
+  // Pattern matches for public content pages
+  const publicPatterns = [
+    /^\/movies\/[^/]+$/,
+    /^\/tv\/[^/]+$/,
+    /^\/tv\/[^/]+\/season\/[^/]+$/,
+    /^\/actor\/[^/]+$/,
+    /^\/profile\/[^/]+$/,
+    /^\/communities$/,
+    /^\/communities\/[^/]+$/,
+    /^\/communities\/[^/]+\/posts\/[^/]+$/,
+    /^\/reviews\/[^/]+\/[^/]+$/,
+    /^\/cast$/,
+    /^\/search$/,
+    /^\/browse$/,
+  ]
+
+  return publicPatterns.some(pattern => pattern.test(pathname))
+}
 
 export function UserProvider({ children }) {
   const [user, setUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
+  const pathname = usePathname()
+
+  // Handle unauthorized (401) responses
+  const handleUnauthorized = useCallback((returnUrl) => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    setUser(null)
+
+    // Only redirect if on a protected route
+    if (!isPublicRoute(pathname)) {
+      const loginUrl = returnUrl
+        ? `/login?returnUrl=${encodeURIComponent(returnUrl)}`
+        : '/login'
+      router.push(loginUrl)
+    }
+  }, [pathname, router])
 
   // Load user from localStorage on mount
   useEffect(() => {
@@ -16,7 +67,7 @@ export function UserProvider({ children }) {
       try {
         const token = localStorage.getItem('token')
         const userData = localStorage.getItem('user')
-        
+
         if (token && userData) {
           setUser(JSON.parse(userData))
         }
@@ -41,12 +92,12 @@ export function UserProvider({ children }) {
   }
 
   // Logout function
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
     setUser(null)
     router.push('/login')
-  }
+  }, [router])
 
   // Update user function
   const updateUser = (updatedData) => {
@@ -56,7 +107,7 @@ export function UserProvider({ children }) {
   }
 
   // Refresh user data from server
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     try {
       const token = localStorage.getItem('token')
       if (!token) return
@@ -74,12 +125,50 @@ export function UserProvider({ children }) {
         }
       } else if (response.status === 401) {
         // Token expired or invalid
-        logout()
+        handleUnauthorized(pathname)
       }
     } catch (error) {
       console.error('Error refreshing user data:', error)
     }
-  }
+  }, [handleUnauthorized, pathname])
+
+  // Authenticated fetch wrapper that handles 401s
+  const authFetch = useCallback(async (url, options = {}) => {
+    const token = localStorage.getItem('token')
+
+    const headers = {
+      ...(options.body && !(options.body instanceof FormData) && { 'Content-Type': 'application/json' }),
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+      ...options.headers,
+    }
+
+    const fetchOptions = {
+      ...options,
+      headers,
+      body: options.body && !(options.body instanceof FormData)
+        ? JSON.stringify(options.body)
+        : options.body,
+    }
+
+    try {
+      const response = await fetch(url, fetchOptions)
+
+      // Handle 401 responses
+      if (response.status === 401) {
+        handleUnauthorized(pathname)
+        return {
+          ok: false,
+          status: 401,
+          error: 'Please log in to continue'
+        }
+      }
+
+      return response
+    } catch (error) {
+      console.error('Fetch error:', error)
+      throw error
+    }
+  }, [handleUnauthorized, pathname])
 
   const value = {
     user,
@@ -87,7 +176,10 @@ export function UserProvider({ children }) {
     login,
     logout,
     updateUser,
-    refreshUser
+    refreshUser,
+    authFetch,
+    handleUnauthorized,
+    isAuthenticated: !!user,
   }
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>
