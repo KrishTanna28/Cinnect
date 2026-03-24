@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
@@ -26,20 +27,24 @@ export default function LoginPage() {
     try {
       const response = await fetch("api/users/login", {
         method: "POST",
+        credentials: "include", // Include cookies for authentication
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, rememberMe }),
       })
 
       const data = await response.json()
 
       if (data.success) {
-        // Save token and user data using context
-        login(data.data.token, data.data.user)
-        
-        // Redirect to home
-        router.push("/")
+        // Don't extract tokens from response - they're in httpOnly cookies
+        // Only pass user data to the login context function
+        login(null, data.data.user, rememberMe)
+
+        // Redirect to home or returnUrl
+        const params = new URLSearchParams(window.location.search)
+        const returnUrl = params.get('returnUrl') || '/'
+        router.push(returnUrl)
         router.refresh()
       } else {
         setError(data.message || "Login failed. Please try again.")
@@ -143,6 +148,8 @@ export default function LoginPage() {
                 <input
                   id="remember"
                   type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
                   className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
                 />
                 <label htmlFor="remember" className="ml-2 text-sm text-muted-foreground cursor-pointer">

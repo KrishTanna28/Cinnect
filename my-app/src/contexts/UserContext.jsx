@@ -48,8 +48,6 @@ export function UserProvider({ children }) {
 
   // Handle unauthorized (401) responses
   const handleUnauthorized = useCallback((returnUrl) => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
     setUser(null)
 
     // Only redirect if on a protected route
@@ -61,61 +59,70 @@ export function UserProvider({ children }) {
     }
   }, [pathname, router])
 
-  // Load user from localStorage on mount
+  // Check authentication status on mount
   useEffect(() => {
-    const loadUser = () => {
+    const checkAuth = async () => {
       try {
-        const token = localStorage.getItem('token')
-        const userData = localStorage.getItem('user')
+        // Check if user is authenticated by making a request to profile endpoint
+        const response = await fetch('/api/users/profile', {
+          credentials: 'include', // Include cookies automatically
+        })
 
-        if (token && userData) {
-          setUser(JSON.parse(userData))
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.data) {
+            setUser(data.data)
+          }
+        } else if (response.status === 401) {
+          // Not authenticated - this is okay, just set user to null
+          setUser(null)
         }
       } catch (error) {
-        console.error('Error loading user data:', error)
-        // Clear invalid data
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
+        console.error('Error checking authentication:', error)
+        setUser(null)
       } finally {
         setIsLoading(false)
       }
     }
 
-    loadUser()
+    checkAuth()
   }, [])
 
-  // Login function
-  const login = (token, userData) => {
-    localStorage.setItem('token', token)
-    localStorage.setItem('user', JSON.stringify(userData))
+  // Login function - only handles user data, tokens are in httpOnly cookies
+  const login = (token, userData, rememberMe = false) => {
+    // Note: token parameter is kept for backward compatibility but not used
+    // Authentication is now handled entirely through httpOnly cookies
     setUser(userData)
   }
 
-  // Logout function
-  const logout = useCallback(() => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+  // Logout function - calls server-side logout to clear cookies
+  const logout = useCallback(async () => {
+    try {
+      // Call server-side logout endpoint to clear auth cookies
+      await fetch('/api/users/logout', {
+        method: 'POST',
+        credentials: 'include', // Include cookies
+      })
+    } catch (error) {
+      console.error('Logout error:', error)
+      // Continue with logout even if API call fails
+    }
+
     setUser(null)
     router.push('/login')
   }, [router])
 
-  // Update user function
+  // Update user function - only updates state, no localStorage
   const updateUser = (updatedData) => {
     const updatedUser = { ...user, ...updatedData }
-    localStorage.setItem('user', JSON.stringify(updatedUser))
     setUser(updatedUser)
   }
 
   // Refresh user data from server
   const refreshUser = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token')
-      if (!token) return
-
       const response = await fetch('/api/users/profile', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        credentials: 'include', // Use cookies for authentication
       })
 
       if (response.ok) {
@@ -132,19 +139,17 @@ export function UserProvider({ children }) {
     }
   }, [handleUnauthorized, pathname])
 
-  // Authenticated fetch wrapper that handles 401s
+  // Authenticated fetch wrapper that handles 401s and automatic token refresh
   const authFetch = useCallback(async (url, options = {}) => {
-    const token = localStorage.getItem('token')
-
     const headers = {
       ...(options.body && !(options.body instanceof FormData) && { 'Content-Type': 'application/json' }),
-      ...(token && { 'Authorization': `Bearer ${token}` }),
       ...options.headers,
     }
 
     const fetchOptions = {
       ...options,
       headers,
+      credentials: 'include', // Always include cookies
       body: options.body && !(options.body instanceof FormData)
         ? JSON.stringify(options.body)
         : options.body,
@@ -153,13 +158,47 @@ export function UserProvider({ children }) {
     try {
       const response = await fetch(url, fetchOptions)
 
-      // Handle 401 responses
+      // Handle 401 responses with automatic token refresh
       if (response.status === 401) {
-        handleUnauthorized(pathname)
-        return {
-          ok: false,
-          status: 401,
-          error: 'Please log in to continue'
+        // Try to refresh the token first
+        try {
+          const refreshResponse = await fetch('/api/auth/refresh', {
+            method: 'POST',
+            credentials: 'include',
+          })
+
+          if (refreshResponse.ok) {
+            // Token refreshed successfully, retry original request
+            const retryResponse = await fetch(url, fetchOptions)
+
+            if (retryResponse.status === 401) {
+              // Still getting 401 after refresh, user needs to log in
+              handleUnauthorized(pathname)
+              return {
+                ok: false,
+                status: 401,
+                error: 'Authentication failed'
+              }
+            }
+
+            return retryResponse
+          } else {
+            // Refresh failed, user needs to log in
+            handleUnauthorized(pathname)
+            return {
+              ok: false,
+              status: 401,
+              error: 'Session expired. Please log in again.'
+            }
+          }
+        } catch (refreshError) {
+          console.error('Token refresh error:', refreshError)
+          handleUnauthorized(pathname)
+          return {
+            ok: false,
+            status: 401,
+            error: 'Authentication failed'
+          }
         }
       }
 

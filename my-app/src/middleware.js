@@ -33,10 +33,10 @@ const PUBLIC_ROUTES = {
     /^\/communities$/,        // Communities list
     /^\/communities\/[^/]+$/, // Community details
     /^\/communities\/[^/]+\/posts\/[^/]+$/, // Post details
-    /^\/reviews\/[^/]+\/[^/]+$/, // Reviews pages
     /^\/cast$/,               // Cast page
     /^\/search$/,             // Search page
-    /^\/browse$/,             // Browse page
+    /^\/terms$/,              // Terms of Service page
+    /^\/privacy$/,            // Privacy Policy page
   ],
   // API routes that don't require authentication
   api: [
@@ -51,6 +51,7 @@ const PUBLIC_ROUTES = {
     '/api/users/complete-registration',
     '/api/users/forgot-password',
     '/api/users/reset-password',
+    '/api/users/logout',
     '/api/users/leaderboard',
 
     // Public content endpoints

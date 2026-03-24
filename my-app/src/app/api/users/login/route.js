@@ -1,6 +1,8 @@
 import User from '@/lib/models/User.js'
 import bcrypt from 'bcryptjs'
-import { generateToken } from '@/lib/utils/jwt.js'
+import crypto from 'crypto'
+import { generateAccessToken, generateRefreshToken } from '@/lib/utils/jwt.js'
+import { setAuthCookies } from '@/lib/utils/cookies.js'
 import { applyXpEvent, getProgressionSnapshot } from '@/lib/utils/gamification.js'
 import connectDB from '@/lib/config/database.js'
 import { success, error, handleError } from '@/lib/utils/apiResponse.js'
@@ -25,6 +27,7 @@ export async function POST(request) {
     }
 
     const { email, password } = validation.data
+    const rememberMe = body.rememberMe || false
 
     // Find user by email
     const user = await User.findOne({ email }).select('+password')
@@ -46,8 +49,10 @@ export async function POST(request) {
       return error('Invalid email or password', 401)
     }
 
-    // Generate token
-    const token = generateToken(user._id)
+    // Generate tokens
+    const tokenId = crypto.randomUUID()
+    const accessToken = generateAccessToken(user._id)
+    const refreshToken = generateRefreshToken(user._id, tokenId)
 
     const xpEvent = applyXpEvent(user, {
       action: 'daily_login',
@@ -62,14 +67,19 @@ export async function POST(request) {
     const userResponse = user.toObject()
     delete userResponse.password
 
-    return success({
-      token,
+    // Create response and set auth cookies
+    const response = success({
       user: userResponse,
       gamification: {
         xpEvent,
         progression: getProgressionSnapshot(user)
       }
     }, 'Login successful')
+
+    // Set httpOnly cookies (session or persistent based on rememberMe)
+    setAuthCookies(response, accessToken, refreshToken, rememberMe)
+
+    return response
   } catch (err) {
     return handleError(err, 'Login')
   }

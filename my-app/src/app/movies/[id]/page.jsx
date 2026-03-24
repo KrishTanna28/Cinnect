@@ -627,47 +627,58 @@ export default function DetailsPage({ params }) {
             </div>
 
             {/* Action Buttons - hidden on mobile, visible on desktop */}
-            <div className="hidden md:flex flex-wrap gap-2 sm:gap-3 md:gap-4 mb-6 sm:mb-8">
-              <Button
-                size="sm"
-                variant={inWatchlist ? "default" : "outline"}
-                className="gap-1 sm:gap-2 text-xs sm:text-sm md:text-base sm:px-4 sm:py-2 md:px-6 md:py-3"
-                onClick={handleAddToWatchlist}
-                disabled={isUpdatingWatchlist}
-              >
-                <Bookmark className={`w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 ${inWatchlist ? "fill-current" : ""}`} />
-                Watchlist
-              </Button>
-              <Button
-                size="sm"
-                variant={liked ? "default" : "outline"}
-                className="gap-1 sm:gap-2 text-xs sm:text-sm md:text-base sm:px-4 sm:py-2 md:px-6 md:py-3"
-                onClick={handleLike}
-                disabled={isUpdatingFavorites}
-              >
-                <Heart className={`w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 ${liked ? "fill-current" : ""}`} />
-                {liked ? "Like" : "Like"}
-              </Button>
-              <Button
-                size="sm"
-                variant={isWatched ? "default" : "outline"}
-                className="gap-1 sm:gap-2 text-xs sm:text-sm md:text-base sm:px-4 sm:py-2 md:px-6 md:py-3"
-                onClick={handleMarkAsWatched}
-                disabled={isUpdatingWatched}
-              >
-                <Check className={`w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 ${isWatched ? "font-bold" : ""}`} />
-                {isWatched ? "Watched" : "Watched"}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1 sm:gap-2 bg-transparent text-xs sm:text-sm md:text-base sm:px-4 sm:py-2 md:px-6 md:py-3"
-                onClick={handleShare}
-              >
-                <Share2 className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" />
-                Share
-              </Button>
-            </div>
+            {user ? (
+              <div className="hidden md:flex flex-wrap gap-2 sm:gap-3 md:gap-4 mb-6 sm:mb-8">
+                <Button
+                  size="sm"
+                  variant={inWatchlist ? "default" : "outline"}
+                  className="gap-1 sm:gap-2 text-xs sm:text-sm md:text-base sm:px-4 sm:py-2 md:px-6 md:py-3"
+                  onClick={handleAddToWatchlist}
+                  disabled={isUpdatingWatchlist}
+                >
+                  <Bookmark className={`w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 ${inWatchlist ? "fill-current" : ""}`} />
+                  Watchlist
+                </Button>
+                <Button
+                  size="sm"
+                  variant={liked ? "default" : "outline"}
+                  className="gap-1 sm:gap-2 text-xs sm:text-sm md:text-base sm:px-4 sm:py-2 md:px-6 md:py-3"
+                  onClick={handleLike}
+                  disabled={isUpdatingFavorites}
+                >
+                  <Heart className={`w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 ${liked ? "fill-current" : ""}`} />
+                  {liked ? "Like" : "Like"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant={isWatched ? "default" : "outline"}
+                  className="gap-1 sm:gap-2 text-xs sm:text-sm md:text-base sm:px-4 sm:py-2 md:px-6 md:py-3"
+                  onClick={handleMarkAsWatched}
+                  disabled={isUpdatingWatched}
+                >
+                  <Check className={`w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 ${isWatched ? "font-bold" : ""}`} />
+                  {isWatched ? "Watched" : "Watched"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1 sm:gap-2 bg-transparent text-xs sm:text-sm md:text-base sm:px-4 sm:py-2 md:px-6 md:py-3"
+                  onClick={handleShare}
+                >
+                  <Share2 className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" />
+                  Share
+                </Button>
+              </div>
+            ) : (
+              <div className="hidden md:flex items-center gap-3 mb-6 sm:mb-8 p-4 bg-secondary/30 rounded-lg">
+                <p className="text-sm text-muted-foreground">Sign in to add to watchlist, like, and track what you've watched</p>
+                <Link href={`/login?returnUrl=/movies/${movie.id}`}>
+                  <Button size="sm" className="gap-2">
+                    Sign In
+                  </Button>
+                </Link>
+              </div>
+            )}
 
             {/* Friends who liked - desktop */}
             <div className="hidden md:block">
@@ -718,47 +729,56 @@ export default function DetailsPage({ params }) {
           <StreamingProviders type="movie" id={movie.id} />
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap gap-2 sm:gap-3 md:gap-4">
-            <Button
-              size="sm"
-              variant={inWatchlist ? "default" : "outline"}
-              className="gap-1 sm:gap-2 text-xs sm:text-sm md:text-base sm:px-4 sm:py-2 md:px-6 md:py-3"
-              onClick={handleAddToWatchlist}
-              disabled={isUpdatingWatchlist}
-            >
-              <Bookmark className={`w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 ${inWatchlist ? "fill-current" : ""}`} />
-              Watchlist
-            </Button>
-            <Button
-              size="sm"
-              variant={liked ? "default" : "outline"}
-              className="gap-1 sm:gap-2 text-xs sm:text-sm md:text-base sm:px-4 sm:py-2 md:px-6 md:py-3"
-              onClick={handleLike}
-              disabled={isUpdatingFavorites}
-            >
-              <Heart className={`w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 ${liked ? "fill-current" : ""}`} />
-              Like
-            </Button>
-            <Button
-              size="sm"
-              variant={isWatched ? "default" : "outline"}
-              className="gap-1 sm:gap-2 text-xs sm:text-sm md:text-base sm:px-4 sm:py-2 md:px-6 md:py-3"
-              onClick={handleMarkAsWatched}
-              disabled={isUpdatingWatched}
-            >
-              <Check className={`w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 ${isWatched ? "font-bold" : ""}`} />
-              Watched
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1 sm:gap-2 bg-transparent text-xs sm:text-sm md:text-base sm:px-4 sm:py-2 md:px-6 md:py-3"
-              onClick={handleShare}
-            >
-              <Share2 className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" />
-              Share
-            </Button>
-          </div>
+          {user ? (
+            <div className="flex flex-wrap gap-2 sm:gap-3 md:gap-4">
+              <Button
+                size="sm"
+                variant={inWatchlist ? "default" : "outline"}
+                className="gap-1 sm:gap-2 text-xs sm:text-sm md:text-base sm:px-4 sm:py-2 md:px-6 md:py-3"
+                onClick={handleAddToWatchlist}
+                disabled={isUpdatingWatchlist}
+              >
+                <Bookmark className={`w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 ${inWatchlist ? "fill-current" : ""}`} />
+                Watchlist
+              </Button>
+              <Button
+                size="sm"
+                variant={liked ? "default" : "outline"}
+                className="gap-1 sm:gap-2 text-xs sm:text-sm md:text-base sm:px-4 sm:py-2 md:px-6 md:py-3"
+                onClick={handleLike}
+                disabled={isUpdatingFavorites}
+              >
+                <Heart className={`w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 ${liked ? "fill-current" : ""}`} />
+                Like
+              </Button>
+              <Button
+                size="sm"
+                variant={isWatched ? "default" : "outline"}
+                className="gap-1 sm:gap-2 text-xs sm:text-sm md:text-base sm:px-4 sm:py-2 md:px-6 md:py-3"
+                onClick={handleMarkAsWatched}
+                disabled={isUpdatingWatched}
+              >
+                <Check className={`w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 ${isWatched ? "font-bold" : ""}`} />
+                Watched
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1 sm:gap-2 bg-transparent text-xs sm:text-sm md:text-base sm:px-4 sm:py-2 md:px-6 md:py-3"
+                onClick={handleShare}
+              >
+                <Share2 className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" />
+                Share
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 p-4 bg-secondary/30 rounded-lg">
+              <p className="text-sm text-muted-foreground flex-1">Sign in to interact with this movie</p>
+              <Link href={`/login?returnUrl=/movies/${movie.id}`}>
+                <Button size="sm">Sign In</Button>
+              </Link>
+            </div>
+          )}
 
           {/* Friends who liked - mobile */}
           <div className="mt-4">

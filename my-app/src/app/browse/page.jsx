@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { X, Filter, Star, Search, Loader2, Film, Tv } from "lucide-react"
+import { X, Filter, Star, Search, Loader2, Film, Tv, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import * as movieAPI from "@/lib/movies"
 import useInfiniteScroll from "@/hooks/useInfiniteScroll"
 import MovieCard from "@/components/movie-card"
+import Link from "next/link"
 
 const TYPES = ["All", "Movies", "Shows"]
 const LANGUAGES = [
@@ -52,6 +53,19 @@ export default function BrowsePage() {
   const [totalResults, setTotalResults] = useState(0)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
+  const [isDesktop, setIsDesktop] = useState(false)
+  const [isCheckingDevice, setIsCheckingDevice] = useState(true)
+
+  // Check if user is on desktop
+  useEffect(() => {
+    const checkDesktop = () => {
+      setIsDesktop(window.innerWidth >= 768)
+      setIsCheckingDevice(false)
+    }
+    checkDesktop()
+    window.addEventListener('resize', checkDesktop)
+    return () => window.removeEventListener('resize', checkDesktop)
+  }, [])
 
   // Mobile search state
   const [mobileSearchQuery, setMobileSearchQuery] = useState("")
@@ -234,6 +248,32 @@ export default function BrowsePage() {
       setShowMobileSearchDropdown(false)
       router.push(`/search?q=${encodeURIComponent(mobileSearchQuery.trim())}`)
     }
+  }
+
+  // Show loading state while checking device
+  if (isCheckingDevice) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  // Show 404 page for desktop users
+  if (isDesktop) {
+    return (
+      <main className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center px-4">
+          <AlertTriangle className="w-20 h-20 text-muted-foreground mx-auto mb-4" />
+          <h1 className="text-4xl font-bold text-foreground mb-2">Page Not Found</h1>
+          <p className="text-muted-foreground mb-6">The browse page is only available on mobile devices.</p>
+          <p className="text-sm text-muted-foreground mb-8">Use the search bar in the navigation to find movies and TV shows.</p>
+          <Link href="/">
+            <Button>Go to Home</Button>
+          </Link>
+        </div>
+      </main>
+    )
   }
 
   return (

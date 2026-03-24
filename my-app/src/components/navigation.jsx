@@ -385,9 +385,9 @@ export default function Navigation() {
           ${isVisible ? 'translate-y-0' : 'md:-translate-y-full'}
           ${isAtTop
             ? 'bg-transparent border-none'
-            : 'bg-black/90 backdrop-blur-md border-b border-white/10'}
+            : 'bg-black border-b border-white/10'}
           ${hasBackground
-            ? 'md:bg-background md:backdrop-blur md:border-b md:border-border'
+            ? 'md:bg-background md:border-b md:border-border'
             : 'md:bg-transparent md:border-none'}`}
       >
         <div className="w-full px-4 sm:px-6">
@@ -814,7 +814,7 @@ export default function Navigation() {
 
       {/* Mobile Bottom Navigation Bar - Instagram style */}
       {!isLoading && user && (
-        <div className="fixed bottom-0 left-0 right-0 z-30 md:hidden bg-background/95 backdrop-blur border-t border-border">
+        <div className="fixed bottom-0 left-0 right-0 z-30 md:hidden bg-background border-t border-border">
           <div className="flex items-center justify-around h-14">
             {/* Home */}
             <Link
