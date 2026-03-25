@@ -2,9 +2,10 @@
 
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
-import router from "next/router"
+import {useRouter} from "next/navigation"
 
 export default function TermsOfServicePage() {
+  const router = useRouter()
   return (
     <main className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto px-4 py-12">
