@@ -580,7 +580,6 @@ export default function HomeClient({ initialData }) {
           <RecommendationCarousel
             title="Trending Today"
             movies={trendingMovies}
-            requireAuth={!isAuthenticated}
             onLoadMore={loadMoreTrendingMovies}
             hasMore={hasMore.trendingMovies}
             isLoadingMore={loadingMore.trendingMovies}
@@ -591,7 +590,6 @@ export default function HomeClient({ initialData }) {
           <RecommendationCarousel
             title="Popular Movies"
             movies={popularMovies}
-            requireAuth={!isAuthenticated}
             onLoadMore={loadMorePopularMovies}
             hasMore={hasMore.popularMovies}
             isLoadingMore={loadingMore.popularMovies}
@@ -602,7 +600,6 @@ export default function HomeClient({ initialData }) {
           <RecommendationCarousel
             title="Popular TV Shows"
             movies={popularTV}
-            requireAuth={!isAuthenticated}
             onLoadMore={loadMorePopularTV}
             hasMore={hasMore.popularTV}
             isLoadingMore={loadingMore.popularTV}
@@ -614,7 +611,6 @@ export default function HomeClient({ initialData }) {
           <RecommendationCarousel
             title="New Releases"
             movies={newReleases}
-            requireAuth={!isAuthenticated}
             onLoadMore={loadMoreNewReleases}
             hasMore={hasMore.newReleases}
             isLoadingMore={loadingMore.newReleases}

@@ -9,10 +9,13 @@ export default function TermsOfServicePage() {
     <main className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto px-4 py-12">
         {/* Back Button */}
-        <Link href="/">
-            <ArrowLeft className="w-4 h-4" />
-            Back to Home
-        </Link>
+        <button 
+          variant="ghost" 
+          onClick={() => router.back()}
+          className="flex items-center text-sm gap-2 hover:text-primary transition-all active:scale-95 cursor-pointer mb-5"
+        >
+          <ArrowLeft className="w-7 h-7" />
+        </button>
 
         {/* Header */}
         <div className="mb-12">

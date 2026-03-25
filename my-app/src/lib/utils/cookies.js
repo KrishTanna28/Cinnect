@@ -4,41 +4,8 @@
  */
 
 /**
- * Builds a Set-Cookie header string
- * @param {string} name - Cookie name
- * @param {string} value - Cookie value
- * @param {object} options - Cookie options
- * @returns {string} Set-Cookie header value
- */
-function buildCookieString(name, value, options = {}) {
-  const parts = [`${name}=${value}`]
-
-  if (options.maxAge !== undefined) {
-    parts.push(`Max-Age=${options.maxAge}`)
-  }
-
-  if (options.path) {
-    parts.push(`Path=${options.path}`)
-  }
-
-  if (options.httpOnly) {
-    parts.push('HttpOnly')
-  }
-
-  if (options.secure) {
-    parts.push('Secure')
-  }
-
-  if (options.sameSite) {
-    parts.push(`SameSite=${options.sameSite}`)
-  }
-
-  return parts.join('; ')
-}
-
-/**
  * Sets authentication cookies with proper security settings
- * Uses explicit Set-Cookie headers for maximum compatibility
+ * Uses Next.js cookies API for reliable cookie handling across all response types
  * @param {NextResponse} response - The Next.js response object
  * @param {string} accessToken - The JWT access token
  * @param {string} refreshToken - The JWT refresh token
@@ -51,7 +18,7 @@ export function setAuthCookies(response, accessToken, refreshToken, rememberMe =
     path: '/',
     httpOnly: true,
     secure: isProduction,
-    sameSite: 'Lax'
+    sameSite: 'lax'
   }
 
   if (rememberMe) {
@@ -61,18 +28,12 @@ export function setAuthCookies(response, accessToken, refreshToken, rememberMe =
       maxAge: 7 * 24 * 60 * 60 // 7 days in seconds
     }
 
-    const authCookie = buildCookieString('auth_token', accessToken, persistentOptions)
-    const refreshCookie = buildCookieString('refresh_token', refreshToken, persistentOptions)
-
-    response.headers.append('Set-Cookie', authCookie)
-    response.headers.append('Set-Cookie', refreshCookie)
+    response.cookies.set('auth_token', accessToken, persistentOptions)
+    response.cookies.set('refresh_token', refreshToken, persistentOptions)
   } else {
-    // Session cookies - no Max-Age means browser deletes on close
-    const authCookie = buildCookieString('auth_token', accessToken, baseOptions)
-    const refreshCookie = buildCookieString('refresh_token', refreshToken, baseOptions)
-
-    response.headers.append('Set-Cookie', authCookie)
-    response.headers.append('Set-Cookie', refreshCookie)
+    // Session cookies - no maxAge means browser deletes on close
+    response.cookies.set('auth_token', accessToken, baseOptions)
+    response.cookies.set('refresh_token', refreshToken, baseOptions)
   }
 }
 
@@ -87,15 +48,12 @@ export function clearAuthCookies(response) {
     path: '/',
     httpOnly: true,
     secure: isProduction,
-    sameSite: 'Lax',
+    sameSite: 'lax',
     maxAge: 0 // Immediate expiry
   }
 
-  const authCookie = buildCookieString('auth_token', '', clearOptions)
-  const refreshCookie = buildCookieString('refresh_token', '', clearOptions)
-
-  response.headers.append('Set-Cookie', authCookie)
-  response.headers.append('Set-Cookie', refreshCookie)
+  response.cookies.set('auth_token', '', clearOptions)
+  response.cookies.set('refresh_token', '', clearOptions)
 }
 
 /**
