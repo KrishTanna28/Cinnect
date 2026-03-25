@@ -521,7 +521,7 @@ export const sendPasswordResetEmail = async (email, resetToken, userName = 'User
           }
         });
 
-        const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+        const resetUrl = `${process.env.NEXT_PUBLIC_FRONTEND_URL}/reset-password?token=${resetToken}`;
 
         const mailOptions = {
           from: `"Cinnect" <${process.env.EMAIL_USER}>`,
