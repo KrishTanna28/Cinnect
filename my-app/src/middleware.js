@@ -53,6 +53,7 @@ const PUBLIC_ROUTES = {
     '/api/users/reset-password',
     '/api/users/logout',
     '/api/users/leaderboard',
+    '/api/users/profile',  // Let route handler manage auth (supports token refresh)
 
     // Public content endpoints
     '/api/leaderboard',

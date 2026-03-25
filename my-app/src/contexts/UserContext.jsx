@@ -74,8 +74,34 @@ export function UserProvider({ children }) {
             setUser(data.data)
           }
         } else if (response.status === 401) {
-          // Not authenticated - this is okay, just set user to null
-          setUser(null)
+          // Token might be expired, try to refresh
+          try {
+            const refreshResponse = await fetch('/api/auth/refresh', {
+              method: 'POST',
+              credentials: 'include',
+            })
+
+            if (refreshResponse.ok) {
+              // Token refreshed, try profile again
+              const retryResponse = await fetch('/api/users/profile', {
+                credentials: 'include',
+              })
+
+              if (retryResponse.ok) {
+                const data = await retryResponse.json()
+                if (data.success && data.data) {
+                  setUser(data.data)
+                }
+              } else {
+                setUser(null)
+              }
+            } else {
+              // Refresh failed, user needs to log in
+              setUser(null)
+            }
+          } catch {
+            setUser(null)
+          }
         }
       } catch (error) {
         console.error('Error checking authentication:', error)

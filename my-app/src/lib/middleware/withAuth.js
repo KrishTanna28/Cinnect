@@ -5,6 +5,25 @@ import connectDB from '../config/database.js'
 import { unauthorized, handleError } from '../utils/apiResponse.js'
 
 /**
+ * Extract token from request - checks Authorization header first, then cookies
+ */
+function getTokenFromRequest(request) {
+  // Check Authorization header first
+  const authHeader = request.headers.get('authorization')
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.replace('Bearer ', '')
+  }
+
+  // Fall back to cookie
+  const authCookie = request.cookies.get('auth_token')
+  if (authCookie) {
+    return authCookie.value
+  }
+
+  return null
+}
+
+/**
  * Higher-order function to protect API routes with authentication
  * Usage: export const GET = withAuth(async (request, { user }) => { ... })
  */
@@ -14,13 +33,11 @@ export function withAuth(handler) {
       // Ensure database connection
       await connectDB()
 
-      const authHeader = request.headers.get('authorization')
+      const token = getTokenFromRequest(request)
 
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      if (!token) {
         return unauthorized()
       }
-
-      const token = authHeader.replace('Bearer ', '')
 
       try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET)
@@ -60,14 +77,12 @@ export function withOptionalAuth(handler) {
       // Ensure database connection
       await connectDB()
 
-      const authHeader = request.headers.get('authorization')
+      const token = getTokenFromRequest(request)
 
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      if (!token) {
         // No token, continue without user
         return handler(request, { ...context, user: null })
       }
-
-      const token = authHeader.replace('Bearer ', '')
 
       try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET)
