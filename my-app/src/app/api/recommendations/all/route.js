@@ -546,6 +546,66 @@ export const GET = withAuth(async (request, { user }) => {
       }
 
       let trendingInCircles = [];
+
+      // Get user's friends and following for "Trending In Your Circle"
+      const friendIds = (user.friends || []).map(f => f.userId);
+      const followingIds = user.following || [];
+      const circleUserIds = [...new Set([...friendIds, ...followingIds])];
+
+      // Fetch activities from friends/following
+      let friendsActivities = [];
+      if (circleUserIds.length > 0) {
+        const circleUsers = await User.find({ _id: { $in: circleUserIds } })
+          .select('favorites watchHistory watchlist')
+          .lean()
+          .catch(() => []);
+
+        // Aggregate movies/shows that friends liked, watched, or added to watchlist
+        const activityMap = new Map();
+
+        circleUsers.forEach(circleUser => {
+          // Friends' favorites (highest weight)
+          (circleUser.favorites || []).forEach(fav => {
+            const key = `movie-${fav.movieId}`;
+            if (!activityMap.has(key)) {
+              activityMap.set(key, { id: fav.movieId, type: 'movie', score: 0, count: 0 });
+            }
+            const item = activityMap.get(key);
+            item.score += 3; // Higher weight for favorites
+            item.count += 1;
+          });
+
+          // Friends' watch history (medium weight)
+          (circleUser.watchHistory || []).slice(0, 20).forEach(watch => {
+            const key = `${watch.mediaType || 'movie'}-${watch.movieId}`;
+            if (!activityMap.has(key)) {
+              activityMap.set(key, { id: watch.movieId, type: watch.mediaType || 'movie', score: 0, count: 0 });
+            }
+            const item = activityMap.get(key);
+            item.score += watch.completed ? 2 : 1;
+            item.count += 1;
+          });
+
+          // Friends' watchlist (lower weight - they want to watch but haven't yet)
+          (circleUser.watchlist || []).slice(0, 10).forEach(wl => {
+            const key = `movie-${wl.movieId}`;
+            if (!activityMap.has(key)) {
+              activityMap.set(key, { id: wl.movieId, type: 'movie', score: 0, count: 0 });
+            }
+            const item = activityMap.get(key);
+            item.score += 1;
+            item.count += 1;
+          });
+        });
+
+        // Sort by score and get top items
+        friendsActivities = Array.from(activityMap.values())
+          .filter(item => !userInteractedIds.has(`${item.type}-${item.id}`)) // Exclude already watched
+          .sort((a, b) => b.score - a.score || b.count - a.count)
+          .slice(0, 15);
+      }
+
+      // Also get community-based recommendations
       const communityMediaIds = userCommunities
         .filter(community => community.relatedEntityId && (community.relatedEntityType === 'movie' || community.relatedEntityType === 'tv'))
         .map(community => ({
@@ -554,25 +614,69 @@ export const GET = withAuth(async (request, { user }) => {
           name: community.relatedEntityName,
         }));
 
-      if (communityMediaIds.length > 0) {
-        const circleSourceMetadata = await fetchMetadataBatch(communityMediaIds.slice(0, 3), 2);
+      // Combine friends' activities with community data
+      if (friendsActivities.length > 0 || communityMediaIds.length > 0) {
+        // Fetch metadata for friends' activities
+        let friendsMetadata = [];
+        if (friendsActivities.length > 0) {
+          friendsMetadata = await fetchMetadataBatch(friendsActivities.slice(0, 10), 5);
+        }
 
-        if (circleSourceMetadata.length > 0) {
-          const circleCandidates = (await Promise.all(
-            circleSourceMetadata.map(source => getCandidateRecommendations(source.id, source.mediaType))
-          )).flat();
-          const uniqueCircleCandidates = dedup(circleCandidates, 25, false);
-          const circleCandidateMetadata = await fetchMetadataBatch(uniqueCircleCandidates, 5);
+        // Fetch metadata for community items
+        let circleSourceMetadata = [];
+        if (communityMediaIds.length > 0) {
+          circleSourceMetadata = await fetchMetadataBatch(communityMediaIds.slice(0, 3), 2);
+        }
 
-          trendingInCircles = circleCandidateMetadata
+        // Get recommendations based on both sources
+        const allCircleMetadata = [...friendsMetadata, ...circleSourceMetadata];
+
+        if (allCircleMetadata.length > 0) {
+          // Get similar items for community sources
+          let circleCandidates = [];
+          if (circleSourceMetadata.length > 0) {
+            circleCandidates = (await Promise.all(
+              circleSourceMetadata.map(source => getCandidateRecommendations(source.id, source.mediaType))
+            )).flat();
+          }
+
+          // Include friends' watched items as direct recommendations (they're already validated)
+          const friendsItems = friendsMetadata.map(item => ({
+            ...item,
+            fromFriends: true, // Mark as coming from friends
+          }));
+
+          // Combine and deduplicate
+          const allCandidates = [...friendsItems];
+          if (circleCandidates.length > 0) {
+            const uniqueCircleCandidates = dedup(circleCandidates, 15, false);
+            const circleCandidateMetadata = await fetchMetadataBatch(uniqueCircleCandidates, 5);
+            allCandidates.push(...circleCandidateMetadata);
+          }
+
+          // Score and sort
+          trendingInCircles = dedup(allCandidates, 40, false)
             .map(candidate => {
-              const scores = circleSourceMetadata.map(source =>
-                calculateSimilarityScore(source, candidate, trendingIds, userInteractedIds)
-              );
-              const avgScore = scores.reduce((total, score) => total + score, 0) / scores.length;
+              let score = 0;
+
+              // If it's from friends, give it a base score based on friends' activity
+              if (candidate.fromFriends) {
+                const activity = friendsActivities.find(a => a.id === String(candidate.id));
+                score = activity ? (activity.score / 10) + 0.5 : 0.5;
+              } else {
+                // Calculate similarity to community sources
+                const scores = circleSourceMetadata.map(source =>
+                  calculateSimilarityScore(source, candidate, trendingIds, userInteractedIds)
+                );
+                score = scores.length > 0
+                  ? scores.reduce((total, s) => total + s, 0) / scores.length
+                  : 0;
+              }
+
+              // Trending boost
               const trendingBoost = trendingIds.has(`${candidate.mediaType}-${candidate.id}`) ? 0.1 : 0;
 
-              return { ...candidate, score: avgScore + trendingBoost };
+              return { ...candidate, score: score + trendingBoost };
             })
             .sort((a, b) => b.score - a.score)
             .filter(item => !filterAdult || !item.adult)
@@ -597,6 +701,7 @@ export const GET = withAuth(async (request, { user }) => {
             }));
         }
       } else if (userSearchHistory.length > 0) {
+        // Fallback to search history if no friends or communities
         const searchResults = await Promise.all(userSearchHistory.slice(0, 3).map(async entry => {
           const searchKey = buildCacheKey('recommendations', 'search-history', entry.query);
 

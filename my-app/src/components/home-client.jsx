@@ -189,14 +189,11 @@ export default function HomeClient({ initialData }) {
   useEffect(() => {
     if (!isAuthenticated || personalizedLoaded) return
 
-    const token = localStorage.getItem("token")
-    if (!token) return
-
     // Fetch recommendations immediately with global/worldwide data (no country filter)
     const fetchRecs = async () => {
       try {
         const res = await fetch(`/api/recommendations/all?country=worldwide&countryName=Worldwide`, {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include', // Use httpOnly cookies for auth
         })
         if (res.ok) {
           const json = await res.json()
@@ -223,7 +220,7 @@ export default function HomeClient({ initialData }) {
           // Only refetch if we successfully got a country (not worldwide)
           if (country && countryName) {
             const res = await fetch(`/api/recommendations/all?country=${country}&countryName=${encodeURIComponent(countryName)}`, {
-              headers: { Authorization: `Bearer ${token}` },
+              credentials: 'include', // Use httpOnly cookies for auth
             })
             if (res.ok) {
               const json = await res.json()
