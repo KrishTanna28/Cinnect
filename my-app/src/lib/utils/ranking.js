@@ -88,13 +88,14 @@ function buildScoredUsersPipeline() {
         qualityScore: {
           $min: [100, { $multiply: ['$averageQuality', 100] }]
         },
+        // Focus engagement score on review performance (likes, replies) rather than community posts
         engagementScore: {
           $min: [
             100,
             {
               $add: [
-                { $multiply: ['$averageReviewEngagement', 8] },
-                { $multiply: ['$trendingPostsCount', 12] }
+                { $multiply: ['$averageReviewEngagement', 10] },
+                { $multiply: ['$trendingPostsCount', 2] }
               ]
             }
           ]
@@ -104,8 +105,8 @@ function buildScoredUsersPipeline() {
             100,
             {
               $add: [
-                { $multiply: [{ $ifNull: ['$streaks.current', 0] }, 6] },
-                { $multiply: [{ $ifNull: ['$achievements.reviewsWritten', 0] }, 1.4] }
+                { $multiply: [{ $ifNull: ['$streaks.current', 0] }, 4] },
+                { $multiply: [{ $ifNull: ['$achievements.reviewsWritten', 0] }, 2] }
               ]
             }
           ]
@@ -115,11 +116,12 @@ function buildScoredUsersPipeline() {
     },
     {
       $addFields: {
+        // Ranking weights: Review Quality (55%), Review Engagement (30%), Consistency (15%)
         rankingScore: {
           $add: [
-            { $multiply: ['$qualityScore', 0.5] },
-            { $multiply: ['$engagementScore', 0.3] },
-            { $multiply: ['$consistencyScore', 0.2] }
+            { $multiply: ['$qualityScore', 0.55] },
+            { $multiply: ['$engagementScore', 0.30] },
+            { $multiply: ['$consistencyScore', 0.15] }
           ]
         }
       }

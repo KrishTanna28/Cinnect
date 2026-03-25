@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Mail, Film, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -8,13 +9,25 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 export default function ForgotPasswordPage() {
+  const searchParams = useSearchParams()
+  const emailFromLogin = searchParams.get("email")
+
   const [email, setEmail] = useState("")
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [autoSending, setAutoSending] = useState(false)
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  // Auto-send reset link if email is passed from login page
+  useEffect(() => {
+    if (emailFromLogin && !autoSending && !success) {
+      setEmail(emailFromLogin)
+      setAutoSending(true)
+      sendResetLink(emailFromLogin)
+    }
+  }, [emailFromLogin])
+
+  const sendResetLink = async (emailToSend) => {
     setError("")
     setIsLoading(true)
 
@@ -24,7 +37,7 @@ export default function ForgotPasswordPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: emailToSend }),
       })
 
       const data = await response.json()
@@ -42,6 +55,11 @@ export default function ForgotPasswordPage() {
     }
   }
 
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    sendResetLink(email)
+  }
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-md">
@@ -49,13 +67,21 @@ export default function ForgotPasswordPage() {
         <div className="flex flex-col items-center mb-8">
           <h1 className="text-3xl font-bold text-foreground">Forgot Password</h1>
           <p className="text-muted-foreground mt-2 text-center">
-            Enter your email and we'll send you a link to reset your password
+            {autoSending && isLoading
+              ? "Sending reset link to your email..."
+              : "Enter your email and we'll send you a link to reset your password"}
           </p>
         </div>
 
         {/* Form Card */}
         <div className="bg-card border border-border rounded-lg p-8 shadow-lg">
-          {success ? (
+          {/* Show loading spinner when auto-sending */}
+          {autoSending && isLoading ? (
+            <div className="flex flex-col items-center justify-center py-8">
+              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+              <p className="text-muted-foreground">Sending reset link to {email}...</p>
+            </div>
+          ) : success ? (
             <div className="space-y-6">
               {/* Success Message */}
               <div className="bg-green-500/10 border border-green-500 text-green-500 px-4 py-3 rounded-lg text-sm">

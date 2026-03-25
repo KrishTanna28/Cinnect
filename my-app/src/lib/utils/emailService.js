@@ -311,7 +311,6 @@ export const sendOTPEmail = async (email, otp, userName = 'User') => {
               <div class="email-wrapper">
                 <!-- Logo Section -->
                 <div class="logo-section">
-                  <div class="logo-icon"><span>C</span></div>
                   <div class="logo-title">Verification Code</div>
                   <div class="logo-subtitle">Verify your email to continue to Cinnect</div>
                 </div>
@@ -421,7 +420,6 @@ export const sendWelcomeEmail = async (email, userName) => {
           <div class="email-wrapper">
             <!-- Logo Section -->
             <div class="logo-section">
-              <div class="logo-icon"><span>C</span></div>
               <div class="logo-title">Welcome to Cinnect!</div>
               <div class="logo-subtitle">Your movie community awaits</div>
             </div>
@@ -539,7 +537,6 @@ export const sendPasswordResetEmail = async (email, resetToken, userName = 'User
               <div class="email-wrapper">
                 <!-- Logo Section -->
                 <div class="logo-section">
-                  <div class="logo-icon"><span>C</span></div>
                   <div class="logo-title" style="color: #141414;">Reset Password</div>
                   <div class="logo-subtitle " style="color: #141414;">Create a new password for your Cinnect account</div>
                 </div>

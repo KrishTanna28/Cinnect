@@ -503,19 +503,23 @@ export function calculateRankingScore({
   engagementScore = 0,
   consistencyScore = 0
 } = {}) {
+  // Ranking weights focused on review performance:
+  // - Review quality (55%): How well-written and structured the reviews are
+  // - Review engagement (30%): How reviews perform (likes, replies received)
+  // - Consistency (15%): Streak and total reviews written
   const normalizedQuality = clamp(qualityScore, 0, 100)
   const normalizedEngagement = clamp(engagementScore, 0, 100)
   const normalizedConsistency = clamp(consistencyScore, 0, 100)
   const finalScore =
-    (normalizedQuality * 0.5) +
-    (normalizedEngagement * 0.3) +
-    (normalizedConsistency * 0.2)
+    (normalizedQuality * 0.55) +
+    (normalizedEngagement * 0.30) +
+    (normalizedConsistency * 0.15)
 
   return {
     finalScore: round(finalScore, 2),
-    qualityComponent: round(normalizedQuality * 0.5, 2),
-    engagementComponent: round(normalizedEngagement * 0.3, 2),
-    consistencyComponent: round(normalizedConsistency * 0.2, 2)
+    qualityComponent: round(normalizedQuality * 0.55, 2),
+    engagementComponent: round(normalizedEngagement * 0.30, 2),
+    consistencyComponent: round(normalizedConsistency * 0.15, 2)
   }
 }
 
@@ -761,7 +765,7 @@ export function getXpConfig() {
       trending_post: { baseXp: 100, dailyCap: 200 },
       community_create: { baseXp: 200, dailyCap: 200 }
     },
-    rankingFormula: 'ranking_score = (avg_quality_score * 0.5) + (engagement_score * 0.3) + (consistency_score * 0.2)',
+    rankingFormula: 'ranking_score = (review_quality * 0.55) + (review_engagement * 0.30) + (consistency * 0.15)',
     badges: Object.entries(BADGE_DEFINITIONS).map(([badgeId, badge]) => ({
       badgeId,
       ...badge

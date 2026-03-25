@@ -156,7 +156,10 @@ export default function LoginPage() {
                   Remember me
                 </label>
               </div>
-              <Link href="/forgot-password" className="text-sm text-primary hover:underline cursor-pointer">
+              <Link
+                href={email ? `/forgot-password?email=${encodeURIComponent(email)}` : "/forgot-password"}
+                className="text-sm text-primary hover:underline cursor-pointer"
+              >
                 Forgot password?
               </Link>
             </div>

@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import bcrypt from 'bcryptjs';
 import connectDB from '@/lib/config/database';
 import User from '@/lib/models/User';
 
@@ -72,12 +71,9 @@ export async function POST(request) {
       );
     }
 
-    // Hash new password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
     // Update user password and clear reset token fields
-    user.password = hashedPassword;
+    // Note: Password will be hashed by the pre-save middleware in User model
+    user.password = password;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
     user.loginAttempts = 0; // Reset login attempts
