@@ -22,10 +22,10 @@ export function setAuthCookies(response, accessToken, refreshToken, rememberMe =
   }
 
   if (rememberMe) {
-    // Persistent cookies - 7 days
+    // Persistent cookies - 30 days (matches refresh token expiry)
     const persistentOptions = {
       ...baseOptions,
-      maxAge: 7 * 24 * 60 * 60 // 7 days in seconds
+      maxAge: 30 * 24 * 60 * 60 // 30 days in seconds
     }
 
     response.cookies.set('auth_token', accessToken, persistentOptions)

@@ -73,7 +73,7 @@ export async function GET(request) {
       // User exists, generate new access and refresh tokens
       const tokenId = crypto.randomUUID()
       const accessToken = generateAccessToken(user._id)
-      const refreshToken = generateRefreshToken(user._id, tokenId)
+      const refreshToken = generateRefreshToken(user._id, tokenId, true) // Google OAuth = persistent session
 
       console.log('[OAuth] User found, setting cookies and redirecting:', {
         userId: user._id.toString(),
@@ -117,7 +117,7 @@ export async function GET(request) {
       // Generate new access and refresh tokens
       const tokenId = crypto.randomUUID()
       const accessToken = generateAccessToken(user._id)
-      const refreshToken = generateRefreshToken(user._id, tokenId)
+      const refreshToken = generateRefreshToken(user._id, tokenId, true) // Google OAuth = persistent session
 
       // Redirect directly to home page
       const response = NextResponse.redirect(`${FRONTEND_URL}/`)
@@ -145,7 +145,7 @@ export async function GET(request) {
     // Generate new access and refresh tokens
     const tokenId = crypto.randomUUID()
     const accessToken = generateAccessToken(user._id)
-    const refreshToken = generateRefreshToken(user._id, tokenId)
+    const refreshToken = generateRefreshToken(user._id, tokenId, true) // Google OAuth = persistent session
 
     // Redirect directly to home page
     const response = NextResponse.redirect(`${FRONTEND_URL}/`)

@@ -403,7 +403,7 @@ export const sendWelcomeEmail = async (email, userName) => {
       }
     });
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.FRONTEND_URL || 'http://localhost:3000';
+    const appUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
 
     const mailOptions = {
       from: `"Cinnect" <${process.env.EMAIL_USER}>`,

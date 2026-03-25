@@ -53,7 +53,7 @@ export async function POST(request) {
     // Generate tokens
     const tokenId = crypto.randomUUID()
     const accessToken = generateAccessToken(user._id)
-    const refreshToken = generateRefreshToken(user._id, tokenId)
+    const refreshToken = generateRefreshToken(user._id, tokenId, rememberMe)
 
     const xpEvent = applyXpEvent(user, {
       action: 'daily_login',

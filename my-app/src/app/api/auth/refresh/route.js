@@ -35,8 +35,10 @@ export async function POST(request) {
       }
 
       // Generate new tokens with refresh token rotation
+      // Preserve the rememberMe setting from the original token
+      const rememberMe = decoded.rememberMe || false
       const newAccessToken = generateAccessToken(user._id?.toString())
-      const newRefreshToken = generateRefreshToken(user._id?.toString(), uuidv4())
+      const newRefreshToken = generateRefreshToken(user._id?.toString(), uuidv4(), rememberMe)
 
       // Create response
       const response = NextResponse.json({
@@ -54,10 +56,8 @@ export async function POST(request) {
         }
       })
 
-      // Determine if this was a "Remember Me" session by checking if the original cookie had maxAge
-      // For now, we'll assume persistent sessions (true) since we can't easily determine original session type
-      // In a production system, you might want to track session types in the database
-      setAuthCookies(response, newAccessToken, newRefreshToken, true)
+      // Use the same rememberMe setting for cookie persistence
+      setAuthCookies(response, newAccessToken, newRefreshToken, rememberMe)
 
       return response
 
