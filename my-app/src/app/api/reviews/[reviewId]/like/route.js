@@ -64,7 +64,7 @@ try {
         await notifyNewLike({
           actor: user,
           ownerId: review.user,
-          url: `/reviews/${review.mediaType}/${review.mediaId}`,
+          url: `/reviews/${review.mediaType}/${review.mediaId}#${review._id}`,
           mediaTitle: review.mediaTitle,
           isPost: false,
           referenceId: review._id

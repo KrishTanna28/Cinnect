@@ -183,34 +183,78 @@ export default function ReviewsPage({ params }) {
     fetchReviews(1, sortBy)
   }, [unwrappedParams.mediaId, sortBy])
 
-  // Handle Hash Navigation
-  useEffect(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash
-      if (hash) {
-        setProcessedHash(null) // trigger the scrolling effect
+  // Handle Hash Navigation - fetch specific review if not in current list
+  const fetchAndScrollToTarget = async (targetId, currentReviews) => {
+    // First check if it's already in our reviews list
+    let targetReviewId = null
+    let targetReview = null
+
+    for (const r of currentReviews) {
+      if (r._id === targetId) {
+        targetReviewId = r._id
+        targetReview = r
+        break
+      }
+      if (r.replies && r.replies.some(rep => rep._id === targetId)) {
+        targetReviewId = r._id
+        targetReview = r
+        break
       }
     }
-    window.addEventListener('hashchange', handleHashChange)
-    return () => window.removeEventListener('hashchange', handleHashChange)
-  }, [])
 
-  useEffect(() => {
-    const hash = window.location.hash
-    if (!hash || reviews.length === 0) return
-    const id = hash.replace('#', '')
+    // If not found in current reviews, try to fetch the specific review
+    if (!targetReviewId) {
+      try {
+        // First try to fetch as a review ID
+        const reviewResponse = await fetch(`/api/reviews/${targetId}`)
+        const reviewData = await reviewResponse.json()
 
-    if (processedHash === id) return
+        if (reviewData.success && reviewData.data) {
+          // Found the review - add it to the top of the list if not already there
+          targetReview = reviewData.data
+          targetReviewId = reviewData.data._id
+          setReviews(prev => {
+            const existingIndex = prev.findIndex(r => r._id === reviewData.data._id)
+            if (existingIndex === -1) {
+              return [reviewData.data, ...prev]
+            }
+            return prev
+          })
+        } else {
+          // Maybe it's a reply ID - we need to find which review contains it
+          // Fetch more reviews and search
+          const allReviewsResponse = await fetch(
+            `/api/reviews?mediaType=${unwrappedParams.mediaType}&mediaId=${unwrappedParams.mediaId}&page=1&limit=100&sortBy=latest`
+          )
+          const allReviewsData = await allReviewsResponse.json()
 
-    let targetReviewId = null
-    for (const r of reviews) {
-      if (r._id === id) { targetReviewId = r._id; break }
-      if (r.replies && r.replies.some(rep => rep._id === id)) { targetReviewId = r._id; break }
+          if (allReviewsData.success && allReviewsData.data?.reviews) {
+            for (const r of allReviewsData.data.reviews) {
+              if (r.replies && r.replies.some(rep => rep._id === targetId)) {
+                targetReviewId = r._id
+                targetReview = r
+                // Add the review to our list if not already there
+                setReviews(prev => {
+                  const existingIdx = prev.findIndex(review => review._id === r._id)
+                  if (existingIdx === -1) {
+                    return [r, ...prev]
+                  }
+                  // Update the existing review with full reply data
+                  return prev.map(review => review._id === r._id ? r : review)
+                })
+                break
+              }
+            }
+          }
+        }
+      } catch (fetchError) {
+        console.error('Failed to fetch target review:', fetchError)
+      }
     }
 
     if (targetReviewId) {
-      setProcessedHash(id)
-      
+      setProcessedHash(targetId)
+
       // Ensure the parent review thread is expanded (showReplies)
       setShowReplies(prev => {
         const next = new Set(prev)
@@ -219,35 +263,66 @@ export default function ReviewsPage({ params }) {
       })
 
       // Ensure that no parent reply is collapsed
-      const targetReview = reviews.find(r => r._id === targetReviewId)
-      if (targetReview && targetReview.replies && id !== targetReviewId) {
+      if (targetReview && targetReview.replies && targetId !== targetReviewId) {
         setCollapsedReplies(prev => {
           const next = new Set(prev)
-          let currentReply = targetReview.replies.find(r => r._id === id)
+          let currentReply = targetReview.replies.find(r => r._id === targetId)
 
           // Walk up the tree to make sure all parents are uncollapsed
           while (currentReply && currentReply.parentReplyId) {
-             next.delete(currentReply.parentReplyId)
-             currentReply = targetReview.replies.find(r => r._id === currentReply.parentReplyId)
+            next.delete(currentReply.parentReplyId)
+            currentReply = targetReview.replies.find(r => r._id === currentReply.parentReplyId)
           }
           return next
         })
       }
 
-      setHighlightId(id)
+      setHighlightId(targetId)
 
+      // Use a longer timeout to ensure DOM is updated after state changes
       setTimeout(() => {
-        const el = document.getElementById(id)
+        const el = document.getElementById(targetId)
         if (el) {
           el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        } else {
+          // Try scrolling to the review if reply element not found
+          const reviewEl = document.getElementById(targetReviewId)
+          if (reviewEl) {
+            reviewEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
         }
-      }, 300)
+      }, 500)
 
       setTimeout(() => {
-        setHighlightId(prev => (prev === id ? null : prev))
+        setHighlightId(prev => (prev === targetId ? null : prev))
       }, 3000)
     }
-  }, [reviews, processedHash])
+  }
+
+  // Hash change listener
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash
+      if (hash) {
+        const id = hash.replace('#', '')
+        setProcessedHash(null) // Reset to allow re-processing
+        fetchAndScrollToTarget(id, reviews)
+      }
+    }
+    window.addEventListener('hashchange', handleHashChange)
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [reviews, unwrappedParams.mediaType, unwrappedParams.mediaId])
+
+  // Initial hash processing after reviews load
+  useEffect(() => {
+    const hash = window.location.hash
+    if (!hash || loading) return
+
+    const id = hash.replace('#', '')
+    if (processedHash === id) return
+
+    fetchAndScrollToTarget(id, reviews)
+  }, [reviews, loading, processedHash, unwrappedParams.mediaType, unwrappedParams.mediaId])
 
   // Load more reviews
   const loadMore = () => {
