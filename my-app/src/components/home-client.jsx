@@ -192,9 +192,24 @@ export default function HomeClient({ initialData }) {
     // Fetch recommendations immediately with global/worldwide data (no country filter)
     const fetchRecs = async () => {
       try {
-        const res = await fetch(`/api/recommendations/all?country=worldwide&countryName=Worldwide`, {
+        let res = await fetch(`/api/recommendations/all?country=worldwide&countryName=Worldwide`, {
           credentials: 'include', // Use httpOnly cookies for auth
         })
+
+        // If unauthorized, try to refresh token and retry
+        if (res.status === 401) {
+          const refreshRes = await fetch('/api/auth/refresh', {
+            method: 'POST',
+            credentials: 'include',
+          })
+          if (refreshRes.ok) {
+            // Retry the recommendations fetch with fresh token
+            res = await fetch(`/api/recommendations/all?country=worldwide&countryName=Worldwide`, {
+              credentials: 'include',
+            })
+          }
+        }
+
         if (res.ok) {
           const json = await res.json()
           if (json.success && json.data) {
