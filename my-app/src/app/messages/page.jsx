@@ -108,10 +108,10 @@ export default function MessagesPage() {
       const requestsData = await requestsRes.json();
 
       if (messagesData.success) {
-        setConversations(messagesData.conversations);
+        setConversations(messagesData.data?.conversations || []);
       }
       if (requestsData.success) {
-        setRequests(requestsData.conversations);
+        setRequests(requestsData.data?.conversations || []);
       }
 
       // Check pending conversation from profile page
@@ -119,8 +119,8 @@ export default function MessagesPage() {
       let targetConv = null;
       if (pendingConvId) {
         localStorage.removeItem('cinnect_pending_chat_conv');
-        targetConv = messagesData.conversations?.find(c => c._id === pendingConvId) || requestsData.conversations?.find(c => c._id === pendingConvId);
-        
+        targetConv = messagesData.data?.conversations?.find(c => c._id === pendingConvId) || requestsData.data?.conversations?.find(c => c._id === pendingConvId);
+
         if (!targetConv) {
           try {
             const singleRes = await fetch(`/api/messages/conversations/${pendingConvId}`, {
@@ -150,8 +150,8 @@ export default function MessagesPage() {
         // Update selected conversation if it exists
         setSelectedConversation(prev => {
           if (!prev) return prev;
-          const msgConv = messagesData.conversations?.find(c => c._id === prev._id);
-          const reqConv = requestsData.conversations?.find(c => c._id === prev._id);
+          const msgConv = messagesData.data?.conversations?.find(c => c._id === prev._id);
+          const reqConv = requestsData.data?.conversations?.find(c => c._id === prev._id);
           return msgConv || reqConv || prev;
         });
       }
@@ -170,7 +170,7 @@ export default function MessagesPage() {
     setSelectedConversation(null);
   };
 
-  const filteredConversations = (activeTab === 'messages' ? conversations : requests).filter(
+  const filteredConversations = (activeTab === 'messages' ? conversations : requests)?.filter(
     conv => {
       if (!searchQuery) return true;
       const participant = conv.participant;
@@ -179,10 +179,10 @@ export default function MessagesPage() {
         participant?.fullName?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-  );
+  ) || [];
 
-  const totalUnread = conversations.filter(conv => (conv.unreadCount || 0) > 0).length;
-  const totalRequests = requests.length;
+  const totalUnread = (conversations || []).filter(conv => (conv.unreadCount || 0) > 0).length;
+  const totalRequests = (requests || []).length;
 
   // Mobile view: show either list or thread
   if (isMobile) {
