@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { X, Filter, Star, Search, Loader2, Film, Tv, AlertTriangle } from "lucide-react"
+import { X, Filter, Star, Search, Loader2, Film, Tv, AlertTriangle, Clock, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import * as movieAPI from "@/lib/movies"
 import useInfiniteScroll from "@/hooks/useInfiniteScroll"
@@ -72,6 +72,8 @@ export default function BrowsePage() {
   const [mobileSearchResults, setMobileSearchResults] = useState({ movies: [], people: [] })
   const [isMobileSearching, setIsMobileSearching] = useState(false)
   const [showMobileSearchDropdown, setShowMobileSearchDropdown] = useState(false)
+  const [searchHistory, setSearchHistory] = useState([])
+  const [searchHistoryLoaded, setSearchHistoryLoaded] = useState(false)
   const mobileSearchRef = useRef(null)
 
   // Infinite scroll
@@ -250,6 +252,68 @@ export default function BrowsePage() {
     }
   }
 
+  // Fetch search history
+  const fetchSearchHistory = useCallback(async () => {
+    const token = localStorage.getItem("token")
+    if (!token) return
+    try {
+      const res = await fetch("/api/search/log", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const json = await res.json()
+        if (json.success) {
+          const items = json.history || []
+          setSearchHistory(items)
+          setSearchHistoryLoaded(true)
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  // Delete a single search history entry
+  const deleteSearchEntry = useCallback(async (entryId) => {
+    const token = localStorage.getItem("token")
+    if (!token) return
+    try {
+      const res = await fetch(`/api/search/log/${entryId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        setSearchHistory(prev => prev.filter(item => item._id !== entryId))
+      }
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  // Clear all search history
+  const clearSearchHistory = useCallback(async () => {
+    const token = localStorage.getItem("token")
+    if (!token) return
+    try {
+      const res = await fetch("/api/search/log", {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        setSearchHistory([])
+      }
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  // Fetch search history on mount (only once)
+  useEffect(() => {
+    if (!searchHistoryLoaded) {
+      fetchSearchHistory()
+    }
+  }, [searchHistoryLoaded, fetchSearchHistory])
+
   // Show loading state while checking device
   if (isCheckingDevice) {
     return (
@@ -425,7 +489,7 @@ export default function BrowsePage() {
                   placeholder="Search"
                   value={mobileSearchQuery}
                   onChange={(e) => setMobileSearchQuery(e.target.value)}
-                  onFocus={() => mobileSearchQuery.trim() && setShowMobileSearchDropdown(true)}
+                  onFocus={() => setShowMobileSearchDropdown(true)}
                   className="w-full pl-9 pr-8 py-2 bg-secondary/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm"
                 />
                 {mobileSearchQuery && (
@@ -442,93 +506,150 @@ export default function BrowsePage() {
               </form>
 
               {/* Mobile Search Dropdown */}
-              {showMobileSearchDropdown && mobileSearchQuery.trim() && (
+              {showMobileSearchDropdown && (
                 <div className="absolute top-full left-0 right-0 mt-1.5 bg-background border border-border rounded-lg shadow-xl z-50 max-h-[60vh] overflow-y-auto">
-                  {isMobileSearching ? (
-                    <div className="flex items-center justify-center py-6">
-                      <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                  {!mobileSearchQuery.trim() && searchHistory.length > 0 ? (
+                    // Show search history when query is empty
+                    <div className="py-1">
+                      {searchHistory.map((entry) => (
+                        <div
+                          key={entry._id}
+                          className="flex items-center gap-3 px-3 py-2.5 hover:bg-secondary transition-colors group cursor-pointer"
+                        >
+                          <Clock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                          <button
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setMobileSearchQuery(entry.query);
+                              setShowMobileSearchDropdown(false);
+                              router.push(`/search?q=${encodeURIComponent(entry.query)}`);
+                            }}
+                            className="flex-1 text-left text-sm text-foreground truncate cursor-pointer"
+                          >
+                            {entry.query}
+                          </button>
+                          <button
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              deleteSearchEntry(entry._id);
+                            }}
+                            className="flex-shrink-0 p-1 rounded-full text-muted-foreground hover:text-primary group-hover:opacity-100 cursor-pointer transition-all active:scale-90"
+                            aria-label="Remove from history"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                      {/* Clear all button */}
+                      <div className="border-t border-border mt-1 pt-1 px-3 pb-1">
+                        <button
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            clearSearchHistory();
+                          }}
+                          className="w-full text-xs text-muted-foreground hover:text-destructive transition-all active:scale-95 flex items-center justify-center gap-1.5 py-2 cursor-pointer"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          Clear all search history
+                        </button>
+                      </div>
                     </div>
-                  ) : mobileSearchResults.movies.length === 0 && mobileSearchResults.people.length === 0 ? (
+                  ) : mobileSearchQuery.trim() ? (
+                    // Show search results when there's a query
+                    <>
+                      {isMobileSearching ? (
+                        <div className="flex items-center justify-center py-6">
+                          <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                        </div>
+                      ) : mobileSearchResults.movies.length === 0 && mobileSearchResults.people.length === 0 ? (
+                        <div className="text-center py-6">
+                          <Search className="w-6 h-6 text-muted-foreground mx-auto mb-1" />
+                          <p className="text-sm text-muted-foreground">No results for "{mobileSearchQuery}"</p>
+                        </div>
+                      ) : (
+                        <div className="p-2">
+                          {mobileSearchResults.movies.length > 0 && (
+                            <div className="mb-2">
+                              <h4 className="text-[10px] font-semibold text-muted-foreground uppercase px-2 mb-1">Movies &amp; TV</h4>
+                              <div className="space-y-0.5">
+                                {mobileSearchResults.movies.map((item) => (
+                                  <div
+                                    key={`${item.mediaType}-${item.id}`}
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      setShowMobileSearchDropdown(false);
+                                      setMobileSearchQuery('');
+                                      router.push(item.mediaType === 'tv' ? `/tv/${item.id}` : `/movies/${item.id}`);
+                                    }}
+                                    className="flex items-center gap-2.5 p-2 hover:bg-secondary rounded-lg transition-colors cursor-pointer"
+                                  >
+                                    {item.poster ? (
+                                      <img src={item.poster} alt="" className="w-8 h-11 object-cover rounded flex-shrink-0" />
+                                    ) : (
+                                      <div className="w-8 h-11 bg-secondary rounded flex items-center justify-center flex-shrink-0">
+                                        {item.mediaType === 'tv' ? <Tv className="w-4 h-4 text-muted-foreground" /> : <Film className="w-4 h-4 text-muted-foreground" />}
+                                      </div>
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-foreground truncate">{item.title}</p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {item.mediaType === 'tv' ? 'TV Show' : 'Movie'}
+                                        {item.releaseDate && ` • ${item.releaseDate.split('-')[0]}`}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {mobileSearchResults.people.length > 0 && (
+                            <div>
+                              <h4 className="text-[10px] font-semibold text-muted-foreground uppercase px-2 mb-1">Celebrities</h4>
+                              <div className="space-y-0.5">
+                                {mobileSearchResults.people.map((person) => (
+                                  <div
+                                    key={`person-${person.id}`}
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      setShowMobileSearchDropdown(false);
+                                      setMobileSearchQuery('');
+                                      router.push(`/actor/${person.id}`);
+                                    }}
+                                    className="flex items-center gap-2.5 p-2 hover:bg-secondary rounded-lg transition-colors cursor-pointer"
+                                  >
+                                    {person.poster ? (
+                                      <img src={person.poster} alt="" className="w-8 h-8 object-cover rounded-full flex-shrink-0" />
+                                    ) : (
+                                      <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center flex-shrink-0">
+                                        <span className="text-xs font-bold text-primary">{person.title?.charAt(0)}</span>
+                                      </div>
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-foreground truncate">{person.title}</p>
+                                      <p className="text-xs text-muted-foreground">Celebrity</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          <button
+                            onClick={handleMobileSearch}
+                            className="w-full mt-1.5 p-2 text-xs text-primary hover:bg-secondary rounded-lg transition-colors text-center"
+                          >
+                            View all results for "{mobileSearchQuery}"
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  ) : searchHistory.length === 0 ? (
+                    // Show message when no history and no query
                     <div className="text-center py-6">
                       <Search className="w-6 h-6 text-muted-foreground mx-auto mb-1" />
-                      <p className="text-sm text-muted-foreground">No results for "{mobileSearchQuery}"</p>
+                      <p className="text-xs text-muted-foreground">Your search history will appear here</p>
                     </div>
-                  ) : (
-                    <div className="p-2">
-                      {mobileSearchResults.movies.length > 0 && (
-                        <div className="mb-2">
-                          <h4 className="text-[10px] font-semibold text-muted-foreground uppercase px-2 mb-1">Movies &amp; TV</h4>
-                          <div className="space-y-0.5">
-                            {mobileSearchResults.movies.map((item) => (
-                              <div
-                                key={`${item.mediaType}-${item.id}`}
-                                onMouseDown={(e) => {
-                                  e.preventDefault();
-                                  setShowMobileSearchDropdown(false);
-                                  setMobileSearchQuery('');
-                                  router.push(item.mediaType === 'tv' ? `/tv/${item.id}` : `/movies/${item.id}`);
-                                }}
-                                className="flex items-center gap-2.5 p-2 hover:bg-secondary rounded-lg transition-colors cursor-pointer"
-                              >
-                                {item.poster ? (
-                                  <img src={item.poster} alt="" className="w-8 h-11 object-cover rounded flex-shrink-0" />
-                                ) : (
-                                  <div className="w-8 h-11 bg-secondary rounded flex items-center justify-center flex-shrink-0">
-                                    {item.mediaType === 'tv' ? <Tv className="w-4 h-4 text-muted-foreground" /> : <Film className="w-4 h-4 text-muted-foreground" />}
-                                  </div>
-                                )}
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-foreground truncate">{item.title}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {item.mediaType === 'tv' ? 'TV Show' : 'Movie'}
-                                    {item.releaseDate && ` • ${item.releaseDate.split('-')[0]}`}
-                                  </p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {mobileSearchResults.people.length > 0 && (
-                        <div>
-                          <h4 className="text-[10px] font-semibold text-muted-foreground uppercase px-2 mb-1">Celebrities</h4>
-                          <div className="space-y-0.5">
-                            {mobileSearchResults.people.map((person) => (
-                              <div
-                                key={`person-${person.id}`}
-                                onMouseDown={(e) => {
-                                  e.preventDefault();
-                                  setShowMobileSearchDropdown(false);
-                                  setMobileSearchQuery('');
-                                  router.push(`/actor/${person.id}`);
-                                }}
-                                className="flex items-center gap-2.5 p-2 hover:bg-secondary rounded-lg transition-colors cursor-pointer"
-                              >
-                                {person.poster ? (
-                                  <img src={person.poster} alt="" className="w-8 h-8 object-cover rounded-full flex-shrink-0" />
-                                ) : (
-                                  <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center flex-shrink-0">
-                                    <span className="text-xs font-bold text-primary">{person.title?.charAt(0)}</span>
-                                  </div>
-                                )}
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-foreground truncate">{person.title}</p>
-                                  <p className="text-xs text-muted-foreground">Celebrity</p>
-
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      <button
-                        onClick={handleMobileSearch}
-                        className="w-full mt-1.5 p-2 text-xs text-primary hover:bg-secondary rounded-lg transition-colors text-center"
-                      >
-                        View all results for "{mobileSearchQuery}"
-                      </button>
-                    </div>
-                  )}
+                  ) : null}
                 </div>
               )}
             </div>

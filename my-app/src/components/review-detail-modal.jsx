@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, Star, ThumbsUp, ThumbsDown, MessageCircle, AlertTriangle, EyeOff, Calendar, Clock } from "lucide-react"
+import { X, Star, ThumbsUp, ThumbsDown, MessageCircle, AlertTriangle, EyeOff, Calendar, Clock, ExternalLink } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
@@ -41,6 +41,7 @@ export default function ReviewDetailModal({
 
   if (!isOpen || !review) return null
 
+  const isTMDB = review.isTMDB === true
   const isOwnReview = user && review.user?._id === user._id
   const shouldBlur = review.spoiler && !revealSpoiler && !isOwnReview
   const userLiked = review.likes?.some(id => id?.toString() === user?._id?.toString())
@@ -69,24 +70,39 @@ export default function ReviewDetailModal({
         <div className="flex items-start justify-between p-4 sm:p-6 border-b border-border">
           <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
             {/* User Avatar */}
-            <Link href={`/profile/${review.user?._id}`} onClick={onClose}>
-              <Avatar className="w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary transition-all">
+            {isTMDB ? (
+              <Avatar className="w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0">
                 <AvatarImage src={review.user?.avatar} alt={review.user?.username} />
-                <AvatarFallback className="bg-primary/20 text-primary text-lg font-bold">
-                  {review.user?.username?.charAt(0).toUpperCase() || "U"}
+                <AvatarFallback className="bg-blue-500/20 text-blue-500 text-lg font-bold">
+                  {review.user?.username?.charAt(0).toUpperCase() || "T"}
                 </AvatarFallback>
               </Avatar>
-            </Link>
+            ) : (
+              <Link href={`/profile/${review.user?._id}`} onClick={onClose}>
+                <Avatar className="w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary transition-all">
+                  <AvatarImage src={review.user?.avatar} alt={review.user?.username} />
+                  <AvatarFallback className="bg-primary/20 text-primary text-lg font-bold">
+                    {review.user?.username?.charAt(0).toUpperCase() || "U"}
+                  </AvatarFallback>
+                </Avatar>
+              </Link>
+            )}
 
             <div className="flex-1 min-w-0">
               {/* Username with link */}
-              <Link
-                href={`/profile/${review.user?._id}`}
-                onClick={onClose}
-                className="font-semibold text-foreground hover:text-primary transition-colors text-base sm:text-lg"
-              >
-                {review.user?.username}
-              </Link>
+              {isTMDB ? (
+                <span className="font-semibold text-foreground text-base sm:text-lg">
+                  {review.user?.username}
+                </span>
+              ) : (
+                <Link
+                  href={`/profile/${review.user?._id}`}
+                  onClick={onClose}
+                  className="font-semibold text-foreground hover:text-primary transition-colors text-base sm:text-lg"
+                >
+                  {review.user?.username}
+                </Link>
+              )}
 
               {/* Meta info row */}
               <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1 text-xs sm:text-sm text-muted-foreground">
@@ -98,6 +114,12 @@ export default function ReviewDetailModal({
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                     Edited
+                  </span>
+                )}
+                {isTMDB && (
+                  <span className="px-2 py-0.5 bg-blue-500/20 text-blue-500 rounded text-xs font-semibold flex items-center gap-1">
+                    <ExternalLink className="w-3 h-3" />
+                    TMDB
                   </span>
                 )}
               </div>
@@ -198,45 +220,62 @@ export default function ReviewDetailModal({
         {/* Footer - Actions */}
         <div className="flex items-center justify-between p-4 sm:p-6 border-t border-border bg-secondary/10">
           <div className="flex items-center gap-4">
-            {/* Like */}
-            <button
-              onClick={() => onLike?.(review._id)}
-              className={`flex items-center gap-2 text-sm transition-all active:scale-95 cursor-pointer ${
-                userLiked
-                  ? "text-primary font-bold"
-                  : "text-muted-foreground hover:text-primary"
-              }`}
-            >
-              <ThumbsUp
-                className={`w-5 h-5 transition-all ${
-                  userLiked ? "fill-current text-primary" : "fill-none"
-                }`}
-              />
-              <span>{review.likeCount || 0}</span>
-            </button>
+            {isTMDB ? (
+              // TMDB reviews - read-only actions
+              <>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <ThumbsUp className="w-5 h-5" />
+                  <span>-</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <ThumbsDown className="w-5 h-5" />
+                  <span>-</span>
+                </div>
+              </>
+            ) : (
+              // User reviews - interactive actions
+              <>
+                {/* Like */}
+                <button
+                  onClick={() => onLike?.(review._id)}
+                  className={`flex items-center gap-2 text-sm transition-all active:scale-95 cursor-pointer ${
+                    userLiked
+                      ? "text-primary font-bold"
+                      : "text-muted-foreground hover:text-primary"
+                  }`}
+                >
+                  <ThumbsUp
+                    className={`w-5 h-5 transition-all ${
+                      userLiked ? "fill-current text-primary" : "fill-none"
+                    }`}
+                  />
+                  <span>{review.likeCount || 0}</span>
+                </button>
 
-            {/* Dislike */}
-            <button
-              onClick={() => onDislike?.(review._id)}
-              className={`flex items-center gap-2 text-sm transition-all active:scale-95 cursor-pointer ${
-                userDisliked
-                  ? "text-destructive"
-                  : "text-muted-foreground hover:text-destructive"
-              }`}
-            >
-              <ThumbsDown
-                className={`w-5 h-5 transition-all ${
-                  userDisliked ? "fill-current text-destructive" : "fill-none"
-                }`}
-              />
-              <span>{review.dislikeCount || 0}</span>
-            </button>
+                {/* Dislike */}
+                <button
+                  onClick={() => onDislike?.(review._id)}
+                  className={`flex items-center gap-2 text-sm transition-all active:scale-95 cursor-pointer ${
+                    userDisliked
+                      ? "text-destructive"
+                      : "text-muted-foreground hover:text-destructive"
+                  }`}
+                >
+                  <ThumbsDown
+                    className={`w-5 h-5 transition-all ${
+                      userDisliked ? "fill-current text-destructive" : "fill-none"
+                    }`}
+                  />
+                  <span>{review.dislikeCount || 0}</span>
+                </button>
 
-            {/* Replies count */}
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <MessageCircle className="w-5 h-5" />
-              <span>{review.replyCount || 0}</span>
-            </div>
+                {/* Replies count */}
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <MessageCircle className="w-5 h-5" />
+                  <span>{review.replyCount || 0}</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
