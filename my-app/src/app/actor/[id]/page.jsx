@@ -573,7 +573,7 @@ export default function ActorDetailsPage({ params }) {
                       {credit.rating > 0 && (
                         <div className="absolute top-2 right-2">
                           <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded text-primary text-[11px] sm:text-xs font-semibold bg-black/50">
-                            <Star className="w-3 h-3 fill-primary text-primary" /> {credit.rating.toFixed(1)}
+                            {credit.rating.toFixed(1)}
                           </span>
                         </div>
                       )}
@@ -610,7 +610,7 @@ export default function ActorDetailsPage({ params }) {
                       {credit.rating > 0 && (
                         <div className="absolute top-2 right-2">
                           <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded text-primary text-[11px] sm:text-xs font-semibold bg-black/50">
-                            <Star className="w-3 h-3 fill-primary text-primary" /> {credit.rating.toFixed(1)}
+                            {credit.rating.toFixed(1)}
                           </span>
                         </div>
                       )}

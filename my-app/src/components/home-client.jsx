@@ -213,6 +213,14 @@ export default function HomeClient({ initialData }) {
         if (res.ok) {
           const json = await res.json()
           if (json.success && json.data) {
+            console.log('[Home] Personalized recommendations loaded:', {
+              recommended: json.data.recommended?.length || 0,
+              becauseYouLiked: json.data.becauseYouLiked ? 'Yes' : 'No',
+              becauseYouLikedItems: json.data.becauseYouLiked?.items?.length || 0,
+              trendingInCircles: json.data.trendingInCircles?.length || 0,
+              top10Movies: json.data.top10Movies?.length || 0,
+              top10TV: json.data.top10TV?.length || 0,
+            })
             setPersonalizedRecs(json.data)
           }
         }

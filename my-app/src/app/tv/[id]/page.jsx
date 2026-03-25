@@ -859,8 +859,8 @@ export default function TVDetailsPage({ params }) {
                         <span className="px-2 py-1 bg-primary text-primary-foreground rounded text-xs font-bold">
                           S{season.seasonNumber}
                         </span>
-                        <span className="flex justify-content:space-between px-2 py-1 bg-black/70 text-white rounded text-xs font-medium">
-                          <Star className="w-3 h-3 text-primary" /> {season.rating.toFixed(1)}
+                        <span className="flex justify-content:space-between px-2 py-1 bg-black/70 text-primary rounded text-xs font-medium">
+                        {season.rating.toFixed(1)}
                         </span>
                       </div>
                     </div>

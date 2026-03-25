@@ -338,6 +338,9 @@ export const GET = withAuth(async (request, { user }) => {
     const data = await remember(cacheKey, RECOMMENDATIONS_CACHE_TTL, async () => {
       await connectDB()
 
+      console.log('[Recommendations API] User favorites count:', user.favorites?.length || 0);
+      console.log('[Recommendations API] Sample favorites:', user.favorites?.slice(0, 3));
+
       const [
         userFavorites,
         userWatchlist,
@@ -371,6 +374,8 @@ export const GET = withAuth(async (request, { user }) => {
         getTrendingMoviesInRegion(country).catch(() => ({ results: [] })),
         getTrendingTVInRegion(country).catch(() => ({ results: [] })),
       ]);
+
+      console.log('[Recommendations API] Processed favorites count:', userFavorites.length);
 
       const trendingIds = new Set();
       [...(trendingMoviesRegion.results || []), ...(trendingTVRegion.results || [])].forEach(item => {
@@ -500,49 +505,57 @@ export const GET = withAuth(async (request, { user }) => {
       let becauseYouLiked = null;
       if (likedItems.length > 0) {
         const dayHash = hashSeed(getDailySeed() + user._id.toString());
-        const anchor = likedItems[dayHash % likedItems.length];
-        const anchorMetadata = await fetchDetailedMetadata(anchor.id, anchor.type);
 
-        if (anchorMetadata) {
-          const candidates = await getCandidateRecommendations(anchor.id, anchor.type);
-          const uniqueCandidates = dedup(candidates, 25, false);
-          const candidateMetadata = await fetchMetadataBatch(uniqueCandidates, 5);
+        // Try up to 5 different favorites until we find one that works
+        const maxAttempts = Math.min(5, likedItems.length);
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+          const anchorIndex = (dayHash + attempt) % likedItems.length;
+          const anchor = likedItems[anchorIndex];
+          const anchorMetadata = await fetchDetailedMetadata(anchor.id, anchor.type);
 
-          const becauseItems = candidateMetadata
-            .map(candidate => ({
-              ...candidate,
-              score: calculateSimilarityScore(anchorMetadata, candidate, trendingIds, userInteractedIds),
-            }))
-            .sort((a, b) => b.score - a.score)
-            .filter(item => !filterAdult || !item.adult)
-            .filter(item => !watchedIds.has(`${item.mediaType}-${item.id}`))
-            .slice(0, 20)
-            .map(item => ({
-              id: item.id,
-              title: item.title,
-              mediaType: item.mediaType,
-              originalTitle: item.originalTitle,
-              overview: item.overview,
-              releaseDate: item.releaseDate,
-              rating: item.rating,
-              voteCount: item.voteCount,
-              popularity: item.popularity,
-              adult: item.adult,
-              genres: item.genres,
-              poster: item.poster,
-              backdrop: item.backdrop,
-              originalLanguage: item.originalLanguage,
-              score: item.score,
-            }));
+          if (anchorMetadata) {
+            const candidates = await getCandidateRecommendations(anchor.id, anchor.type);
+            const uniqueCandidates = dedup(candidates, 25, false);
+            const candidateMetadata = await fetchMetadataBatch(uniqueCandidates, 5);
 
-          if (becauseItems.length > 0) {
-            becauseYouLiked = {
-              anchorTitle: anchorMetadata.title,
-              anchorId: anchor.id,
-              anchorType: anchor.type,
-              items: becauseItems,
-            };
+            const becauseItems = candidateMetadata
+              .map(candidate => ({
+                ...candidate,
+                score: calculateSimilarityScore(anchorMetadata, candidate, trendingIds, userInteractedIds),
+              }))
+              .sort((a, b) => b.score - a.score)
+              .filter(item => !filterAdult || !item.adult)
+              .filter(item => !watchedIds.has(`${item.mediaType}-${item.id}`))
+              .slice(0, 20)
+              .map(item => ({
+                id: item.id,
+                title: item.title,
+                mediaType: item.mediaType,
+                originalTitle: item.originalTitle,
+                overview: item.overview,
+                releaseDate: item.releaseDate,
+                rating: item.rating,
+                voteCount: item.voteCount,
+                popularity: item.popularity,
+                adult: item.adult,
+                genres: item.genres,
+                poster: item.poster,
+                backdrop: item.backdrop,
+                originalLanguage: item.originalLanguage,
+                score: item.score,
+              }));
+
+            if (becauseItems.length > 0) {
+              becauseYouLiked = {
+                anchorTitle: anchorMetadata.title,
+                anchorId: anchor.id,
+                anchorType: anchor.type,
+                items: becauseItems,
+              };
+              break; // Success! Exit the loop
+            }
           }
+          // If anchorMetadata is null or no items, try the next favorite
         }
       }
 

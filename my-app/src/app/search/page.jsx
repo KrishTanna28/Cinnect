@@ -270,7 +270,6 @@ export default function SearchPage() {
 
                         {item.rating > 0 && (
                           <div className="absolute top-2 right-2 inline-flex items-center gap-1 text-xs px-2 py-1 bg-black/80 backdrop-blur-sm text-white rounded font-medium">
-                            <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
                             {item.rating.toFixed(1)}
                           </div>
                         )}
