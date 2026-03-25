@@ -816,7 +816,7 @@ export default function TVDetailsPage({ params }) {
               </Button>
             </div>
           ) : (
-            <div className="flex items-center gap-3 p-4 bg-secondary/30 rounded-lg">
+            <div className="flex items-center justify-content:space-between gap-3 p-4 bg-secondary/30 rounded-lg">
               <p className="text-sm text-muted-foreground flex-1">Sign in to interact with this show</p>
               <Link href={`/login?returnUrl=/tv/${tvShow.id}`}>
                 <Button size="sm">Sign In</Button>
@@ -859,7 +859,7 @@ export default function TVDetailsPage({ params }) {
                         <span className="px-2 py-1 bg-primary text-primary-foreground rounded text-xs font-bold">
                           S{season.seasonNumber}
                         </span>
-                        <span className="flex px-2 py-1 bg-black/70 text-white rounded text-xs font-medium">
+                        <span className="flex justify-content:space-between px-2 py-1 bg-black/70 text-white rounded text-xs font-medium">
                           <Star className="w-3 h-3 text-primary" /> {season.rating.toFixed(1)}
                         </span>
                       </div>
