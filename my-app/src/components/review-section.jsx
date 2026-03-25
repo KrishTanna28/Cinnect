@@ -86,7 +86,9 @@ export default function ReviewSection({ reviews, movieTitle }) {
                   {review.userName.charAt(0)}
                 </div>
                 <div>
-                  <p className="font-semibold text-foreground">{review.userName}</p>
+                  <Link href={`/user/${review.userId}`} className="font-semibold text-foreground hover:text-primary transition-colors">
+                    {review.userName}
+                  </Link>
                   <p className="text-xs text-muted-foreground">{review.timestamp}</p>
                 </div>
               </div>

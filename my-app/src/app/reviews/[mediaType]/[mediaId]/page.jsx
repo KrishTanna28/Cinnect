@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { ThumbsUp, ThumbsDown, MessageCircle, AlertTriangle, ArrowLeft, Star, Send, Plus, Edit2, Trash2, Minus, Pencil, MoreVertical, EyeOff } from "lucide-react"
+import { ThumbsUp, ThumbsDown, MessageCircle, AlertTriangle, ArrowLeft, Star, Send, Plus, Edit2, Trash2, Minus, Pencil, MoreVertical, EyeOff, Maximize2 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -13,7 +13,8 @@ import { getReviews, updateReview, createReview, likeReview, dislikeReview, addR
 import { getMovieDetails, getTVDetails } from "@/lib/movies"
 import { ReviewsPageSkeleton, InlineLoadingSkeleton } from "@/components/skeletons"
 import { MentionText } from "@/components/mention-text"
- 
+import ReviewDetailModal from "@/components/review-detail-modal"
+
 export default function ReviewsPage({ params }) {
   const unwrappedParams = use(params)
   const router = useRouter()
@@ -56,6 +57,22 @@ export default function ReviewsPage({ params }) {
 
   // Delete confirmation
   const [deleteConfirmation, setDeleteConfirmation] = useState(null) // { type: 'review' | 'reply', id: string, reviewId?: string }
+
+  // Review detail modal state
+  const [selectedReview, setSelectedReview] = useState(null)
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
+
+  // Open review modal
+  const handleOpenReviewModal = (review) => {
+    setSelectedReview(review)
+    setIsReviewModalOpen(true)
+  }
+
+  // Close review modal
+  const handleCloseReviewModal = () => {
+    setIsReviewModalOpen(false)
+    setSelectedReview(null)
+  }
 
   // Fetch media title
   useEffect(() => {
@@ -1504,6 +1521,15 @@ export default function ReviewsPage({ params }) {
                       <span>{review.replyCount == 1 ? review.replyCount + ' Reply' : review.replyCount + ' Replies'}</span>
                     </button>
 
+                    {/* Expand/View Full Review */}
+                    <button
+                      onClick={() => handleOpenReviewModal(review)}
+                      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-all active:scale-95 cursor-pointer"
+                      title="View full review"
+                    >
+                      <Maximize2 className="w-4 h-4" />
+                    </button>
+
                     {user && (
                       <button
                         onClick={() => {
@@ -1652,6 +1678,51 @@ export default function ReviewsPage({ params }) {
           </div>
         </div>
       )}
+
+      {/* Review Detail Modal */}
+      <ReviewDetailModal
+        isOpen={isReviewModalOpen}
+        onClose={handleCloseReviewModal}
+        review={selectedReview}
+        onLike={(reviewId) => {
+          handleLikeReview(reviewId)
+          // Update the selected review in modal
+          setSelectedReview(prev => {
+            if (!prev || prev._id !== reviewId) return prev
+            const wasLiked = prev.likes?.some(id => id?.toString() === user?._id?.toString())
+            const wasDisliked = prev.dislikes?.some(id => id?.toString() === user?._id?.toString())
+            return {
+              ...prev,
+              likeCount: wasLiked ? (prev.likeCount || 0) - 1 : (prev.likeCount || 0) + 1,
+              dislikeCount: wasDisliked ? (prev.dislikeCount || 0) - 1 : prev.dislikeCount || 0,
+              likes: wasLiked
+                ? (prev.likes || []).filter(id => id?.toString() !== user._id?.toString())
+                : [...(prev.likes || []), user._id],
+              dislikes: (prev.dislikes || []).filter(id => id?.toString() !== user._id?.toString())
+            }
+          })
+        }}
+        onDislike={(reviewId) => {
+          handleDislikeReview(reviewId)
+          // Update the selected review in modal
+          setSelectedReview(prev => {
+            if (!prev || prev._id !== reviewId) return prev
+            const wasLiked = prev.likes?.some(id => id?.toString() === user?._id?.toString())
+            const wasDisliked = prev.dislikes?.some(id => id?.toString() === user?._id?.toString())
+            return {
+              ...prev,
+              likeCount: wasLiked ? (prev.likeCount || 0) - 1 : prev.likeCount || 0,
+              dislikeCount: wasDisliked ? (prev.dislikeCount || 0) - 1 : (prev.dislikeCount || 0) + 1,
+              likes: (prev.likes || []).filter(id => id?.toString() !== user._id?.toString()),
+              dislikes: wasDisliked
+                ? (prev.dislikes || []).filter(id => id?.toString() !== user._id?.toString())
+                : [...(prev.dislikes || []), user._id]
+            }
+          })
+        }}
+        mediaType={unwrappedParams.mediaType}
+        mediaId={unwrappedParams.mediaId}
+      />
     </main>
   )
 }

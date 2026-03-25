@@ -1,12 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Star, ThumbsUp, MessageCircle, ArrowRight, AlertTriangle, ShieldAlert, EyeOff } from "lucide-react"
+import { Star, ThumbsUp, ThumbsDown, MessageCircle, ArrowRight, AlertTriangle, ShieldAlert, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { useUser } from "@/contexts/UserContext"
 import { ReviewListSkeleton } from "@/components/skeletons"
 import { shouldFilterAdultContent } from "@/lib/utils/ageUtils"
+import RatingSpeedometer from "@/components/rating-speedometer"
+import ReviewDetailModal from "@/components/review-detail-modal"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api'
 
@@ -15,6 +17,8 @@ export default function ReviewPreview({ mediaId, mediaType, mediaTitle }) {
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({ total: 0, averageRating: 0 })
   const [revealedSpoilers, setRevealedSpoilers] = useState(new Set())
+  const [selectedReview, setSelectedReview] = useState(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
   const { user } = useUser()
   const isMinor = shouldFilterAdultContent(user)
 
@@ -50,6 +54,130 @@ export default function ReviewPreview({ mediaId, mediaType, mediaTitle }) {
     fetchReviews()
   }, [mediaId, mediaType])
 
+  const handleOpenReview = (review) => {
+    setSelectedReview(review)
+    setIsModalOpen(true)
+  }
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setSelectedReview(null)
+  }
+
+  const handleLikeReview = async (reviewId) => {
+    if (!user) return
+
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${API_BASE_URL}/reviews/${reviewId}/like`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        // Update the review in state
+        setReviews(prev => prev.map(r => {
+          if (r._id === reviewId) {
+            const wasLiked = r.likes?.some(id => id?.toString() === user._id?.toString())
+            const wasDisliked = r.dislikes?.some(id => id?.toString() === user._id?.toString())
+            return {
+              ...r,
+              likeCount: wasLiked ? r.likeCount - 1 : r.likeCount + 1,
+              dislikeCount: wasDisliked ? r.dislikeCount - 1 : r.dislikeCount,
+              likes: wasLiked
+                ? r.likes.filter(id => id?.toString() !== user._id?.toString())
+                : [...(r.likes || []), user._id],
+              dislikes: wasDisliked
+                ? r.dislikes.filter(id => id?.toString() !== user._id?.toString())
+                : r.dislikes
+            }
+          }
+          return r
+        }))
+        // Update selected review if modal is open
+        if (selectedReview && selectedReview._id === reviewId) {
+          setSelectedReview(prev => {
+            const wasLiked = prev.likes?.some(id => id?.toString() === user._id?.toString())
+            const wasDisliked = prev.dislikes?.some(id => id?.toString() === user._id?.toString())
+            return {
+              ...prev,
+              likeCount: wasLiked ? prev.likeCount - 1 : prev.likeCount + 1,
+              dislikeCount: wasDisliked ? prev.dislikeCount - 1 : prev.dislikeCount,
+              likes: wasLiked
+                ? prev.likes.filter(id => id?.toString() !== user._id?.toString())
+                : [...(prev.likes || []), user._id],
+              dislikes: wasDisliked
+                ? prev.dislikes.filter(id => id?.toString() !== user._id?.toString())
+                : prev.dislikes
+            }
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Failed to like review:', error)
+    }
+  }
+
+  const handleDislikeReview = async (reviewId) => {
+    if (!user) return
+
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${API_BASE_URL}/reviews/${reviewId}/dislike`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        // Update the review in state
+        setReviews(prev => prev.map(r => {
+          if (r._id === reviewId) {
+            const wasDisliked = r.dislikes?.some(id => id?.toString() === user._id?.toString())
+            const wasLiked = r.likes?.some(id => id?.toString() === user._id?.toString())
+            return {
+              ...r,
+              dislikeCount: wasDisliked ? r.dislikeCount - 1 : r.dislikeCount + 1,
+              likeCount: wasLiked ? r.likeCount - 1 : r.likeCount,
+              dislikes: wasDisliked
+                ? r.dislikes.filter(id => id?.toString() !== user._id?.toString())
+                : [...(r.dislikes || []), user._id],
+              likes: wasLiked
+                ? r.likes.filter(id => id?.toString() !== user._id?.toString())
+                : r.likes
+            }
+          }
+          return r
+        }))
+        // Update selected review if modal is open
+        if (selectedReview && selectedReview._id === reviewId) {
+          setSelectedReview(prev => {
+            const wasDisliked = prev.dislikes?.some(id => id?.toString() === user._id?.toString())
+            const wasLiked = prev.likes?.some(id => id?.toString() === user._id?.toString())
+            return {
+              ...prev,
+              dislikeCount: wasDisliked ? prev.dislikeCount - 1 : prev.dislikeCount + 1,
+              likeCount: wasLiked ? prev.likeCount - 1 : prev.likeCount,
+              dislikes: wasDisliked
+                ? prev.dislikes.filter(id => id?.toString() !== user._id?.toString())
+                : [...(prev.dislikes || []), user._id],
+              likes: wasLiked
+                ? prev.likes.filter(id => id?.toString() !== user._id?.toString())
+                : prev.likes
+            }
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Failed to dislike review:', error)
+    }
+  }
+
   const calculateAverageRating = (reviews) => {
     if (reviews.length === 0) return 0
     const sum = reviews.reduce((acc, review) => acc + review.rating, 0)
@@ -74,12 +202,16 @@ export default function ReviewPreview({ mediaId, mediaType, mediaTitle }) {
 
   return (
     <div>
+      {/* Rating Speedometer */}
+      <div className="flex justify-center mb-8 py-4">
+        <RatingSpeedometer rating={parseFloat(stats.averageRating) || 0} />
+      </div>
+
       {/* Stats Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 p-4 bg-secondary/30 rounded-lg">
         <div className="flex items-center gap-4">
           <div className="text-center">
             <div className="text-4xl font-bold text-primary">{stats.averageRating}</div>
-            {/* <div className="text-xs text-muted-foreground">out of 10</div> */}
           </div>
           <div>
             <div className="flex items-center gap-1 mb-1">
@@ -138,7 +270,11 @@ export default function ReviewPreview({ mediaId, mediaType, mediaTitle }) {
           const shouldBlurAdult = review.adult_content && !isOwnReview && !adultRevealed && !isMinor
 
           return (
-            <div key={review._id} className="bg-card rounded-lg p-4 hover:shadow-lg transition-shadow">
+            <div
+              key={review._id}
+              className="bg-card rounded-lg p-4 hover:shadow-lg transition-all cursor-pointer hover:bg-card/80"
+              onClick={() => handleOpenReview(review)}
+            >
               <div className="flex items-start gap-3 mb-3">
                 <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
                   {review.user?.avatar ? (
@@ -174,7 +310,8 @@ export default function ReviewPreview({ mediaId, mediaType, mediaTitle }) {
                         </span>
                       ) : (
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation()
                             const newRevealed = new Set(revealedSpoilers)
                             if (newRevealed.has(review._id)) {
                               newRevealed.delete(review._id)
@@ -220,7 +357,8 @@ export default function ReviewPreview({ mediaId, mediaType, mediaTitle }) {
                     {shouldBlur && (
                       <div className="absolute inset-0 flex items-center justify-center">
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation()
                             const newRevealed = new Set(revealedSpoilers)
                             newRevealed.add(review._id)
                             setRevealedSpoilers(newRevealed)
@@ -235,7 +373,8 @@ export default function ReviewPreview({ mediaId, mediaType, mediaTitle }) {
                     {shouldBlurAdult && !shouldBlur && (
                       <div className="absolute inset-0 flex items-center justify-center">
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation()
                             const newRevealed = new Set(revealedSpoilers)
                             newRevealed.add(`adult_${review._id}`)
                             setRevealedSpoilers(newRevealed)
@@ -254,6 +393,10 @@ export default function ReviewPreview({ mediaId, mediaType, mediaTitle }) {
                       {review.likeCount || 0}
                     </span>
                     <span className="flex items-center gap-1">
+                      <ThumbsDown className="w-3 h-3" />
+                      {review.dislikeCount || 0}
+                    </span>
+                    <span className="flex items-center gap-1">
                       <MessageCircle className="w-3 h-3" />
                       {review.replyCount || 0}
                     </span>
@@ -265,6 +408,17 @@ export default function ReviewPreview({ mediaId, mediaType, mediaTitle }) {
           )
         })}
       </div>
+
+      {/* Review Detail Modal */}
+      <ReviewDetailModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        review={selectedReview}
+        onLike={handleLikeReview}
+        onDislike={handleDislikeReview}
+        mediaType={mediaType}
+        mediaId={mediaId}
+      />
     </div>
   )
 }
