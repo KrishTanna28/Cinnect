@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/middleware/withAuth';
+import User from '@/lib/models/User';
 import Review from '@/lib/models/Review';
 import Community from '@/lib/models/Community';
 import SearchHistory from '@/lib/models/SearchHistory';
