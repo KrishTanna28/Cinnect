@@ -1786,6 +1786,9 @@ export default function ReviewsPage({ params }) {
         {allReviews?.length === 0 && !loading && !tmdbLoading && (
           <div className="text-center py-12">
             <p className="text-muted-foreground mb-4">No reviews yet. Be the first to review!</p>
+            <Button onClick={() => setShowWriteReview(true)}>
+              Write a Review
+            </Button>
           </div>
         )}
       </div>
