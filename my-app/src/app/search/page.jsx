@@ -269,7 +269,7 @@ export default function SearchPage() {
                         </div>
 
                         {item.rating > 0 && (
-                          <div className="absolute top-2 right-2 inline-flex items-center gap-1 text-xs px-2 py-1 bg-black/80 backdrop-blur-sm text-white rounded font-medium">
+                          <div className="absolute top-2 right-2 inline-flex items-center gap-1 text-xs px-2 py-1 bg-black/80 backdrop-blur-sm text-primary rounded font-medium">
                             {item.rating.toFixed(1)}
                           </div>
                         )}

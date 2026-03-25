@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect, use, useMemo } from "react"
+import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ThumbsUp, ThumbsDown, MessageCircle, AlertTriangle, ArrowLeft, Star, Send, Plus, Edit2, Trash2, Minus, Pencil, MoreVertical, EyeOff, Maximize2, ExternalLink } from "lucide-react"
+import { ThumbsUp, ThumbsDown, MessageCircle, AlertTriangle, ArrowLeft, Star, Send, Plus, Edit2, Trash2, Minus, Pencil, MoreVertical, EyeOff, Maximize2 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -21,9 +21,7 @@ export default function ReviewsPage({ params }) {
   const router = useRouter()
   const { user } = useUser()
   const [reviews, setReviews] = useState([])
-  const [tmdbReviews, setTmdbReviews] = useState([])
   const [loading, setLoading] = useState(true)
-  const [tmdbLoading, setTmdbLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
@@ -185,34 +183,6 @@ export default function ReviewsPage({ params }) {
   useEffect(() => {
     fetchReviews(1, sortBy)
   }, [unwrappedParams.mediaId, sortBy])
-
-  // Fetch TMDB reviews
-  useEffect(() => {
-    const fetchTmdbReviews = async () => {
-      setTmdbLoading(true)
-      try {
-        const response = await fetch(
-          `/api/reviews/tmdb?mediaType=${unwrappedParams.mediaType}&mediaId=${unwrappedParams.mediaId}&page=1`
-        )
-        const data = await response.json()
-        if (data.success && data.data?.reviews) {
-          setTmdbReviews(data.data.reviews)
-        }
-      } catch (error) {
-        console.error('Failed to fetch TMDB reviews:', error)
-      } finally {
-        setTmdbLoading(false)
-      }
-    }
-
-    fetchTmdbReviews()
-  }, [unwrappedParams.mediaId, unwrappedParams.mediaType])
-
-  // Combine user reviews with TMDB reviews
-  const allReviews = useMemo(() => {
-    // User reviews first, then TMDB reviews
-    return [...reviews, ...tmdbReviews]
-  }, [reviews, tmdbReviews])
 
   // Handle Hash Navigation - fetch specific review if not in current list
   const fetchAndScrollToTarget = async (targetId, currentReviews) => {
@@ -1245,7 +1215,7 @@ export default function ReviewsPage({ params }) {
     );
   };
 
-  if (loading && tmdbLoading) {
+  if (loading) {
     return <ReviewsPageSkeleton />
   }
 
@@ -1429,7 +1399,7 @@ export default function ReviewsPage({ params }) {
         )}
 
         {/* Sort Options */}
-          {allReviews?.length > 0 && <div className="flex flex-wrap gap-2 mb-6">
+          {reviews?.length > 0 && <div className="flex flex-wrap gap-2 mb-6">
             <Button
             variant={sortBy === 'top' ? 'default' : 'outline'}
             onClick={() => { setSortBy('top'); setPage(1); }}
@@ -1448,11 +1418,10 @@ export default function ReviewsPage({ params }) {
 
         {/* Reviews List */}
         <div className="space-y-6">
-          {allReviews?.map((review) => {
+          {reviews?.map((review) => {
             const isSpoilerRevealed = revealedSpoilers.has(review._id)
             const isOwnReview = user && review.user?._id === user._id
             const isHighlighted = highlightId === review._id
-            const isTMDB = review.isTMDB === true
 
             return (
               <div 
@@ -1474,24 +1443,12 @@ export default function ReviewsPage({ params }) {
 
                   <div className="flex-1">
                     <div className="flex flex-wrap items-start sm:items-center gap-2 mb-1">
-                      {isTMDB ? (
-                        <span className="font-semibold text-foreground">
-                          {review.user?.username}
-                        </span>
-                      ) : (
-                        <Link href={`/profile/${review.user?.id}`} className="font-semibold text-foreground hover:text-primary transition-all">
-                          {review.user?.username}
-                        </Link>
-                      )}
+                      <Link href={`/users/${review.user?.username}`} className="font-semibold text-foreground hover:underline">
+                        {review.user?.username}
+                      </Link>
                       <span className="text-xs text-muted-foreground">
                         {new Date(review.createdAt).toLocaleDateString()}
                       </span>
-                      {isTMDB && (
-                        <span className="px-2 py-0.5 bg-blue-500/20 text-blue-500 rounded text-xs font-semibold flex items-center gap-1">
-                          <ExternalLink className="w-3 h-3" />
-                          TMDB
-                        </span>
-                      )}
                       {review.spoiler && (
                           isOwnReview ? (
                             <span className="px-2 py-0.5 bg-destructive/20 text-destructive rounded text-xs font-semibold flex items-center gap-1">
@@ -1594,113 +1551,87 @@ export default function ReviewsPage({ params }) {
 
                 {/* Review Actions */}
                 <div className="flex flex-wrap items-center gap-3 sm:gap-4 pt-4 border-t border-border">
-                  {isTMDB ? (
-                    // TMDB reviews - read-only actions
-                    <>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <ThumbsUp className="w-4 h-4" />
-                        <span>-</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <ThumbsDown className="w-4 h-4" />
-                        <span>-</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleOpenReviewModal(review)}
-                          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-all active:scale-95 cursor-pointer"
-                          title="View full review"
-                        >
-                          <Maximize2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    // User reviews - full interaction
-                    <>
+                  <button
+                    onClick={() => handleLikeReview(review._id)}
+                    className={`flex items-center gap-2 text-sm transition-all active:scale-95 cursor-pointer ${review.likes?.some(id => id && user?._id && id?.toString() === user._id?.toString())
+                      ? "text-primary font-bold"
+                      : "text-muted-foreground hover:text-primary"
+                      }`}
+                  >
+                    <ThumbsUp
+                      className={`w-4 h-4 transition-all ${review.likes?.some(id => id && user?._id && id?.toString() === user._id?.toString())
+                        ? "fill-current text-primary"
+                        : "fill-none"
+                        }`}
+                    />
+                    <span>{review.likeCount || 0}</span>
+                  </button>
+                  <button
+                    onClick={() => handleDislikeReview(review._id)}
+                    className={`flex items-center gap-2 text-sm transition-all active:scale-95 cursor-pointer ${review.dislikes?.some(id => id && user?._id && id?.toString() === user._id?.toString())
+                      ? "text-destructive"
+                      : "text-muted-foreground hover:text-destructive"
+                      }`}
+                  >
+                    <ThumbsDown
+                      className={`w-4 h-4 transition-all ${review.dislikes?.some(id => id && user?._id && id?.toString() === user._id?.toString())
+                        ? "fill-current text-destructive"
+                        : "fill-none"
+                        }`}
+                    />
+                    <span>{review.dislikeCount || 0}</span>
+                  </button>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => {
+                        const newShowReplies = new Set(showReplies)
+                        if (newShowReplies.has(review._id)) {
+                          newShowReplies.delete(review._id)
+                        } else {
+                          newShowReplies.add(review._id)
+                        }
+                        setShowReplies(newShowReplies)
+                      }}
+                      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-all active:scale-95 cursor-pointer"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      <span>{review.replyCount == 1 ? review.replyCount + ' Reply' : review.replyCount + ' Replies'}</span>
+                    </button>
+
+                    {/* Expand/View Full Review */}
+                    <button
+                      onClick={() => handleOpenReviewModal(review)}
+                      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-all active:scale-95 cursor-pointer"
+                      title="View full review"
+                    >
+                      <Maximize2 className="w-4 h-4" />
+                    </button>
+
+                    {user && (
                       <button
-                        onClick={() => handleLikeReview(review._id)}
-                        className={`flex items-center gap-2 text-sm transition-all active:scale-95 cursor-pointer ${review.likes?.some(id => id && user?._id && id?.toString() === user._id?.toString())
-                          ? "text-primary font-bold"
-                          : "text-muted-foreground hover:text-primary"
-                          }`}
+                        onClick={() => {
+                          if (replyingTo === review._id) {
+                            setReplyingTo(null);
+                            setMentionUser(null);
+                            setReplyContent('');
+                          } else {
+                            setReplyingTo(review._id);
+                            setMentionUser(review.user?.username);
+                            setReplyContent(`@${review.user?.username} `);
+                          }
+                        }}
+                        className="w-5 h-5 rounded-full border border-muted-foreground flex items-center justify-center text-muted-foreground hover:border-primary hover:text-primary transition-all active:scale-90 cursor-pointer"
+                        title={replyingTo === review._id ? 'Cancel Reply' : 'Write Reply'}
                       >
-                        <ThumbsUp
-                          className={`w-4 h-4 transition-all ${review.likes?.some(id => id && user?._id && id?.toString() === user._id?.toString())
-                            ? "fill-current text-primary"
-                            : "fill-none"
-                            }`}
-                        />
-                        <span>{review.likeCount || 0}</span>
-                      </button>
-                      <button
-                        onClick={() => handleDislikeReview(review._id)}
-                        className={`flex items-center gap-2 text-sm transition-all active:scale-95 cursor-pointer ${review.dislikes?.some(id => id && user?._id && id?.toString() === user._id?.toString())
-                          ? "text-destructive"
-                          : "text-muted-foreground hover:text-destructive"
-                          }`}
-                      >
-                        <ThumbsDown
-                          className={`w-4 h-4 transition-all ${review.dislikes?.some(id => id && user?._id && id?.toString() === user._id?.toString())
-                            ? "fill-current text-destructive"
-                            : "fill-none"
-                            }`}
-                        />
-                        <span>{review.dislikeCount || 0}</span>
-                      </button>
-
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          onClick={() => {
-                            const newShowReplies = new Set(showReplies)
-                            if (newShowReplies.has(review._id)) {
-                              newShowReplies.delete(review._id)
-                            } else {
-                              newShowReplies.add(review._id)
-                            }
-                            setShowReplies(newShowReplies)
-                          }}
-                          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-all active:scale-95 cursor-pointer"
-                        >
-                          <MessageCircle className="w-4 h-4" />
-                          <span>{review.replyCount == 1 ? review.replyCount + ' Reply' : review.replyCount + ' Replies'}</span>
-                        </button>
-
-                        {/* Expand/View Full Review */}
-                        <button
-                          onClick={() => handleOpenReviewModal(review)}
-                          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-all active:scale-95 cursor-pointer"
-                          title="View full review"
-                        >
-                          <Maximize2 className="w-4 h-4" />
-                        </button>
-
-                        {user && (
-                          <button
-                            onClick={() => {
-                              if (replyingTo === review._id) {
-                                setReplyingTo(null);
-                                setMentionUser(null);
-                                setReplyContent('');
-                              } else {
-                                setReplyingTo(review._id);
-                                setMentionUser(review.user?.username);
-                                setReplyContent(`@${review.user?.username} `);
-                              }
-                            }}
-                            className="w-5 h-5 rounded-full border border-muted-foreground flex items-center justify-center text-muted-foreground hover:border-primary hover:text-primary transition-all active:scale-90 cursor-pointer"
-                            title={replyingTo === review._id ? 'Cancel Reply' : 'Write Reply'}
-                          >
-                            {replyingTo === review._id ? (
-                              <Minus className="w-3 h-3" />
-                            ) : (
-                              <Plus className="w-3 h-3" />
-                            )}
-                          </button>
+                        {replyingTo === review._id ? (
+                          <Minus className="w-3 h-3" />
+                        ) : (
+                          <Plus className="w-3 h-3" />
                         )}
-                      </div>
-                    </>
-                  )}
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Reply Form - only for non-TMDB reviews */}
@@ -1779,11 +1710,11 @@ export default function ReviewsPage({ params }) {
           </div>
         )}
 
-        {!hasMore && allReviews?.length > 0 && (
+        {!hasMore && reviews?.length > 0 && (
           <p className="text-center text-muted-foreground py-8">No more reviews to load</p>
         )}
 
-        {allReviews?.length === 0 && !loading && !tmdbLoading && (
+        {reviews?.length === 0 && !loading && (
           <div className="text-center py-12">
             <p className="text-muted-foreground mb-4">No reviews yet. Be the first to review!</p>
             <Button onClick={() => setShowWriteReview(true)}>
