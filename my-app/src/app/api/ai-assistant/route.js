@@ -195,53 +195,8 @@ async function handler(request, context) {
     ];
 
     // Step 8: Call LLM with tools
-    let result = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents,
-      config: {
-        tools,
-        temperature: 0.7,
-        maxOutputTokens: 1024
-      }
-    });
-
-    // Step 9: Agentic tool loop
-    const MAX_TOOL_ROUNDS = 5;
-    let round = 0;
-
-    while (round < MAX_TOOL_ROUNDS) {
-      round++;
-
-      const parts = result.candidates?.[0]?.content?.parts || [];
-      const functionCalls = parts.filter(p => p.functionCall);
-
-      if (functionCalls.length === 0) break;
-
-      // Execute all tool calls
-      const toolResultParts = [];
-      for (const fc of functionCalls) {
-        const output = await executeTool(fc.functionCall.name, fc.functionCall.args, userId);
-        toolResultParts.push({
-          functionResponse: {
-            name: fc.functionCall.name,
-            response: { result: output }
-          }
-        });
-      }
-
-      // Append model's tool call turn
-      contents.push({
-        role: 'model',
-        parts: functionCalls.map(fc => ({ functionCall: fc.functionCall }))
-      });
-
-      // Append tool results
-      contents.push({
-        role: 'user',
-        parts: toolResultParts
-      });
-
-      // Call model again
+    let result;
+    try {
       result = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents,
@@ -251,6 +206,97 @@ async function handler(request, context) {
           maxOutputTokens: 1024
         }
       });
+    } catch (apiError) {
+      // Handle API errors gracefully
+      console.error('Gemini API error:', apiError);
+
+      // Return user-friendly error message
+      if (apiError.message?.includes('quota') || apiError.message?.includes('rate limit') || apiError.code === 429) {
+        return success({
+          message: "I'm experiencing high traffic right now. Please try again in a few moments!",
+          intent: 'error'
+        });
+      } else if (apiError.message?.includes('RESOURCE_EXHAUSTED')) {
+        return success({
+          message: "I'm currently at capacity. Please try again shortly!",
+          intent: 'error'
+        });
+      } else {
+        return success({
+          message: "I'm having trouble processing your request right now. Please try again!",
+          intent: 'error'
+        });
+      }
+    }
+
+    // Step 9: Agentic tool loop
+    const MAX_TOOL_ROUNDS = 5;
+    let round = 0;
+
+    try {
+      while (round < MAX_TOOL_ROUNDS) {
+        round++;
+
+        const parts = result.candidates?.[0]?.content?.parts || [];
+        const functionCalls = parts.filter(p => p.functionCall);
+
+        if (functionCalls.length === 0) break;
+
+        // Execute all tool calls
+        const toolResultParts = [];
+        for (const fc of functionCalls) {
+          try {
+            const output = await executeTool(fc.functionCall.name, fc.functionCall.args, userId);
+            toolResultParts.push({
+              functionResponse: {
+                name: fc.functionCall.name,
+                response: { result: output }
+              }
+            });
+          } catch (toolError) {
+            console.error('Tool execution error:', toolError);
+            // Continue with other tools, provide error result
+            toolResultParts.push({
+              functionResponse: {
+                name: fc.functionCall.name,
+                response: { result: 'Tool unavailable at the moment.' }
+              }
+            });
+          }
+        }
+
+        // Append model's tool call turn
+        contents.push({
+          role: 'model',
+          parts: functionCalls.map(fc => ({ functionCall: fc.functionCall }))
+        });
+
+        // Append tool results
+        contents.push({
+          role: 'user',
+          parts: toolResultParts
+        });
+
+        // Call model again
+        try {
+          result = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents,
+            config: {
+              tools,
+              temperature: 0.7,
+              maxOutputTokens: 1024
+            }
+          });
+        } catch (apiError) {
+          console.error('Gemini API error in tool loop:', apiError);
+          // Break the loop if API fails
+          break;
+        }
+      }
+    } catch (loopError) {
+      console.error('Agentic loop error:', loopError);
+      // Continue to extract whatever response we have
     }
 
     // Step 10: Extract final response
@@ -286,7 +332,13 @@ async function handler(request, context) {
     });
 
   } catch (err) {
-    return handleError(err, 'AI Assistant');
+    console.error('AI Assistant error:', err);
+
+    // Return user-friendly error message instead of technical details
+    return success({
+      message: "I'm having trouble processing your request. Please try again in a moment!",
+      intent: 'error'
+    });
   }
 }
 

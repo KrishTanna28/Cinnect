@@ -108,31 +108,38 @@ export default function AIAssistant() {
           message: userMessage,
           conversationHistory: messages.slice(-10), // Send last 10 messages for context
         }),
+        credentials: 'include', // Include cookies for auth
       })
 
       const data = await response.json()
 
-      if (response.ok) {
+      if (response.ok && data.success) {
+        // Backend returns { success: true, data: { message, intent, confidence } }
+        const assistantMessage = data.data?.message || data.message || "Sorry, I received an empty response."
+
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: data.message },
+          { role: "assistant", content: assistantMessage },
         ])
       } else {
+        // Show user-friendly error message from backend
+        const errorMessage = data.message || "Sorry, I encountered an error. Please try again!"
         setMessages((prev) => [
           ...prev,
           {
             role: "assistant",
-            content: "Sorry, I encountered an error. Please try again!",
+            content: errorMessage,
           },
         ])
       }
     } catch (error) {
       console.error("Chat error:", error)
+      // Network or parsing error - show user-friendly message
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: "Oops! Something went wrong. Please try again later.",
+          content: "I'm having trouble connecting right now. Please check your internet connection and try again!",
         },
       ])
     } finally {
