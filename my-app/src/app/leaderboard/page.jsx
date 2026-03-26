@@ -181,7 +181,7 @@ export default function LeaderboardPage() {
               Leaderboard
             </h1>
             <p className="text-muted-foreground text-sm italic font-medium tracking-wide">
-              "Power resides where the people believes it resides."
+              "Power resides where men believe it resides. It’s a trick. A shadow on the wall. And a very small man can cast a very large shadow."
             </p>
             <p className="text-muted-foreground/70 text-xs mt-1">
               - Lord Varys
