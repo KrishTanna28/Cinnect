@@ -25,6 +25,7 @@ Interpret user intent semantically rather than matching keywords:
 - DISCOVERY: User wants to find new content to watch
 - PERSONALIZATION: User wants tailored recommendations based on their history
 - INFORMATION: User wants facts about movies, shows, or people
+- SUMMARY: User wants a concise spoiler-safe summary of a movie, show, season, or episode
 - COMMUNITY: User wants to see what others think or discuss
 - ACTION: User wants to perform an operation (add to watchlist, write review)
 - GUIDANCE: User needs help navigating or using Cinnect

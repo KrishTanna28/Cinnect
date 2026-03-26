@@ -87,6 +87,9 @@ Use this to personalize responses when relevant.`;
         systemMessage += '\n\n## ACTIVE MODE: EXPLANATION (SPOILERS OK)\nUser has consented to spoilers. Still prefix with [SPOILER WARNING] before revealing major plot points.';
       }
       break;
+    case INTENTS.SUMMARY:
+      systemMessage += '\n\n## ACTIVE MODE: SUMMARY\nProvide a concise, spoiler-safe summary by default. If the user asked for a specific season/episode, summarize that exact scope. Ask before revealing major spoilers.';
+      break;
     case INTENTS.COMMUNITY:
       systemMessage += '\n\n## ACTIVE MODE: COMMUNITY INSIGHTS\nFocus on what the community thinks. Cite reviews and discussions when available.';
       break;

@@ -8,6 +8,7 @@ export const INTENTS = {
   DISCOVERY: 'discovery',
   PERSONALIZATION: 'personalization',
   INFORMATION: 'information',
+  SUMMARY: 'summary',
   COMMUNITY: 'community',
   ACTION: 'action',
   GUIDANCE: 'guidance',
@@ -79,6 +80,11 @@ const INTENT_PATTERNS = {
     /\b(worth\s*(it|watching)?|is\s+it\s+good|any\s+good|should\s+i\s+watch)\b/i,
     /\b(review|opinion|thoughts|how\s+is\s+it)\b/i
   ],
+  [INTENTS.SUMMARY]: [
+    /\b(summarize|summary|synopsis|recap|quick\s+summary|brief\s+summary|tl;dr)\b/i,
+    /\b(give\s+me\s+a\s+summary|summarise)\b/i,
+    /\b(season\s+\d+\s+episode\s+\d+|s\d+e\d+)\b/i
+  ],
   [INTENTS.OUT_OF_DOMAIN]: [
     /\b(politics|religion|sports\s+score|weather|stock|crypto|code|programming|recipe|health|medical)\b/i,
     /\b(help\s+me\s+with\s+(math|homework|essay|code))\b/i
@@ -90,10 +96,14 @@ const ENTITY_PATTERNS = {
   mediaTitle: [
     /"([^"]+)"/,  // Quoted titles
     /'([^']+)'/,  // Single quoted
-    /(?:movie|film|show|series)\s+(?:called|named|titled)\s+["']?([^"']+?)["']?(?:\s|$|\.)/i
+    /(?:movie|film|show|series)\s+(?:called|named|titled)\s+["']?([^"']+?)["']?(?:\s|$|\.)/i,
+    /(?:summarize|summarise|summary\s+of|synopsis\s+of|recap\s+of)\s+(?:the\s+)?(?:movie|film|show|series|tv\s+show)?\s*["']?([^"']+?)["']?(?:\s+(?:season\s*\d+|episode\s*\d+|s\d+\s*e\d+).*)?$/i
   ],
   rating: /\b(\d+(?:\.\d)?)\s*(?:\/\s*10|out\s+of\s+10|stars?)?\b/i,
-  year: /\b(19\d{2}|20[0-2]\d)\b/
+  year: /\b(19\d{2}|20[0-2]\d)\b/,
+  seasonEpisodeCompact: /\bs(\d+)\s*e(\d+)\b/i,
+  seasonNumber: /\bseason\s*(\d+)\b/i,
+  episodeNumber: /\bepisode\s*(\d+)\b/i
 };
 
 // Spoiler-sensitive topics - only explicit spoiler requests
@@ -181,6 +191,18 @@ function extractEntities(message) {
     entities.year = yearMatch[1];
   }
 
+  // Extract season/episode numbers if present
+  const compactMatch = message.match(ENTITY_PATTERNS.seasonEpisodeCompact);
+  if (compactMatch) {
+    entities.seasonNumber = parseInt(compactMatch[1], 10);
+    entities.episodeNumber = parseInt(compactMatch[2], 10);
+  } else {
+    const seasonMatch = message.match(ENTITY_PATTERNS.seasonNumber);
+    const episodeMatch = message.match(ENTITY_PATTERNS.episodeNumber);
+    if (seasonMatch) entities.seasonNumber = parseInt(seasonMatch[1], 10);
+    if (episodeMatch) entities.episodeNumber = parseInt(episodeMatch[1], 10);
+  }
+
   // Try to determine media type
   if (/\b(movie|film)\b/i.test(message)) {
     entities.mediaType = 'movie';
@@ -238,7 +260,7 @@ User message: "${message}"
 
 Respond with JSON only:
 {
-  "intent": "discovery|personalization|information|community|action|guidance|trending|explanation|greeting|out_of_domain",
+  "intent": "discovery|personalization|information|summary|community|action|guidance|trending|explanation|greeting|out_of_domain",
   "confidence": 0.0-1.0,
   "mediaTitle": "extracted title or null",
   "mediaType": "movie|tv|person|null",

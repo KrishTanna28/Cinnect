@@ -52,6 +52,7 @@ export async function buildContext(classification, userId = null, message = '') 
       break;
 
     case INTENTS.INFORMATION:
+    case INTENTS.SUMMARY:
       if (classification.entities.mediaTitle) {
         tasks.push(
           fetchMediaContext(classification.entities).then(data => { context.content = data; })

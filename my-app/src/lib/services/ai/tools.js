@@ -147,6 +147,19 @@ export const toolDeclarations = [
     }
   },
   {
+    name: 'getTVEpisodeSummary',
+    description: 'Get a specific TV episode summary by show ID, season number, and episode number. Use when users ask for a season/episode recap or summary.',
+    parameters: {
+      type: 'object',
+      properties: {
+        tvId: { type: 'string', description: 'TMDB TV show ID' },
+        seasonNumber: { type: 'number', description: 'Season number (e.g., 1)' },
+        episodeNumber: { type: 'number', description: 'Episode number (e.g., 2)' }
+      },
+      required: ['tvId', 'seasonNumber', 'episodeNumber']
+    }
+  },
+  {
     name: 'getPersonById',
     description: 'Get actor/director details by TMDB ID.',
     parameters: {
@@ -478,6 +491,27 @@ export async function executeTool(name, args, userId = null) {
           episodes: show.numberOfEpisodes,
           status: show.status,
           cast: show.cast?.slice(0, 5).map(c => c.name)
+        });
+      }
+
+      case 'getTVEpisodeSummary': {
+        const seasonDetails = await tmdbService.getTVSeasonDetails(args.tvId, args.seasonNumber).catch(() => null);
+        if (!seasonDetails) return JSON.stringify({ error: 'Season not found' });
+
+        const episode = (seasonDetails.episodes || []).find(ep => Number(ep.episodeNumber) === Number(args.episodeNumber));
+        if (!episode) return JSON.stringify({ error: 'Episode not found' });
+
+        return JSON.stringify({
+          tvId: args.tvId,
+          seasonNumber: Number(args.seasonNumber),
+          episodeNumber: Number(args.episodeNumber),
+          title: episode.name,
+          overview: episode.overview || 'No episode summary available.',
+          airDate: episode.airDate,
+          runtime: episode.runtime,
+          rating: episode.rating,
+          voteCount: episode.voteCount,
+          guestStars: (episode.guestStars || []).slice(0, 5).map(g => g.name)
         });
       }
 
