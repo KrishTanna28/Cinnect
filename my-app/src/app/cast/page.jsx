@@ -103,17 +103,19 @@ export default function CastPage() {
 
       const data = await response.json()
 
-      if (response.ok) {
+      if (response.ok && data.success) {
+        const assistantMessage = data.data?.message || data.message || "Sorry, I received an empty response."
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: data.message },
+          { role: "assistant", content: assistantMessage },
         ])
       } else {
+        const errorMessage = data.message || "Sorry, I encountered an error. Please try again!"
         setMessages((prev) => [
           ...prev,
           {
             role: "assistant",
-            content: "Sorry, I encountered an error. Please try again!",
+            content: errorMessage,
           },
         ])
       }
