@@ -209,11 +209,6 @@ export const POST = withAuth(async (request, { user }) => {
       return error('Review title and content are required', 400)
     }
 
-    // Validate rating range
-    if (rating < 0.5 || rating > 5) {
-      return error('Rating must be between 0.5 and 5', 400)
-    }
-
     // Validate content length
     if (title.length > 200) {
       return error('Title must be under 200 characters', 400)

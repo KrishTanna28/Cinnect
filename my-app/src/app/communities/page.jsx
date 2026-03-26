@@ -53,12 +53,21 @@ export default function CommunitiesPage() {
       const feed = feedContainerRef.current
       if (!feed) return
 
+      const target = e.target instanceof Element ? e.target : null
+
+      // If wheel starts inside an overlay/dropdown/popup, do not forward it to the feed.
+      if (
+        target?.closest(
+          '[data-overlay-scroll-lock="true"], [data-slot="dropdown-menu-content"], [data-radix-popper-content-wrapper], [role="menu"], [role="dialog"]'
+        )
+      ) return
+
       // If cursor is over a sidebar that can scroll, let it handle natively
-      if (left && left.contains(e.target) && left.scrollHeight > left.clientHeight) return
-      if (right && right.contains(e.target) && right.scrollHeight > right.clientHeight) return
+      if (left && target && left.contains(target) && left.scrollHeight > left.clientHeight) return
+      if (right && target && right.contains(target) && right.scrollHeight > right.clientHeight) return
 
       // If cursor is already over the feed scroll container, let it handle natively
-      if (feed.contains(e.target)) return
+      if (target && feed.contains(target)) return
 
       // Otherwise (navbar, filter bar, empty space), forward scroll to feed
       feed.scrollBy({ top: e.deltaY, left: 0 })

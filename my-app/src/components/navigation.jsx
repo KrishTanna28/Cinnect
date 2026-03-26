@@ -452,7 +452,10 @@ export default function Navigation() {
 
                 {/* Search Dropdown */}
                 {showSearchDropdown && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-background border border-border rounded-lg shadow-xl overflow-hidden z-50 max-h-[70vh] overflow-y-auto">
+                  <div
+                    data-overlay-scroll-lock="true"
+                    className="absolute top-full left-0 right-0 mt-2 bg-background border border-border rounded-lg shadow-xl overflow-hidden z-50 max-h-[70vh] overflow-y-auto"
+                  >
 
                     {/* Search History (shown when query is empty) */}
                     {!searchQuery.trim() && searchHistory.length > 0 && (
