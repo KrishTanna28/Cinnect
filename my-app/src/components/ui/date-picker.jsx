@@ -102,7 +102,7 @@ export function DatePicker({ value, onChange, max, required, id, error, placehol
   }
 
   const displayValue = parsed
-    ? parsed.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+    ? parsed.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", month: "long", day: "numeric", year: "numeric" })
     : null
 
   return (

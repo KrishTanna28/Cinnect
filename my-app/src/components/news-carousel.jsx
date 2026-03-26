@@ -92,7 +92,8 @@ export default function NewsCarousel({
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span className="line-clamp-1">{article.source?.name || 'Unknown Source'}</span>
                 <span>
-                  {new Date(article.publishedAt).toLocaleDateString("en-GB", {
+                  {new Date(article.publishedAt).toLocaleDateString("en-IN", {
+                    timeZone: "Asia/Kolkata",
                     day: "2-digit",
                     month: "short",
                     year: "numeric",

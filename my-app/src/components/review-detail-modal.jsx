@@ -49,7 +49,8 @@ export default function ReviewDetailModal({
 
   const formatDate = (dateString) => {
     const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', {
+    return date.toLocaleDateString('en-IN', {
+      timeZone: 'Asia/Kolkata',
       year: 'numeric',
       month: 'long',
       day: 'numeric'

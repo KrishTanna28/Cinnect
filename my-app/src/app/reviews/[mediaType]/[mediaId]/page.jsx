@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ThumbsUp, ThumbsDown, MessageCircle, AlertTriangle, ArrowLeft, Star, Send, Plus, Edit2, Trash2, Minus, Pencil, MoreVertical, EyeOff, Maximize2 } from "lucide-react"
+import { ThumbsUp, ThumbsDown, MessageCircle, AlertTriangle, ArrowLeft, Star, Send, Plus, Edit2, Trash2, Minus, Pencil, MoreVertical, EyeOff } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -17,6 +17,8 @@ import { MentionText } from "@/components/mention-text"
 import ReviewDetailModal from "@/components/review-detail-modal"
 
 export default function ReviewsPage({ params }) {
+  const REVIEW_PREVIEW_LENGTH = 320
+
   const unwrappedParams = use(params)
   const router = useRouter()
   const { user } = useUser()
@@ -40,6 +42,7 @@ export default function ReviewsPage({ params }) {
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(null)
   const [hasReviewed, setHasReviewed] = useState(false)
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false)
 
   // Reply state
   const [replyingTo, setReplyingTo] = useState(null)
@@ -340,6 +343,8 @@ export default function ReviewsPage({ params }) {
   // Submit review
   const handleSubmitReview = async (e) => {
     e.preventDefault()
+    if (isSubmittingReview) return
+
     setError(null)
     setSuccess(null)
 
@@ -353,6 +358,7 @@ export default function ReviewsPage({ params }) {
       return
     }
 
+    setIsSubmittingReview(true)
     try {
       // Auto-detect spoiler if checkbox is not checked
       let finalSpoiler = reviewForm.spoiler
@@ -462,6 +468,8 @@ export default function ReviewsPage({ params }) {
         setReviews(prev => prev.filter(r => !r._id.startsWith('temp-')))
         setHasReviewed(false)
       }
+    } finally {
+      setIsSubmittingReview(false)
     }
   }
 
@@ -996,7 +1004,7 @@ export default function ReviewsPage({ params }) {
               {replyNode.user?.username || 'Unknown'}
             </span>
             <span className="text-xs text-muted-foreground">
-              {new Date(replyNode.createdAt).toLocaleDateString()}
+              {new Date(replyNode.createdAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}
             </span>
             
             {isCollapsed && replyNode.children?.length > 0 && (
@@ -1383,13 +1391,14 @@ export default function ReviewsPage({ params }) {
               </div>
 
               <div className="flex gap-2">
-                <Button type="submit">
-                  {editingReview ? 'Update Review' : 'Submit Review'}
+                <Button type="submit" disabled={isSubmittingReview}>
+                  {isSubmittingReview ? 'Submitting...' : (editingReview ? 'Update Review' : 'Submit Review')}
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={handleCancelEdit}
+                  disabled={isSubmittingReview}
                 >
                   Cancel
                 </Button>
@@ -1422,6 +1431,11 @@ export default function ReviewsPage({ params }) {
             const isSpoilerRevealed = revealedSpoilers.has(review._id)
             const isOwnReview = user && review.user?._id === user._id
             const isHighlighted = highlightId === review._id
+            const rawReviewContent = String(review.content || '')
+            const isLongReview = rawReviewContent.length > REVIEW_PREVIEW_LENGTH
+            const previewContent = isLongReview
+              ? `${rawReviewContent.slice(0, REVIEW_PREVIEW_LENGTH).trimEnd()}...`
+              : rawReviewContent
 
             return (
               <div 
@@ -1443,11 +1457,11 @@ export default function ReviewsPage({ params }) {
 
                   <div className="flex-1">
                     <div className="flex flex-wrap items-start sm:items-center gap-2 mb-1">
-                      <Link href={`/users/${review.user?.username}`} className="font-semibold text-foreground hover:underline">
+                      <Link href={`/users/${review.user?.username}`} className="font-semibold text-foreground hover:text-primary transition-all">
                         {review.user?.username}
                       </Link>
                       <span className="text-xs text-muted-foreground">
-                        {new Date(review.createdAt).toLocaleDateString()}
+                        {new Date(review.createdAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}
                       </span>
                       {review.spoiler && (
                           isOwnReview ? (
@@ -1501,17 +1515,30 @@ export default function ReviewsPage({ params }) {
                     </div>
 
                     {/* Review Content with Spoiler Blur */}
-                    <div className="relative">
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => handleOpenReviewModal(review)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          handleOpenReviewModal(review)
+                        }
+                      }}
+                      className="relative cursor-pointer rounded-md p-1 -m-1 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      title="Open full review"
+                    >
                       <h3 className={`text-lg font-bold text-foreground mb-2 transition-all ${review.spoiler && !isSpoilerRevealed && review.user?._id !== user._id ? 'blur-md select-none' : ''
                         }`}>{review.title}</h3>
                       <p className={`text-foreground whitespace-pre-wrap transition-all ${review.spoiler && !isSpoilerRevealed && review.user?._id !== user._id ? 'blur-md select-none' : ''
-                        }`}><MentionText text={review.content} /></p>
+                        }`}><MentionText text={previewContent} /></p>
 
                       {/* Spoiler Reveal Button */}
                       {review.spoiler && !isSpoilerRevealed && review.user?._id !== user?._id && (
                         <div className="absolute inset-0 flex items-center justify-center">
                           <button
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation()
                               const newRevealed = new Set(revealedSpoilers)
                               newRevealed.add(review._id)
                               setRevealedSpoilers(newRevealed)
@@ -1597,15 +1624,6 @@ export default function ReviewsPage({ params }) {
                     >
                       <MessageCircle className="w-4 h-4" />
                       <span>{review.replyCount == 1 ? review.replyCount + ' Reply' : review.replyCount + ' Replies'}</span>
-                    </button>
-
-                    {/* Expand/View Full Review */}
-                    <button
-                      onClick={() => handleOpenReviewModal(review)}
-                      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-all active:scale-95 cursor-pointer"
-                      title="View full review"
-                    >
-                      <Maximize2 className="w-4 h-4" />
                     </button>
 
                     {user && (

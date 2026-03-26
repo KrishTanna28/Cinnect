@@ -690,7 +690,7 @@ export default function CommunityPage() {
 
   const formatDate = (date) => {
     const d = new Date(date)
-    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+    return d.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: 'long', day: 'numeric' })
   }
 
   // Wheel handler: forward to feedContainerRef when hovering on non-scrollable parts
@@ -1477,7 +1477,7 @@ export default function CommunityPage() {
                               )}
                               <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
                                 <span className="line-clamp-1">{article.source?.name || 'News'}</span>
-                                <span>{new Date(article.publishedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>
+                                <span>{new Date(article.publishedAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short' })}</span>
                               </div>
                               <div className="flex items-center gap-1 mt-2 text-xs text-primary">
                                 <ExternalLink className="w-3 h-3" />

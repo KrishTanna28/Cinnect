@@ -1029,7 +1029,7 @@ export default function SettingsPage() {
                               <p className="text-xs text-muted-foreground truncate">{request.fullName}</p>
                             )}
                             <p className="text-xs text-muted-foreground mt-0.5">
-                              {new Date(request.requestedAt).toLocaleDateString()}
+                              {new Date(request.requestedAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}
                             </p>
                           </div>
                           <div className="flex gap-2 flex-shrink-0">

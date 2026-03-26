@@ -144,6 +144,8 @@ export default function NewPostPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
+    if (submitting) return
+
     if (!title.trim()) {
       toast({
         title: "Validation Error",

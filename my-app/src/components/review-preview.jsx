@@ -400,7 +400,7 @@ export default function ReviewPreview({ mediaId, mediaType, mediaTitle }) {
                       <MessageCircle className="w-3 h-3" />
                       {review.replyCount || 0}
                     </span>
-                    <span>{new Date(review.createdAt).toLocaleDateString()}</span>
+                    <span>{new Date(review.createdAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}</span>
                   </div>
                 </div>
               </div>

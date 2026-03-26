@@ -894,7 +894,8 @@ export default function ProfilePage() {
                             )}
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            {new Date(review.createdAt).toLocaleDateString('en-US', {
+                            {new Date(review.createdAt).toLocaleDateString('en-IN', {
+                              timeZone: 'Asia/Kolkata',
                               year: 'numeric',
                               month: 'long',
                               day: 'numeric'

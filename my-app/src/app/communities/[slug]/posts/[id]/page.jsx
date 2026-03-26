@@ -28,7 +28,7 @@ export default function PostDetailPage() {
   const [isSubmittingReply, setIsSubmittingReply] = useState(false)
   const [mentionUser, setMentionUser] = useState(null)
   const [showReplies, setShowReplies] = useState(new Set())
-  const [submitting, setSubmitting] = useState(false)
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [commentSpoiler, setCommentSpoiler] = useState(false)
@@ -416,6 +416,8 @@ export default function PostDetailPage() {
   const handleAddComment = async (e) => {
     e.preventDefault()
 
+    if (isSubmittingComment) return
+
     if (!user) {
       toast({
         title: "Login Required",
@@ -434,6 +436,8 @@ export default function PostDetailPage() {
       })
       return
     }
+
+    setIsSubmittingComment(true)
 
     // Auto-detect spoiler if checkbox is not checked
     let finalSpoiler = commentSpoiler
@@ -530,6 +534,8 @@ export default function PostDetailPage() {
         description: "Failed to add comment",
         variant: "destructive"
       })
+    } finally {
+      setIsSubmittingComment(false)
     }
   }
 
@@ -542,32 +548,27 @@ export default function PostDetailPage() {
     if (!replyContent.trim() || isSubmittingReply) return
 
     setIsSubmittingReply(true)
-    try {
-      // Auto-detect spoiler if checkbox is not checked
-      let finalSpoiler = replySpoiler
-      if (!finalSpoiler && replyContent.trim().length > 0) {
-        try {
-          const detectRes = await fetch('/api/spoiler-detect', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: replyContent })
-          })
-          const detectData = await detectRes.json()
-          if (detectData.success) {
-            const pct = ((detectData.data?.scores?.spoiler ?? detectData.data?.confidence ?? 0) * 100).toFixed(1)
-            console.log(`[Spoiler Detection] Reply: ${pct}% spoiler probability (threshold: 60%)`)
-          }
-          if (detectData.success && detectData.data?.isSpoiler) {
-            finalSpoiler = true
-          }
-        } catch (detectErr) {
-          console.error('Spoiler detection failed, proceeding without:', detectErr)
+
+    // Auto-detect spoiler if checkbox is not checked
+    let finalSpoiler = replySpoiler
+    if (!finalSpoiler && replyContent.trim().length > 0) {
+      try {
+        const detectRes = await fetch('/api/spoiler-detect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: replyContent })
+        })
+        const detectData = await detectRes.json()
+        if (detectData.success) {
+          const pct = ((detectData.data?.scores?.spoiler ?? detectData.data?.confidence ?? 0) * 100).toFixed(1)
+          console.log(`[Spoiler Detection] Reply: ${pct}% spoiler probability (threshold: 60%)`)
         }
+        if (detectData.success && detectData.data?.isSpoiler) {
+          finalSpoiler = true
+        }
+      } catch (detectErr) {
+        console.error('Spoiler detection failed, proceeding without:', detectErr)
       }
-    } catch (error) {
-      console.error('Outer error:', error)
-    } finally {
-      setIsSubmittingReply(false)
     }
 
     // Determine current comment to estimate depth for optimistic UI
@@ -1060,7 +1061,7 @@ export default function PostDetailPage() {
               {replyNode.user?.username || 'Unknown'}
             </Link>
             <span className="text-xs text-muted-foreground">
-              {new Date(replyNode.createdAt).toLocaleDateString()}
+              {new Date(replyNode.createdAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}
             </span>
 
             {isCollapsed && replyNode.children?.length > 0 && (
@@ -1207,9 +1208,9 @@ export default function PostDetailPage() {
                       <Button
                         onClick={() => handleSubmitReply(commentId, replyNode._id)}
                         size="sm"
-                        disabled={!replyContent.trim() || submitting}
+                        disabled={!replyContent.trim() || isSubmittingReply}
                       >
-                        {submitting && replyingTo === replyNode._id ? (
+                        {isSubmittingReply && replyingTo === replyNode._id ? (
                           <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin"></div>
                         ) : (
                           <Send className="w-4 h-4" />
@@ -1480,7 +1481,7 @@ export default function PostDetailPage() {
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                   rows={3}
-                  disabled={!user || submitting}
+                  disabled={!user || isSubmittingComment}
                   className="flex-1"
                   style={{
                     borderColor: 'var(--border)',
@@ -1489,9 +1490,9 @@ export default function PostDetailPage() {
                 <Button
                   type="submit"
                   size="sm"
-                  disabled={!user || submitting || !commentText.trim()}
+                  disabled={!user || isSubmittingComment || !commentText.trim()}
                 >
-                  {submitting ? (
+                  {isSubmittingComment ? (
                     <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin"></div>
                   ) : (
                     <Send className="w-4 h-4" />
@@ -1562,7 +1563,7 @@ export default function PostDetailPage() {
                           {comment.user?.username || 'Unknown'}
                         </Link>
                         <span className="text-xs text-muted-foreground">
-                          {new Date(comment.createdAt).toLocaleDateString()}
+                          {new Date(comment.createdAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}
                         </span>
                         {comment.spoiler && (
                           isOwnComment ? (
@@ -1728,9 +1729,9 @@ export default function PostDetailPage() {
                               <Button
                                 onClick={() => handleSubmitReply(comment._id)}
                                 size="sm"
-                                disabled={!replyContent.trim() || submitting}
+                                disabled={!replyContent.trim() || isSubmittingReply}
                               >
-                                {submitting && replyingTo === comment._id ? (
+                                {isSubmittingReply && replyingTo === comment._id ? (
                                   <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin"></div>
                                 ) : (
                                   <Send className="w-4 h-4" />

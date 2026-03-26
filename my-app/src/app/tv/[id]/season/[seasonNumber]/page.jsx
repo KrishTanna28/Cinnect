@@ -200,7 +200,8 @@ export default function SeasonDetailsPage({ params }) {
                         {episode.airDate && (
                           <span className="flex items-center gap-1">
                             <Calendar className="w-4 h-4" />
-                            {new Date(episode.airDate).toLocaleDateString('en-US', {
+                            {new Date(episode.airDate).toLocaleDateString('en-IN', {
+                              timeZone: 'Asia/Kolkata',
                               year: 'numeric',
                               month: 'short',
                               day: 'numeric'

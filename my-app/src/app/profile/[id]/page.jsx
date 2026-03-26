@@ -951,7 +951,7 @@ export default function PublicProfilePage({ params }) {
                     <p className="text-sm text-muted-foreground">Member Since</p>
                     <p className="text-foreground font-medium">
                       {profile.memberSince
-                        ? new Date(profile.memberSince).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                        ? new Date(profile.memberSince).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: 'long', day: 'numeric' })
                         : 'N/A'}
                     </p>
                   </div>
@@ -997,7 +997,8 @@ export default function PublicProfilePage({ params }) {
                                 )}
                               </div>
                               <p className="text-sm text-muted-foreground">
-                                {new Date(review.createdAt).toLocaleDateString('en-US', {
+                                {new Date(review.createdAt).toLocaleDateString('en-IN', {
+                                  timeZone: 'Asia/Kolkata',
                                   year: 'numeric',
                                   month: 'long',
                                   day: 'numeric'
