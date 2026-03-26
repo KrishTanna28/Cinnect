@@ -21,50 +21,21 @@ export function AuthRefreshProvider({ children }) {
       return
     }
 
-    // Check token validity every 5 minutes
+    // Keep session alive by rotating cookies on an interval.
     const checkAndRefreshToken = async () => {
       try {
-        const token = localStorage.getItem('token')
-        if (!token) {
+        const response = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          credentials: 'include',
+        })
+
+        if (!response.ok) {
+          // Refresh token is invalid/expired; clear local auth state.
           logout()
-          return
-        }
-
-        // Decode token to check expiration (without verification)
-        const base64Url = token.split('.')[1]
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-        const payload = JSON.parse(window.atob(base64))
-        
-        const expirationTime = payload.exp * 1000 // Convert to milliseconds
-        const currentTime = Date.now()
-        const timeUntilExpiry = expirationTime - currentTime
-        
-        // If token expires in less than 1 day, refresh it
-        if (timeUntilExpiry < 24 * 60 * 60 * 1000) {
-          console.log('Token expiring soon, refreshing...')
-          
-          const response = await fetch('/api/auth/refresh', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          })
-
-          const data = await response.json()
-
-          if (data.success) {
-            localStorage.setItem('token', data.data.token)
-            console.log('Token refreshed successfully')
-          } else {
-            // Token refresh failed, logout user
-            console.error('Token refresh failed:', data.message)
-            logout()
-            router.push('/login')
-          }
+          router.push('/login')
         }
       } catch (error) {
-        console.error('Token check error:', error)
-        // If token is invalid, logout
+        console.error('Token refresh check error:', error)
         logout()
         router.push('/login')
       }
@@ -74,7 +45,7 @@ export function AuthRefreshProvider({ children }) {
     checkAndRefreshToken()
 
     // Then check every 5 minutes
-    refreshIntervalRef.current = setInterval(checkAndRefreshToken, 24 * 60 * 60 * 1000)
+    refreshIntervalRef.current = setInterval(checkAndRefreshToken, 5 * 60 * 1000)
 
     return () => {
       if (refreshIntervalRef.current) {

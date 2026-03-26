@@ -10,19 +10,33 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URL;
 const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL;
 
+function getFrontendBaseUrl(request) {
+  if (FRONTEND_URL) {
+    return FRONTEND_URL;
+  }
+
+  try {
+    const requestUrl = new URL(request.url);
+    return `${requestUrl.protocol}//${requestUrl.host}`;
+  } catch {
+    return 'http://localhost:3000';
+  }
+}
+
 export async function GET(request) {
   try {
+    const frontendBaseUrl = getFrontendBaseUrl(request);
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const error = searchParams.get('error');
 
     if (error) {
       console.error('Google OAuth error:', error);
-      return NextResponse.redirect(`${FRONTEND_URL}/login?error=oauth_denied`);
+      return NextResponse.redirect(`${frontendBaseUrl}/login?error=oauth_denied`);
     }
 
     if (!code) {
-      return NextResponse.redirect(`${FRONTEND_URL}/login?error=no_code`);
+      return NextResponse.redirect(`${frontendBaseUrl}/login?error=no_code`);
     }
 
     // Exchange code for tokens
@@ -43,7 +57,7 @@ export async function GET(request) {
     if (!tokenResponse.ok) {
       const errorData = await tokenResponse.text();
       console.error('Token exchange failed:', errorData);
-      return NextResponse.redirect(`${FRONTEND_URL}/login?error=token_exchange_failed`);
+      return NextResponse.redirect(`${frontendBaseUrl}/login?error=token_exchange_failed`);
     }
 
     const tokens = await tokenResponse.json();
@@ -58,7 +72,7 @@ export async function GET(request) {
 
     if (!userInfoResponse.ok) {
       console.error('Failed to fetch user info');
-      return NextResponse.redirect(`${FRONTEND_URL}/login?error=user_info_failed`);
+      return NextResponse.redirect(`${frontendBaseUrl}/login?error=user_info_failed`);
     }
 
     const googleUser = await userInfoResponse.json();
@@ -78,7 +92,7 @@ export async function GET(request) {
       console.log('[OAuth] User found, setting cookies and redirecting:', {
         userId: user._id.toString(),
         rememberMe: true,
-        frontendUrl: FRONTEND_URL
+        frontendUrl: frontendBaseUrl
       })
 
       // Update last login
@@ -86,7 +100,7 @@ export async function GET(request) {
       await user.save()
 
       // Redirect directly to home page, cookies will handle authentication
-      const response = NextResponse.redirect(`${FRONTEND_URL}/`)
+      const response = NextResponse.redirect(`${frontendBaseUrl}/`)
 
       // Set httpOnly cookies (default to persistent for Google OAuth)
       setAuthCookies(response, accessToken, refreshToken, true)
@@ -120,7 +134,7 @@ export async function GET(request) {
       const refreshToken = generateRefreshToken(user._id, tokenId, true) // Google OAuth = persistent session
 
       // Redirect directly to home page
-      const response = NextResponse.redirect(`${FRONTEND_URL}/`)
+      const response = NextResponse.redirect(`${frontendBaseUrl}/`)
 
       // Set httpOnly cookies (default to persistent for Google OAuth)
       setAuthCookies(response, accessToken, refreshToken, true)
@@ -148,7 +162,7 @@ export async function GET(request) {
     const refreshToken = generateRefreshToken(user._id, tokenId, true) // Google OAuth = persistent session
 
     // Redirect directly to home page
-    const response = NextResponse.redirect(`${FRONTEND_URL}/`)
+    const response = NextResponse.redirect(`${frontendBaseUrl}/`)
 
     // Set httpOnly cookies (default to persistent for Google OAuth)
     setAuthCookies(response, accessToken, refreshToken, true)
@@ -157,6 +171,7 @@ export async function GET(request) {
 
   } catch (error) {
     console.error('Google OAuth callback error:', error);
-    return NextResponse.redirect(`${FRONTEND_URL}/login?error=oauth_callback_failed`);
+    const fallbackBaseUrl = FRONTEND_URL || 'http://localhost:3000';
+    return NextResponse.redirect(`${fallbackBaseUrl}/login?error=oauth_callback_failed`);
   }
 }

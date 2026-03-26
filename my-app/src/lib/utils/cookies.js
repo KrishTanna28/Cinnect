@@ -13,12 +13,22 @@
  */
 export function setAuthCookies(response, accessToken, refreshToken, rememberMe = false) {
   const isProduction = process.env.NODE_ENV === 'production'
+  const cookieDomain = process.env.COOKIE_DOMAIN
+  const rawSameSite = (process.env.COOKIE_SAMESITE || 'lax').toLowerCase()
+  const sameSite = ['lax', 'strict', 'none'].includes(rawSameSite) ? rawSameSite : 'lax'
+  const cookieSecureEnv = process.env.COOKIE_SECURE
+  const secure = cookieSecureEnv === 'true'
+    ? true
+    : cookieSecureEnv === 'false'
+      ? false
+      : isProduction
 
   const baseOptions = {
     path: '/',
     httpOnly: true,
-    secure: isProduction,
-    sameSite: 'lax'
+    secure,
+    sameSite,
+    ...(cookieDomain ? { domain: cookieDomain } : {})
   }
 
   if (rememberMe) {
@@ -43,12 +53,22 @@ export function setAuthCookies(response, accessToken, refreshToken, rememberMe =
  */
 export function clearAuthCookies(response) {
   const isProduction = process.env.NODE_ENV === 'production'
+  const cookieDomain = process.env.COOKIE_DOMAIN
+  const rawSameSite = (process.env.COOKIE_SAMESITE || 'lax').toLowerCase()
+  const sameSite = ['lax', 'strict', 'none'].includes(rawSameSite) ? rawSameSite : 'lax'
+  const cookieSecureEnv = process.env.COOKIE_SECURE
+  const secure = cookieSecureEnv === 'true'
+    ? true
+    : cookieSecureEnv === 'false'
+      ? false
+      : isProduction
 
   const clearOptions = {
     path: '/',
     httpOnly: true,
-    secure: isProduction,
-    sameSite: 'lax',
+    secure,
+    sameSite,
+    ...(cookieDomain ? { domain: cookieDomain } : {}),
     maxAge: 0 // Immediate expiry
   }
 

@@ -173,6 +173,8 @@ export async function middleware(request) {
   const { pathname } = request.nextUrl
   const method = request.method
 
+  const AUTH_PAGES = ['/login', '/signup']
+
   // Skip middleware for static files and Next.js internals
   if (
     pathname.startsWith('/_next') ||
@@ -183,6 +185,18 @@ export async function middleware(request) {
   }
 
   const isApiRoute = pathname.startsWith('/api/')
+
+  // Prevent authenticated users from visiting auth pages.
+  if (!isApiRoute && AUTH_PAGES.includes(pathname)) {
+    const token = getToken(request)
+
+    if (token) {
+      const { valid } = await verifyToken(token)
+      if (valid) {
+        return NextResponse.redirect(new URL('/', request.url))
+      }
+    }
+  }
 
   // Check if this is a public route
   if (isPublicRoute(pathname, isApiRoute, method)) {

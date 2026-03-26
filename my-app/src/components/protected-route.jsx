@@ -3,28 +3,27 @@
 import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { AuthSkeleton } from "@/components/skeletons"
+import { useUser } from "@/contexts/UserContext"
 
 export default function ProtectedRoute({ children }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isReady, setIsReady] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
+  const { isAuthenticated, isLoading } = useUser()
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-
-    if (!token) {
+    if (!isLoading && !isAuthenticated) {
       // Redirect to login with return URL
       const returnUrl = encodeURIComponent(pathname)
       router.push(`/login?returnUrl=${returnUrl}`)
-    } else {
-      setIsAuthenticated(true)
     }
 
-    setIsLoading(false)
-  }, [router, pathname])
+    if (!isLoading) {
+      setIsReady(true)
+    }
+  }, [isAuthenticated, isLoading, router, pathname])
 
-  if (isLoading) {
+  if (isLoading || !isReady) {
     return <AuthSkeleton />
   }
 
