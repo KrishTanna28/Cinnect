@@ -1,13 +1,13 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Heart } from "lucide-react"
+import { MessageCircle } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useUser } from "@/contexts/UserContext"
 import UserListModal from "./user-list-modal"
 
 /**
- * Shows an Instagram-style "Liked by <friend> and X others" row.
+ * Shows a "Reviewed by <friend> and X others" row.
  *
  * Props:
  *  - contentId  : string (the TMDB movie / TV show ID)
@@ -40,7 +40,7 @@ export default function FriendsLikedBy({ contentId, mediaType = "movie" }) {
       try {
         const token = localStorage.getItem("token")
         const res = await fetch(
-          `/api/content/${mediaType}/${contentId}/friends-liked?limit=3`,
+          `/api/content/${mediaType}/${contentId}/friends-reviewed?limit=3`,
           { headers: { Authorization: `Bearer ${token}` } }
         )
         const data = await res.json()
@@ -49,7 +49,7 @@ export default function FriendsLikedBy({ contentId, mediaType = "movie" }) {
           setTotal(data.data.total)
         }
       } catch (err) {
-        console.error("Error fetching friends who liked:", err)
+        console.error("Error fetching friends who reviewed:", err)
       } finally {
         setLoading(false)
       }
@@ -73,7 +73,7 @@ export default function FriendsLikedBy({ contentId, mediaType = "movie" }) {
         })
 
         const res = await fetch(
-          `/api/content/${mediaType}/${contentId}/friends-liked?${params}`,
+          `/api/content/${mediaType}/${contentId}/friends-reviewed?${params}`,
           { headers: { Authorization: `Bearer ${token}` } }
         )
         const data = await res.json()
@@ -121,7 +121,7 @@ export default function FriendsLikedBy({ contentId, mediaType = "movie" }) {
 
   return (
     <>
-      {/* "Liked by ..." row */}
+      {/* "Reviewed by ..." row */}
       <button
         onClick={openModal}
         className="flex items-center gap-2 cursor-pointer group w-fit"
@@ -143,8 +143,8 @@ export default function FriendsLikedBy({ contentId, mediaType = "movie" }) {
 
         {/* Text */}
         <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
-          <Heart className="w-3.5 h-3.5 inline fill-red-500 text-red-500 mr-1 -mt-0.5" />
-          Liked by{" "}
+          <MessageCircle className="w-3.5 h-3.5 inline text-primary mr-1 -mt-0.5" />
+          Reviewed by{" "}
           <span className="font-semibold text-foreground">
             {firstFriend.username}
           </span>
@@ -163,14 +163,14 @@ export default function FriendsLikedBy({ contentId, mediaType = "movie" }) {
       <UserListModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title="Friends who liked this"
+        title="Friends who reviewed this"
         users={modalUsers}
         loading={modalLoading}
         onSearch={handleModalSearch}
         onLoadMore={handleModalLoadMore}
         hasMore={modalHasMore}
         loadingMore={modalLoadingMore}
-        emptyMessage="None of your friends have liked this yet"
+        emptyMessage="None of your friends have reviewed this yet"
         showFollowBtn={false}
       />
     </>
