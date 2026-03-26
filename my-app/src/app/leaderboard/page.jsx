@@ -51,10 +51,10 @@ function TopThreeCard({ entry, rank, isCurrentUser }) {
           </div>
         </div>
 
-        <p className="font-semibold text-foreground text-sm sm:text-base truncate max-w-[100px] sm:max-w-[120px]">
+        <p className="font-semibold text-foreground text-sm sm:text-base text-center break-words leading-tight">
           {entry.fullName || entry.username}
         </p>
-        <p className="text-xs text-muted-foreground mb-2">@{entry.username}</p>
+        <p className="text-xs text-muted-foreground mb-2 break-all">@{entry.username}</p>
 
         {isCurrentUser && (
           <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary mb-2">You</span>
@@ -101,14 +101,14 @@ function LeaderboardRow({ entry, isCurrentUser }) {
       {/* Name */}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <p className="truncate font-semibold text-foreground text-sm group-hover:text-primary transition-colors">
+          <p className="font-semibold text-foreground text-sm group-hover:text-primary transition-colors break-words leading-tight">
             {entry.fullName || entry.username}
           </p>
           {isCurrentUser && (
             <span className="rounded-full bg-primary/20 px-1.5 py-0.5 text-[9px] font-bold text-primary">You</span>
           )}
         </div>
-        <p className="text-xs text-muted-foreground">@{entry.username}</p>
+        <p className="text-xs text-muted-foreground break-all">@{entry.username}</p>
       </div>
 
       {/* Score */}
@@ -172,7 +172,7 @@ export default function LeaderboardPage() {
     <main className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b border-border px-4 py-8 sm:py-10 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-4xl">
+        <div className="mx-auto max-w-6xl">
           <div className="text-center">
             <div className="flex items-center justify-center gap-3 mb-3">
               <Trophy className="h-8 w-8 sm:h-10 sm:w-10 text-primary" />
@@ -181,7 +181,7 @@ export default function LeaderboardPage() {
               Leaderboard
             </h1>
             <p className="text-muted-foreground text-sm italic font-medium tracking-wide">
-              "Power resides where men believe it resides. It’s a trick. A shadow on the wall. And a very small man can cast a very large shadow."
+              "Power resides where men believe it resides."
             </p>
             <p className="text-muted-foreground/70 text-xs mt-1">
               - Lord Varys
@@ -202,7 +202,7 @@ export default function LeaderboardPage() {
       </div>
 
       {/* Content */}
-      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         {isLoading ? (
           <LeaderboardSkeleton />
         ) : error ? (
@@ -220,8 +220,29 @@ export default function LeaderboardPage() {
             {/* Top 3 Podium */}
             {topThree.length > 0 && (
               <section>
-                <div className="grid grid-cols-3 gap-3 sm:gap-4 items-end">
-                  {/* Second place */}
+                {/* Mobile: #1 on top, #2 and #3 below */}
+                <div className="sm:hidden space-y-3">
+                  <TopThreeCard
+                    entry={topThree[0]}
+                    rank={1}
+                    isCurrentUser={topThree[0]?._id?.toString() === currentUserId}
+                  />
+                  <div className="grid grid-cols-2 gap-3 items-start">
+                    <TopThreeCard
+                      entry={topThree[1]}
+                      rank={2}
+                      isCurrentUser={topThree[1]?._id?.toString() === currentUserId}
+                    />
+                    <TopThreeCard
+                      entry={topThree[2]}
+                      rank={3}
+                      isCurrentUser={topThree[2]?._id?.toString() === currentUserId}
+                    />
+                  </div>
+                </div>
+
+                {/* Tablet/Desktop: podium layout */}
+                <div className="hidden sm:grid grid-cols-3 gap-4 items-end">
                   <div className="pt-6">
                     <TopThreeCard
                       entry={topThree[1]}
@@ -229,8 +250,6 @@ export default function LeaderboardPage() {
                       isCurrentUser={topThree[1]?._id?.toString() === currentUserId}
                     />
                   </div>
-
-                  {/* First place */}
                   <div>
                     <TopThreeCard
                       entry={topThree[0]}
@@ -238,8 +257,6 @@ export default function LeaderboardPage() {
                       isCurrentUser={topThree[0]?._id?.toString() === currentUserId}
                     />
                   </div>
-
-                  {/* Third place */}
                   <div className="pt-6">
                     <TopThreeCard
                       entry={topThree[2]}

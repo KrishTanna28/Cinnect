@@ -24,11 +24,22 @@ import {
   X,
   ThumbsUp,
   MessageCircle,
-  AlertTriangle
+  AlertTriangle,
+  ScrollText,
+  Eye,
+  Coins,
+  Network,
+  Snowflake,
+  MoonStar,
+  Castle,
+  Swords,
+  Hand,
+  Link as LinkIcon
 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ProfileSkeleton, CardGridSkeleton, ReviewListSkeleton } from "@/components/skeletons"
 import { useUser } from "@/contexts/UserContext"
 import * as movieAPI from "@/lib/movies"
@@ -45,6 +56,126 @@ function getBadgeStyle(badgeId) {
   return BADGE_STYLES[badgeId] || "from-primary/10 to-primary/5 border-primary/20"
 }
 
+const BADGE_ICON_BY_ID = {
+  hand_of_the_king: Hand,
+  maesters_insight: ScrollText,
+  three_eyed_raven: Eye,
+  master_of_coin: Coins,
+  kings_landing_whisperer: MessageCircle,
+  the_spider: Network,
+  the_north_remembers: Snowflake,
+  nights_watch: MoonStar,
+  lord_of_winterfell: Shield,
+  warden_of_the_west: Castle,
+  breaker_of_chains: LinkIcon,
+  iron_throne: Crown,
+  wildfire: Flame,
+  battle_of_the_bastards: Swords
+}
+
+const BADGE_ICON_BY_KEY = {
+  crown: Hand,
+  "scroll-text": ScrollText,
+  eye: Eye,
+  coins: Coins,
+  "message-circle": MessageCircle,
+  network: Network,
+  snowflake: Snowflake,
+  "moon-star": MoonStar,
+  shield: Shield,
+  castle: Castle,
+  chains: LinkIcon,
+  throne: Crown,
+  flame: Flame,
+  swords: Swords,
+  star: Star
+}
+
+function getBadgeIcon(badge) {
+  return BADGE_ICON_BY_ID[badge?.badgeId] || BADGE_ICON_BY_KEY[badge?.icon] || Award
+}
+
+function getBadgeInitials(name = "Badge") {
+  const words = String(name).trim().split(/\s+/).filter(Boolean)
+  if (!words.length) return "B"
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase()
+  return `${words[0][0] || ""}${words[1][0] || ""}`.toUpperCase()
+}
+
+function normalizeBadges(badges = [], progressionBadges = []) {
+  const merged = [...progressionBadges, ...badges].filter(Boolean)
+  const byId = new Map()
+
+  merged.forEach((badge, index) => {
+    const id = badge.badgeId || badge.id || badge.name || `badge-${index}`
+    const existing = byId.get(id)
+    byId.set(id, {
+      badgeId: badge.badgeId || existing?.badgeId || id,
+      name: badge.name || existing?.name || "Unknown Badge",
+      description:
+        badge.description ||
+        existing?.description ||
+        "Awarded for outstanding activity and contribution.",
+      earnedAt: badge.earnedAt || existing?.earnedAt || null
+    })
+  })
+
+  return Array.from(byId.values())
+}
+
+function BadgeToken({ badge }) {
+  const [open, setOpen] = useState(false)
+  const BadgeIcon = getBadgeIcon(badge)
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          onMouseEnter={() => setOpen(true)}
+          onMouseLeave={() => setOpen(false)}
+          onClick={() => setOpen(prev => !prev)}
+          className={`h-8 w-8 shrink-0 rounded-full border bg-gradient-to-br ${getBadgeStyle(badge.badgeId)} text-[10px] font-bold text-foreground transition-transform hover:scale-105`}
+          aria-label={badge.name}
+          title={badge.name}
+        >
+          <BadgeIcon className="mx-auto h-4 w-4" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        className="w-64"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+      >
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <div
+              className={`h-10 w-10 shrink-0 rounded-full border bg-gradient-to-br ${getBadgeStyle(badge.badgeId)} flex items-center justify-center text-xs font-bold`}
+            >
+              <BadgeIcon className="h-5 w-5" />
+            </div>
+            <p className="font-semibold text-foreground leading-tight">{badge.name}</p>
+          </div>
+          <p className="text-sm text-muted-foreground leading-relaxed">{badge.description}</p>
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+function InlineBadgeRail({ badges }) {
+  if (!badges?.length) return null
+
+  return (
+    <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap pl-2" aria-label="Earned badges">
+      {badges.map((badge, index) => (
+        <BadgeToken key={`${badge.badgeId || badge.name}-${index}`} badge={badge} />
+      ))}
+    </div>
+  )
+}
+
 function getReviewQualityLabel(score = 0) {
   if (score >= 0.9) return "Hand of the King"
   if (score >= 0.8) return "Maester's Insight"
@@ -56,6 +187,7 @@ const MAX_LEVEL = 10
 
 function PublicProgressHeader({ profile }) {
   const progression = profile?.progression
+  const normalizedBadges = normalizeBadges(profile?.badges, progression?.badges)
   const level = progression?.currentLevel ?? profile?.xpLevel ?? profile?.level ?? 1
   const currentXp = progression?.totalXp ?? profile?.xp?.current ?? profile?.points?.total ?? 0
   const currentLevelMinXp = progression?.currentLevelMinXp ?? 0
@@ -80,43 +212,46 @@ function PublicProgressHeader({ profile }) {
         )}
       </div>
 
-      {/* Level segments */}
-      <div className="space-y-2">
-        <div className="flex gap-1">
-          {Array.from({ length: MAX_LEVEL }, (_, i) => {
-            const segmentLevel = i + 1
-            const isCurrent = segmentLevel === level
-            const isCompleted = segmentLevel < level
-            const isMax = level >= MAX_LEVEL
+      {/* Level segments + inline badges */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-2 min-w-0 flex-1">
+          <div className="flex gap-1">
+            {Array.from({ length: MAX_LEVEL }, (_, i) => {
+              const segmentLevel = i + 1
+              const isCurrent = segmentLevel === level
+              const isCompleted = segmentLevel < level
+              const isMax = level >= MAX_LEVEL
 
-            return (
-              <div
-                key={segmentLevel}
-                className={`relative h-2 flex-1 rounded-full transition-all duration-300 ${
-                  isCompleted
-                    ? "bg-gradient-to-r from-amber-500 to-primary"
-                    : isCurrent && !isMax
-                    ? "bg-secondary/60 overflow-hidden"
-                    : isCurrent && isMax
-                    ? "bg-gradient-to-r from-amber-500 via-primary to-red-500"
-                    : "bg-secondary/30"
-                }`}
-                title={`Level ${segmentLevel}`}
-              >
-                {isCurrent && !isMax && (
-                  <div
-                    className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-amber-500 to-primary transition-all duration-500"
-                    style={{ width: `${progress}%` }}
-                  />
-                )}
-              </div>
-            )
-          })}
+              return (
+                <div
+                  key={segmentLevel}
+                  className={`relative h-2 flex-1 rounded-full transition-all duration-300 ${
+                    isCompleted
+                      ? "bg-gradient-to-r from-amber-500 to-primary"
+                      : isCurrent && !isMax
+                      ? "bg-secondary/60 overflow-hidden"
+                      : isCurrent && isMax
+                      ? "bg-gradient-to-r from-amber-500 via-primary to-red-500"
+                      : "bg-secondary/30"
+                  }`}
+                  title={`Level ${segmentLevel}`}
+                >
+                  {isCurrent && !isMax && (
+                    <div
+                      className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-amber-500 to-primary transition-all duration-500"
+                      style={{ width: `${progress}%` }}
+                    />
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>Lvl 1</span>
+            <span>Lvl {MAX_LEVEL}</span>
+          </div>
         </div>
-        <div className="flex justify-between text-xs text-muted-foreground">
-          <span>Lvl 1</span>
-          <span>Lvl {MAX_LEVEL}</span>
-        </div>
+        <InlineBadgeRail badges={normalizedBadges} />
       </div>
 
       {/* XP details */}
@@ -132,26 +267,6 @@ function PublicProgressHeader({ profile }) {
       </div>
 
       {profile?.bio && <p className="text-muted-foreground text-sm text-center sm:text-left">{profile.bio}</p>}
-    </div>
-  )
-}
-
-function BadgeSection({ badges }) {
-  if (!badges?.length) return null
-
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h2 className="text-2xl font-bold text-foreground mb-6">Titles and Sigils</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {badges.map((badge, index) => (
-          <div
-            key={`${badge.badgeId || badge.name}-${index}`}
-            className={`rounded-2xl border bg-gradient-to-br ${getBadgeStyle(badge.badgeId)} p-5`}
-          >
-            <p className="text-sm font-semibold text-foreground">{badge.name}</p>
-          </div>
-        ))}
-      </div>
     </div>
   )
 }
@@ -791,8 +906,6 @@ export default function PublicProfilePage({ params }) {
               </div>
             </div>
           )}
-
-          <BadgeSection badges={profile.badges} />
 
           {/* Tabs */}
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

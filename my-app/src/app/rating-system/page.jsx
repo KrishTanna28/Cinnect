@@ -1,8 +1,178 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowLeft, Star, TrendingUp, Zap, Shield, Crown, Target } from "lucide-react"
+import {
+  ArrowLeft,
+  Star,
+  TrendingUp,
+  Zap,
+  Shield,
+  Crown,
+  Target,
+  ScrollText,
+  Eye,
+  Coins,
+  MessageCircle,
+  Network,
+  Snowflake,
+  MoonStar,
+  Castle,
+  Flame,
+  Swords,
+  Hand,
+  Link as LinkIcon
+} from "lucide-react"
 import { useRouter } from "next/navigation"
+
+const BADGE_ICONS = {
+  crown: Hand,
+  "scroll-text": ScrollText,
+  eye: Eye,
+  coins: Coins,
+  "message-circle": MessageCircle,
+  network: Network,
+  snowflake: Snowflake,
+  "moon-star": MoonStar,
+  shield: Shield,
+  castle: Castle,
+  chains: LinkIcon,
+  throne : Crown,
+  flame: Flame,
+  swords: Swords,
+  star: Star
+}
+
+const BADGE_COLOR_STYLES = {
+  gold: "text-yellow-300",
+  sky: "text-sky-300",
+  violet: "text-violet-300",
+  emerald: "text-emerald-300",
+  cyan: "text-cyan-300",
+  indigo: "text-indigo-300",
+  teal: "text-teal-300",
+  lime: "text-lime-300",
+  amber: "text-amber-300",
+  orange: "text-orange-300",
+  red: "text-red-300",
+  fuchsia: "text-fuchsia-300",
+  pink: "text-pink-300",
+  blue: "text-blue-300"
+}
+
+const BADGE_GUIDE = [
+  {
+    name: "Hand of the King",
+    category: "Quality",
+    description: "Exceptional, trusted reviews with elite helpfulness.",
+    criteria: "Helpfulness ratio >= 0.8 and average review length >= 400",
+    icon: "crown",
+    color: "gold"
+  },
+  {
+    name: "Maester's Insight",
+    category: "Quality",
+    description: "Deep analytical reviews with strong structure and depth.",
+    criteria: "Average review length >= 500",
+    icon: "scroll-text",
+    color: "sky"
+  },
+  {
+    name: "Three-Eyed Raven",
+    category: "Quality",
+    description: "Original perspective across a wide range of titles and genres.",
+    criteria: "Reviewed genres >= 10 and average review length >= 300",
+    icon: "eye",
+    color: "violet"
+  },
+  {
+    name: "Master of Coin",
+    category: "Engagement",
+    description: "Sustained engagement and strong audience response.",
+    criteria: "Total likes >= 100",
+    icon: "coins",
+    color: "emerald"
+  },
+  {
+    name: "King's Landing Whisperer",
+    category: "Engagement",
+    description: "Consistently active in thoughtful discussions.",
+    criteria: "Comments posted >= 50",
+    icon: "message-circle",
+    color: "cyan"
+  },
+  {
+    name: "The Spider",
+    category: "Engagement",
+    description: "Meaningful activity across formats and communities.",
+    criteria: "Reviewed genres >= 12 and both movies and TV covered",
+    icon: "network",
+    color: "indigo"
+  },
+  {
+    name: "The North Remembers",
+    category: "Consistency",
+    description: "Long-term consistency in quality and activity.",
+    criteria: "Reviews written >= 40 and longest streak >= 14",
+    icon: "snowflake",
+    color: "teal"
+  },
+  {
+    name: "Night's Watch",
+    category: "Consistency",
+    description: "Reliable day-by-day contribution streak.",
+    criteria: "Current streak >= 7",
+    icon: "moon-star",
+    color: "lime"
+  },
+  {
+    name: "Lord of Winterfell",
+    category: "Community",
+    description: "Built a successful community with strong participation.",
+    criteria: "Community reaches 100 members or sustained discussion",
+    icon: "shield",
+    color: "amber"
+  },
+  {
+    name: "Warden of the West",
+    category: "Community",
+    description: "Leads a large and active community.",
+    criteria: "Community reaches 500 members",
+    icon: "castle",
+    color: "orange"
+  },
+  {
+    name: "Breaker of Chains",
+    category: "Community",
+    description: "Revives dormant threads and restarts discussion.",
+    criteria: "Revive inactive discussions multiple times",
+    icon: "chains",
+    color: "red"
+  },
+  {
+    name: "Iron Throne",
+    category: "Viral",
+    description: "Top trending content with platform-wide impact.",
+    criteria: "Gold-tier trending milestone",
+    icon: "throne",
+    color: "fuchsia"
+  },
+  {
+    name: "Wildfire",
+    category: "Viral",
+    description: "Sudden viral growth in engagement.",
+    criteria: "Trend factor >= 1.2 in a short window",
+    icon: "flame",
+    color: "pink"
+  },
+  {
+    name: "Battle of the Bastards",
+    category: "Viral",
+    description: "High-intensity, high-engagement discussion impact.",
+    criteria: "Engagement factor >= 0.9 on discussion content",
+    icon: "swords",
+    color: "blue"
+  }
+]
 
 export default function RatingSystemPage() {
   const router = useRouter()
@@ -128,6 +298,37 @@ export default function RatingSystemPage() {
               <div className="flex items-center justify-between p-3 border border-border rounded-lg bg-secondary/10"><span className="font-semibold text-foreground">Rank #5,001-20,000</span><span className="text-primary font-bold">Bannermen</span></div>
               <div className="flex items-center justify-between p-3 border border-border rounded-lg bg-secondary/10"><span className="font-semibold text-foreground">Rank #20,001-100,000</span><span className="text-primary font-bold">Knight</span></div>
               <div className="flex items-center justify-between p-3 border border-border rounded-lg bg-secondary/10"><span className="font-semibold text-foreground">Rank #100,001+</span><span className="text-primary font-bold">Smallfolk</span></div>
+            </div>
+          </section>
+
+          <section>
+            <div className="flex items-center gap-3 mb-4">
+              <Crown className="w-6 h-6 text-primary" />
+              <h2 className="text-2xl font-semibold text-foreground m-0">Possible Badges to Unlock</h2>
+            </div>
+            <p className="text-muted-foreground mb-4">
+              Earned badges appear on your profile. Here are the badges you can work toward.
+            </p>
+            <div className="grid md:grid-cols-2 gap-4">
+              {BADGE_GUIDE.map((badge) => {
+                const BadgeIcon = BADGE_ICONS[badge.icon] || Star
+                const iconColor = BADGE_COLOR_STYLES[badge.color] || "text-primary"
+
+                return (
+                  <article key={badge.name} className="p-4 bg-secondary/10 border border-border rounded-lg space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex items-center gap-2">
+                        <span className="h-7 w-7 shrink-0 rounded-full border border-border bg-secondary/30 inline-flex items-center justify-center">
+                          <BadgeIcon className={`w-4 h-4 ${iconColor}`} />
+                        </span>
+                        <h3 className="text-base font-semibold text-foreground">{badge.name}</h3>
+                      </div>
+                      <span className="text-xs font-medium uppercase tracking-wide text-primary">{badge.category}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{badge.description}</p>
+                  </article>
+                )
+              })}
             </div>
           </section>
 
