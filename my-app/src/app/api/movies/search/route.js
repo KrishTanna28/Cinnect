@@ -6,7 +6,7 @@ const FUZZY_FALLBACK_THRESHOLD = 3
 
 export async function GET(request) {
   try {
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = request.nextUrl
     const query = searchParams.get('query')
     const page = parseInt(searchParams.get('page') || '1')
 
@@ -61,4 +61,4 @@ export async function GET(request) {
   }
 }
 
-export const revalidate = 1800 // 30 minutes
+export const dynamic = 'force-dynamic'

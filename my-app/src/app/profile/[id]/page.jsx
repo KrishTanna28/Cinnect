@@ -31,7 +31,9 @@ import {
   Network,
   Snowflake,
   MoonStar,
+  Shield,
   Castle,
+  Crown,
   Swords,
   Hand,
   Link as LinkIcon

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Settings, LogOut, Trophy, Star, Users, Film, Heart, Award, Flame, Trash2, Pencil, MoreVertical, Lock, Globe, X, LayoutGrid, Bookmark, MessageSquare, ThumbsUp, MessageCircle, AlertTriangle, ScrollText, Eye, Coins, Network, Snowflake, MoonStar, Castle, Swords, Hand, Link as LinkIcon } from "lucide-react"
+import { Settings, LogOut, Trophy, Star, Users, Film, Heart, Award, Flame, Trash2, Pencil, MoreVertical, Lock, Globe, X, LayoutGrid, Bookmark, MessageSquare, ThumbsUp, MessageCircle, AlertTriangle, ScrollText, Eye, Coins, Network, Snowflake, MoonStar, Shield, Castle, Crown, Swords, Hand, Link as LinkIcon } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"

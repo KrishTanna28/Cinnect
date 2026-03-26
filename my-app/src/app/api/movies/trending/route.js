@@ -3,7 +3,7 @@ import { getTrending } from '@/lib/services/tmdb.service.js'
 
 export async function GET(request) {
   try {
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = request.nextUrl
     const mediaType = searchParams.get('mediaType') || 'all'
     const timeWindow = searchParams.get('timeWindow') || 'week'
     
@@ -25,4 +25,4 @@ export async function GET(request) {
   }
 }
 
-export const revalidate = 1800 // 30 minutes
+export const dynamic = 'force-dynamic'

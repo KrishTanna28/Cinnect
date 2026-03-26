@@ -1230,7 +1230,7 @@ export default function ReviewsPage({ params }) {
           >
             <ArrowLeft className="w-7 h-7" />
           </button>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex gap-3 sm:flex sm:items-center sm:gap-6 justify-between">
             <h1 className="text-3xl font-bold text-foreground">User Reviews</h1>
             {!showWriteReview && !hasReviewed && (
               <button
@@ -1238,7 +1238,7 @@ export default function ReviewsPage({ params }) {
                 className="flex items-center text-sm gap-2 hover:text-primary transition-all active:scale-95 cursor-pointer"
               >
                 <Plus className="w-5 h-5" />
-                Write a Review
+                Review
               </button>
             )}
             {!showWriteReview && hasReviewed && (

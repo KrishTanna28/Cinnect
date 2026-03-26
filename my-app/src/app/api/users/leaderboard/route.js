@@ -5,7 +5,7 @@ import { buildCacheKey, remember } from '@/lib/utils/cache.js'
 
 export async function GET(request) {
 try {
-    const { searchParams } = new URL(request.url)
+  const { searchParams } = request.nextUrl
     const limit = parseInt(searchParams.get('limit') || '20')
     const page = parseInt(searchParams.get('page') || '1')
     const cacheKey = buildCacheKey('leaderboard', 'users', page, limit)
@@ -33,4 +33,4 @@ try {
   }
 }
 
-export const revalidate = 300 // 5 minutes
+export const dynamic = 'force-dynamic'

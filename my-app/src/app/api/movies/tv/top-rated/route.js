@@ -3,7 +3,7 @@ import { getTopRatedTV } from '@/lib/services/tmdb.service.js'
 
 export async function GET(request) {
   try {
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = request.nextUrl
     const page = parseInt(searchParams.get('page') || '1')
     
     const data = await getTopRatedTV(page)
@@ -24,4 +24,4 @@ export async function GET(request) {
   }
 }
 
-export const revalidate = 7200 // 2 hours
+export const dynamic = 'force-dynamic'
