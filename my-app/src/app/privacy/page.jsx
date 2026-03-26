@@ -227,6 +227,10 @@ export default function PrivacyPolicyPage() {
             Terms of Service
           </Link>
           <span className="text-muted-foreground">|</span>
+          <Link href="/rating-system" className="text-primary hover:underline">
+            Rating & Points System
+          </Link>
+          <span className="text-muted-foreground">|</span>
           <Link href="/" className="text-primary hover:underline">
             Home
           </Link>

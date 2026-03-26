@@ -180,8 +180,11 @@ export default function LeaderboardPage() {
             <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">
               Leaderboard
             </h1>
-            <p className="text-muted-foreground text-sm">
-              Top contributors in the community
+            <p className="text-muted-foreground text-sm italic font-medium tracking-wide">
+              "Power resides where the people believes it resides."
+            </p>
+            <p className="text-muted-foreground/70 text-xs mt-1">
+              - Lord Varys
             </p>
           </div>
 
