@@ -37,7 +37,7 @@ export default function CommunitiesPage() {
   const [communitiesLoading, setCommunitiesLoading] = useState(true)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { user } = useUser()
+  const { user, isLoading, authFetch } = useUser()
   const { toast } = useToast()
   const feedContainerRef = useRef(null)
   const leftSidebarRef = useRef(null)
@@ -95,22 +95,48 @@ export default function CommunitiesPage() {
   // Fetch trending posts for sidebar
   useEffect(() => {
     fetchTrendingPosts()
-    fetchRecommendedCommunities()
   }, [])
+
+  useEffect(() => {
+    if (isLoading) return
+    fetchRecommendedCommunities()
+  }, [isLoading, user])
 
   const fetchRecommendedCommunities = async () => {
     setCommunitiesLoading(true)
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-      const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
-      const endpoint = token ? '/api/communities/recommended?limit=10' : '/api/communities?sort=popular&limit=10'
-      const response = await fetch(endpoint, { headers })
+      let response
+
+      if (user) {
+        // Prefer cookie-based authenticated request; avoids stale localStorage tokens.
+        response = await authFetch('/api/communities/recommended?limit=10')
+
+        // If auth fails, gracefully fall back to popular communities.
+        if (!response?.ok) {
+          response = await fetch('/api/communities?sort=popular&limit=10', {
+            credentials: 'include'
+          })
+        }
+      } else {
+        response = await fetch('/api/communities?sort=popular&limit=10', {
+          credentials: 'include'
+        })
+      }
+
+      if (!response || typeof response.json !== 'function') {
+        setRecommendedCommunities([])
+        return
+      }
+
       const data = await response.json()
       if (data.success) {
         setRecommendedCommunities(data.data)
+      } else {
+        setRecommendedCommunities([])
       }
     } catch (error) {
       console.error('Error fetching recommended communities:', error)
+      setRecommendedCommunities([])
     } finally {
       setCommunitiesLoading(false)
     }
@@ -119,9 +145,9 @@ export default function CommunitiesPage() {
   const fetchTrendingPosts = async () => {
     setTrendingPostsLoading(true)
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-      const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
-      const response = await fetch('/api/communities/posts?sort=trending&limit=10', { headers })
+      const response = await fetch('/api/communities/posts?sort=trending&limit=10', {
+        credentials: 'include'
+      })
       const data = await response.json()
       if (data.success) {
         setTrendingPosts(data.data)
@@ -155,10 +181,9 @@ export default function CommunitiesPage() {
       params.append('page', pageNum.toString())
       params.append('limit', '20')
 
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-      const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
-
-      const response = await fetch(`/api/communities/posts?${params}`, { headers })
+      const response = await fetch(`/api/communities/posts?${params}`, {
+        credentials: 'include'
+      })
       const data = await response.json()
 
       if (data.success) {
@@ -238,12 +263,14 @@ export default function CommunitiesPage() {
     }))
 
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`/api/posts/${postId}`, {
+      const response = await authFetch(`/api/posts/${postId}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ action: 'like' })
+        body: { action: 'like' }
       })
+      if (!response?.ok || typeof response.json !== 'function') {
+        fetchPosts(1)
+        return
+      }
       const data = await response.json()
       if (!data.success) fetchPosts(1)
     } catch { fetchPosts(1) }
@@ -275,12 +302,14 @@ export default function CommunitiesPage() {
     }))
 
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`/api/posts/${postId}`, {
+      const response = await authFetch(`/api/posts/${postId}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ action: 'dislike' })
+        body: { action: 'dislike' }
       })
+      if (!response?.ok || typeof response.json !== 'function') {
+        fetchPosts(1)
+        return
+      }
       const data = await response.json()
       if (!data.success) fetchPosts(1)
     } catch { fetchPosts(1) }

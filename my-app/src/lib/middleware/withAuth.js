@@ -5,22 +5,31 @@ import connectDB from '../config/database.js'
 import { unauthorized, handleError } from '../utils/apiResponse.js'
 
 /**
- * Extract token from request - checks Authorization header first, then cookies
+ * Extract possible tokens from request.
+ * Header token is checked first, but middleware can gracefully fall back to cookie
+ * if header token is stale/invalid.
  */
-function getTokenFromRequest(request) {
-  // Check Authorization header first
+function getTokensFromRequest(request) {
+  const tokens = []
+
+  // Authorization header token
   const authHeader = request.headers.get('authorization')
   if (authHeader && authHeader.startsWith('Bearer ')) {
-    return authHeader.replace('Bearer ', '')
+    const headerToken = authHeader.replace('Bearer ', '').trim()
+    if (headerToken) tokens.push({ token: headerToken, source: 'header' })
   }
 
-  // Fall back to cookie
+  // Cookie token
   const authCookie = request.cookies.get('auth_token')
-  if (authCookie) {
-    return authCookie.value
+  if (authCookie?.value) {
+    const cookieToken = authCookie.value.trim()
+    // Avoid duplicate verification if header and cookie tokens match
+    if (cookieToken && !tokens.some(t => t.token === cookieToken)) {
+      tokens.push({ token: cookieToken, source: 'cookie' })
+    }
   }
 
-  return null
+  return tokens
 }
 
 /**
@@ -33,34 +42,40 @@ export function withAuth(handler) {
       // Ensure database connection
       await connectDB()
 
-      const token = getTokenFromRequest(request)
+      const tokens = getTokensFromRequest(request)
 
-      if (!token) {
+      if (!tokens.length) {
         return unauthorized()
       }
 
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET)
+      let lastJwtError = null
 
-        // Fetch user from database
-        const user = await User.findById(decoded.userId).select('-password')
+      for (const { token, source } of tokens) {
+        try {
+          const decoded = jwt.verify(token, process.env.JWT_SECRET)
 
-        if (!user) {
-          console.error('User not found in database:', decoded.userId)
-          return unauthorized('Account not found')
+          // Fetch user from database
+          const user = await User.findById(decoded.userId).select('-password')
+
+          if (!user) {
+            console.error(`User not found in database for ${source} token:`, decoded.userId)
+            continue
+          }
+
+          // Add user to context
+          const enhancedContext = { ...context, user }
+          return handler(request, enhancedContext)
+        } catch (jwtError) {
+          lastJwtError = jwtError
+          console.error(`JWT verification error (${source} token):`, jwtError.message)
+          continue
         }
-
-        // Add user to context
-        const enhancedContext = { ...context, user }
-
-        return handler(request, enhancedContext)
-      } catch (jwtError) {
-        if (jwtError.name === 'TokenExpiredError') {
-          return unauthorized('Your session has expired. Please log in again')
-        }
-        console.error('JWT verification error:', jwtError.message)
-        return unauthorized('Invalid authentication. Please log in again')
       }
+
+      if (lastJwtError?.name === 'TokenExpiredError') {
+        return unauthorized('Your session has expired. Please log in again')
+      }
+      return unauthorized('Invalid authentication. Please log in again')
     } catch (error) {
       return handleError(error, 'Auth middleware')
     }
@@ -77,23 +92,30 @@ export function withOptionalAuth(handler) {
       // Ensure database connection
       await connectDB()
 
-      const token = getTokenFromRequest(request)
+      const tokens = getTokensFromRequest(request)
 
-      if (!token) {
+      if (!tokens.length) {
         // No token, continue without user
         return handler(request, { ...context, user: null })
       }
 
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET)
-        const user = await User.findById(decoded.userId).select('-password')
+      for (const { token } of tokens) {
+        try {
+          const decoded = jwt.verify(token, process.env.JWT_SECRET)
+          const user = await User.findById(decoded.userId).select('-password')
 
-        const enhancedContext = { ...context, user: user || null }
-        return handler(request, enhancedContext)
-      } catch (jwtError) {
-        // Invalid token, continue without user (don't fail)
-        return handler(request, { ...context, user: null })
+          if (user) {
+            const enhancedContext = { ...context, user }
+            return handler(request, enhancedContext)
+          }
+        } catch (jwtError) {
+          // Try next token source (if any)
+          continue
+        }
       }
+
+      // No valid token found
+      return handler(request, { ...context, user: null })
     } catch (error) {
       // Log but don't expose internal errors
       console.error('Optional auth middleware error:', error)
