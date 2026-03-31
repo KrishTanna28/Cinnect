@@ -312,9 +312,8 @@ export default function SettingsPage() {
 
   const fetchSettings = async () => {
     try {
-      const token = localStorage.getItem("token")
       const response = await fetch("/api/users/me/settings", {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: {}
       })
       const data = await response.json()
       if (data.success) {
@@ -330,7 +329,6 @@ export default function SettingsPage() {
   const updateSettings = async (key, value) => {
     setSaving(true)
     try {
-      const token = localStorage.getItem("token")
       const body = {}
 
       if (key === "isPrivate") {
@@ -345,7 +343,6 @@ export default function SettingsPage() {
       const response = await fetch("/api/users/me/settings", {
         method: "PATCH",
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify(body)
@@ -376,7 +373,6 @@ export default function SettingsPage() {
   const saveProfile = async () => {
     setProfileSaving(true)
     try {
-      const token = localStorage.getItem("token")
       const formData = new FormData()
       formData.append("fullName", profileForm.fullName)
       formData.append("bio", profileForm.bio)
@@ -390,7 +386,7 @@ export default function SettingsPage() {
 
       const response = await fetch("/api/users/me", {
         method: "PATCH",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {},
         body: formData
       })
 
@@ -415,9 +411,8 @@ export default function SettingsPage() {
   const fetchBlockedUsers = async () => {
     setBlockedLoading(true)
     try {
-      const token = localStorage.getItem("token")
       const response = await fetch("/api/users/blocked", {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: {}
       })
       const data = await response.json()
       if (data.success) setBlockedUsers(data.users)
@@ -430,10 +425,9 @@ export default function SettingsPage() {
 
   const handleUnblockUser = async (userId) => {
     try {
-      const token = localStorage.getItem("token")
       const response = await fetch(`/api/users/${userId}/block`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` }
+        headers: {}
       })
       const data = await response.json()
       if (data.success) {
@@ -449,9 +443,8 @@ export default function SettingsPage() {
   const fetchFollowRequests = async () => {
     setRequestsLoading(true)
     try {
-      const token = localStorage.getItem("token")
       const response = await fetch("/api/users/me/follow-requests", {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: {}
       })
       const data = await response.json()
       if (data.success) setFollowRequests(data.data.requests)
@@ -465,10 +458,9 @@ export default function SettingsPage() {
   const handleAcceptRequest = async (requesterId) => {
     setProcessingIds(prev => new Set(prev).add(requesterId))
     try {
-      const token = localStorage.getItem("token")
       const response = await fetch("/api/users/me/follow-requests", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ requesterId })
       })
       const data = await response.json()
@@ -486,10 +478,9 @@ export default function SettingsPage() {
   const handleDeclineRequest = async (requesterId) => {
     setProcessingIds(prev => new Set(prev).add(requesterId))
     try {
-      const token = localStorage.getItem("token")
       const response = await fetch(`/api/users/me/follow-requests?requesterId=${requesterId}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` }
+        headers: {}
       })
       const data = await response.json()
       if (data.success) {

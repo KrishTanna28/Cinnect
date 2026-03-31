@@ -17,8 +17,7 @@ export function SocketProvider({ children }) {
   const listenersRef = useRef(new Set())
 
   useEffect(() => {
-    const token = localStorage.getItem("token")
-    if (!user || !token) {
+    if (!user) {
       // Disconnect if user logs out
       if (socketRef.current) {
         socketRef.current.disconnect()
@@ -40,7 +39,6 @@ export function SocketProvider({ children }) {
 
     const socket = ioClient(socketUrl || window.location.origin, {
       path: isExternal ? "/socket.io" : "/api/socketio",
-      auth: { token },
       transports: ["websocket", "polling"],
       reconnection: true,
       reconnectionAttempts: Infinity,

@@ -66,10 +66,7 @@ export default function FollowersFollowingModal({
     else setLoadingMore(true)
 
     try {
-      const token = localStorage.getItem("token")
       const headers = {}
-      if (token) headers["Authorization"] = `Bearer ${token}`
-
       const endpoint = activeTab === "following" ? "following" : "followers"
       const params = new URLSearchParams({
         page: pageNum.toString(),
@@ -128,8 +125,7 @@ export default function FollowersFollowingModal({
 
   // Follow/Unfollow handler — optimistic update
   const handleFollowToggle = async (targetId, isCurrentlyFollowing) => {
-    const token = localStorage.getItem("token")
-    if (!token || !currentUser) return
+    if (!currentUser) return
 
     // Optimistic: immediately toggle in UI
     setUsers((prev) =>
@@ -144,7 +140,6 @@ export default function FollowersFollowingModal({
       const response = await fetch(`/api/users/${targetId}/follow`, {
         method: isCurrentlyFollowing ? "DELETE" : "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json"
         }
       })

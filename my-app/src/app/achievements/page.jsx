@@ -70,16 +70,7 @@ export default function AchievementsPage() {
     try {
       setIsLoading(true)
       setError(null)
-      const token = localStorage.getItem("token")
-      if (!token) {
-        setError("Please log in to view your achievements.")
-        setIsLoading(false)
-        return
-      }
-
-      const res = await fetch("/api/users/me/stats", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const res = await fetch("/api/users/me/stats")
       const data = await res.json()
 
       if (!res.ok || !data.success) {

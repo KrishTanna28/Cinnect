@@ -45,9 +45,8 @@ export default function NewPostPage() {
 
   const fetchCommunity = async () => {
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch(`/api/communities/${params.slug}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: {}
       })
       const data = await response.json()
       
@@ -205,15 +204,12 @@ export default function NewPostPage() {
           console.error('Spoiler detection failed, proceeding without:', detectErr)
         }
       }
-
-      const token = localStorage.getItem('token')
       const selectedCat = FLAT_CATEGORIES.find(c => c.id === category);
       
       const response = await fetch(`/api/communities/${params.slug}/posts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           title,

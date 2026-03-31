@@ -284,10 +284,7 @@ export default function ProfilePage() {
     }
 
     if (user) {
-      const token = localStorage.getItem('token')
-      if (token) {
-        fetchUserStats(token)
-      }
+      fetchUserStats()
     }
   }, [user, isLoading, router])
 
@@ -302,13 +299,9 @@ export default function ProfilePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab])
 
-  const fetchUserStats = async (token) => {
+  const fetchUserStats = async () => {
     try {
-      const response = await fetch('/api/users/me/stats', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+      const response = await fetch('/api/users/me/stats')
 
       const data = await response.json()
       if (data.success) {
@@ -324,10 +317,8 @@ export default function ProfilePage() {
   const fetchWatchlist = async () => {
     setWatchlistLoading(true)
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch('/api/users/me/watchlist', {
         headers: {
-          'Authorization': `Bearer ${token}`
         }
       })
 
@@ -373,10 +364,8 @@ export default function ProfilePage() {
   const fetchFavorites = async () => {
     setFavoritesLoading(true)
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch('/api/users/me/favorites', {
         headers: {
-          'Authorization': `Bearer ${token}`
         }
       })
 
@@ -419,10 +408,8 @@ export default function ProfilePage() {
   const fetchReviews = async () => {
     setReviewsLoading(true)
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch(`/api/reviews/user/${user._id}`, {
         headers: {
-          'Authorization': `Bearer ${token}`
         }
       })
 
@@ -439,11 +426,9 @@ export default function ProfilePage() {
 
   const removeFromWatchlist = async (movieId) => {
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch(`/api/users/me/watchlist/${movieId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`
         }
       })
 
@@ -458,11 +443,9 @@ export default function ProfilePage() {
 
   const removeFromFavorites = async (movieId) => {
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch(`/api/users/me/favorites/${movieId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`
         }
       })
 
@@ -743,7 +726,7 @@ export default function ProfilePage() {
 
         {activeTab === "watchlist" && (
           <div>
-            <h3 className="text-xl font-bold text-foreground mb-6">Your Watchlist ({watchlist.length})</h3>
+            <h3 className="text-xl font-bold text-foreground mb-6">Your Watchlist {watchlist.length == 0 ? "" : `(${watchlist.length})`}</h3>
             {watchlistLoading ? (
               <CardGridSkeleton count={5} />
             ) : watchlist.length === 0 ? (
@@ -805,7 +788,7 @@ export default function ProfilePage() {
 
         {activeTab === "favorites" && (
           <div>
-            <h3 className="text-xl font-bold text-foreground mb-6">Your Favorites ({favorites.length})</h3>
+            <h3 className="text-xl font-bold text-foreground mb-6">Your Favorites {favorites.length == 0 ? "" : `(${favorites.length})`}</h3>
             {favoritesLoading ? (
               <CardGridSkeleton count={5} />
             ) : favorites.length === 0 ? (
@@ -867,7 +850,7 @@ export default function ProfilePage() {
 
         {activeTab === "reviews" && (
           <div>
-            <h3 className="text-xl font-bold text-foreground mb-6">Your Reviews ({reviews.length})</h3>
+            <h3 className="text-xl font-bold text-foreground mb-6">Your Reviews {reviews.length == 0 ? "" : `(${reviews.length})`}</h3>
             {reviewsLoading ? (
               <ReviewListSkeleton count={3} />
             ) : reviews.length === 0 ? (

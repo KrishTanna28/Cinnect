@@ -43,8 +43,7 @@ export default function EditCommunityPage() {
   const fetchCommunity = async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem('token')
-      const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
+      const headers = {}
 
       const response = await fetch(`/api/communities/${params.slug}`, { headers })
       const data = await response.json()
@@ -126,12 +125,10 @@ export default function EditCommunityPage() {
 
     setSubmitting(true)
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch(`/api/communities/${params.slug}/update`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           description,

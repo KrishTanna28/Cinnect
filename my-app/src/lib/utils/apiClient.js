@@ -16,14 +16,6 @@ const ERROR_MESSAGES = {
 }
 
 /**
- * Get the auth token from localStorage
- */
-function getToken() {
-  if (typeof window === 'undefined') return null
-  return localStorage.getItem('token')
-}
-
-/**
  * Handle 401 Unauthorized responses
  * Clears auth state and redirects to login
  */
@@ -31,7 +23,6 @@ function handleUnauthorized(returnUrl = null) {
   if (typeof window === 'undefined') return
 
   // Clear auth data
-  localStorage.removeItem('token')
   localStorage.removeItem('user')
 
   // Build login URL with return path
@@ -122,12 +113,9 @@ function getErrorMessage(status) {
  * @param {object} apiOptions - Additional API options
  */
 export async function api(url, options = {}, apiOptions = {}) {
-  const token = getToken()
-
   // Build headers
   const headers = {
     ...(options.body && !(options.body instanceof FormData) && { 'Content-Type': 'application/json' }),
-    ...(token && { 'Authorization': `Bearer ${token}` }),
     ...options.headers,
   }
 
@@ -135,6 +123,7 @@ export async function api(url, options = {}, apiOptions = {}) {
   const fetchOptions = {
     ...options,
     headers,
+    credentials: 'include',
     body: options.body && !(options.body instanceof FormData)
       ? JSON.stringify(options.body)
       : options.body,
@@ -216,14 +205,14 @@ export async function apiWithRetry(url, options = {}, retries = 2) {
  * Check if the user is currently authenticated
  */
 export function isAuthenticated() {
-  return !!getToken()
+  if (typeof window === 'undefined') return false
+  return !!localStorage.getItem('user')
 }
 
 /**
  * Logout the user
  */
 export function logout() {
-  localStorage.removeItem('token')
   localStorage.removeItem('user')
   window.location.href = '/login'
 }

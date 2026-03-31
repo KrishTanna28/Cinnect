@@ -93,17 +93,15 @@ export default function MessagesPage() {
 
   const fetchConversations = async () => {
     try {
-      const token = localStorage.getItem('token');
-      
       // Fetch regular messages
       const messagesRes = await fetch('/api/messages/conversations?type=messages', {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: {}
       });
       const messagesData = await messagesRes.json();
       
       // Fetch requests
       const requestsRes = await fetch('/api/messages/conversations?type=requests', {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: {}
       });
       const requestsData = await requestsRes.json();
 
@@ -124,7 +122,7 @@ export default function MessagesPage() {
         if (!targetConv) {
           try {
             const singleRes = await fetch(`/api/messages/conversations/${pendingConvId}`, {
-              headers: { Authorization: `Bearer ${token}` }
+              headers: {}
             });
             const singleData = await singleRes.json();
             if (singleData.success) {

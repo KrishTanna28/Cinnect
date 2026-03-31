@@ -66,12 +66,8 @@ export default function Navigation() {
   // Fetch unread message count
   const fetchUnreadMsgCount = useCallback(async () => {
     if (!user) return
-    const token = localStorage.getItem("token")
-    if (!token) return
     try {
-      const res = await fetch("/api/messages/unread-count", {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const res = await fetch("/api/messages/unread-count")
       if (res.ok) {
         const json = await res.json()
         if (json.success) {
@@ -160,18 +156,15 @@ export default function Navigation() {
 
     setIsSearching(true)
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
       const [moviesRes, communitiesRes, postsRes, peopleRes] = await Promise.allSettled([
         // Movies & TV from TMDB (multi search)
         fetch(`/api/movies/search/multi?q=${encodeURIComponent(query)}&page=1`).then(r => r.json()),
         // Communities
         fetch(`/api/communities/search?q=${encodeURIComponent(query)}&limit=5`).then(r => r.json()),
         // Posts
-        fetch(`/api/communities/posts?search=${encodeURIComponent(query)}&limit=5`, { headers }).then(r => r.json()),
+        fetch(`/api/communities/posts?search=${encodeURIComponent(query)}&limit=5`).then(r => r.json()),
         // People/Users
-        fetch(`/api/users/search?q=${encodeURIComponent(query)}&limit=5`, { headers }).then(r => r.json())
+        fetch(`/api/users/search?q=${encodeURIComponent(query)}&limit=5`).then(r => r.json())
       ])
 
       // Separate celebrities (persons) from movies/TV
@@ -290,12 +283,8 @@ export default function Navigation() {
 
   // Fetch search history from the API
   const fetchSearchHistory = useCallback(async () => {
-    const token = localStorage.getItem("token")
-    if (!token) return
     try {
-      const res = await fetch("/api/search/log", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const res = await fetch("/api/search/log")
       if (res.ok) {
         const json = await res.json()
         if (json.success) {
@@ -314,14 +303,12 @@ export default function Navigation() {
 
   // Save a search query to history
   const saveSearchQuery = useCallback(async (query) => {
-    const token = localStorage.getItem("token")
-    if (!token || !query) return
+    if (!query) return
     try {
       await fetch("/api/search/log", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ query }),
       })
@@ -334,12 +321,9 @@ export default function Navigation() {
 
   // Clear all search history
   const clearSearchHistory = useCallback(async () => {
-    const token = localStorage.getItem("token")
-    if (!token) return
     try {
       await fetch("/api/search/log", {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
       })
       setSearchHistory([])
       setShowSearchDropdown(false)
@@ -350,12 +334,9 @@ export default function Navigation() {
 
   // Delete a single search history entry
   const deleteSearchEntry = useCallback(async (entryId) => {
-    const token = localStorage.getItem("token")
-    if (!token) return
     try {
       await fetch(`/api/search/log?id=${entryId}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
       })
       setSearchHistory((prev) => prev.filter((e) => e._id !== entryId))
     } catch {

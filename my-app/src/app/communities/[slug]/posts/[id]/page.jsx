@@ -177,8 +177,7 @@ export default function PostDetailPage() {
 
     setLoadingMoreComments(true)
     try {
-      const token = localStorage.getItem('token')
-      const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
+      const headers = {}
       const nextPage = commentsPage + 1
 
       const response = await fetch(`/api/posts/${params.id}?commentsPage=${nextPage}&commentsLimit=10`, { headers })
@@ -230,12 +229,10 @@ export default function PostDetailPage() {
     })
 
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch(`/api/posts/${params.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ action: 'like' })
       })
@@ -282,12 +279,10 @@ export default function PostDetailPage() {
     })
 
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch(`/api/posts/${params.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ action: 'dislike' })
       })
@@ -335,12 +330,10 @@ export default function PostDetailPage() {
     }))
 
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch(`/api/posts/${params.id}/comment`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ commentId, action: 'like' })
       })
@@ -388,12 +381,10 @@ export default function PostDetailPage() {
     }))
 
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch(`/api/posts/${params.id}/comment`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ commentId, action: 'dislike' })
       })
@@ -494,12 +485,10 @@ export default function PostDetailPage() {
     setCommentSpoiler(false)
 
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch(`/api/posts/${params.id}/comment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ content: contentToSend, spoiler: spoilerToSend })
       })
@@ -637,12 +626,10 @@ export default function PostDetailPage() {
     setShowReplies(newShowReplies)
 
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch(`/api/posts/${params.id}/comment/${commentId}/reply`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           content: contentToSend,
@@ -738,12 +725,10 @@ export default function PostDetailPage() {
     }))
 
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch(`/api/posts/${params.id}/comment/${commentId}/reply`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ replyId, action: 'like' })
       })
@@ -798,12 +783,10 @@ export default function PostDetailPage() {
     }))
 
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch(`/api/posts/${params.id}/comment/${commentId}/reply`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ replyId, action: 'dislike' })
       })
@@ -824,10 +807,9 @@ export default function PostDetailPage() {
   const handleDelete = async () => {
     setDeleting(true)
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch(`/api/posts/${params.id}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: {}
       })
 
       const data = await response.json()
@@ -895,10 +877,9 @@ export default function PostDetailPage() {
   const handleUpdatePost = async () => {
     setUpdatingPost(true)
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch(`/api/posts/${params.id}`, {
         method: 'PATCH',
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: {}
       })
       const data = await response.json()
 

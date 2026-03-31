@@ -254,12 +254,8 @@ export default function BrowsePage() {
 
   // Fetch search history
   const fetchSearchHistory = useCallback(async () => {
-    const token = localStorage.getItem("token")
-    if (!token) return
     try {
-      const res = await fetch("/api/search/log", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const res = await fetch("/api/search/log")
       if (res.ok) {
         const json = await res.json()
         if (json.success) {
@@ -275,12 +271,9 @@ export default function BrowsePage() {
 
   // Delete a single search history entry
   const deleteSearchEntry = useCallback(async (entryId) => {
-    const token = localStorage.getItem("token")
-    if (!token) return
     try {
       const res = await fetch(`/api/search/log/${entryId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) {
         setSearchHistory(prev => prev.filter(item => item._id !== entryId))
@@ -292,12 +285,9 @@ export default function BrowsePage() {
 
   // Clear all search history
   const clearSearchHistory = useCallback(async () => {
-    const token = localStorage.getItem("token")
-    if (!token) return
     try {
       const res = await fetch("/api/search/log", {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) {
         setSearchHistory([])

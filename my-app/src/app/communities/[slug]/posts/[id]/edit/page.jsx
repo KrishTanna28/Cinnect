@@ -45,8 +45,6 @@ export default function EditPostPage() {
 
   const fetchPostAndCommunity = async () => {
     try {
-      const token = localStorage.getItem('token')
-      
       // Fetch post
       const postData = await fetchPosts(params.id)
       
@@ -82,7 +80,7 @@ export default function EditPostPage() {
 
       // Fetch community
       const response = await fetch(`/api/communities/${params.slug}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: {}
       })
       const communityData = await response.json()
       
@@ -167,14 +165,12 @@ export default function EditPostPage() {
 
     setSubmitting(true)
     try {
-      const token = localStorage.getItem('token')
       const selectedCat = FLAT_CATEGORIES.find(c => c.id === category)
 
       const response = await fetch(`/api/posts/${params.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           title,

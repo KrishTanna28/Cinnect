@@ -31,9 +31,8 @@ export default function NewMessageDialog({ open, onClose, onConversationCreated 
   const searchUsers = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
       const res = await fetch(`/api/users/search?q=${encodeURIComponent(searchQuery)}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: {}
       });
       const data = await res.json();
 
@@ -50,12 +49,10 @@ export default function NewMessageDialog({ open, onClose, onConversationCreated 
   const handleSelectUser = async (userId) => {
     setCreating(true);
     try {
-      const token = localStorage.getItem('token');
       const res = await fetch('/api/messages/conversations', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({ recipientId: userId })
       });

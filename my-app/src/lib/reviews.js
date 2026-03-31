@@ -26,16 +26,10 @@ export async function getReviewById(reviewId) {
 
 export async function createReview(reviewData) {
   try {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      throw new Error('Please login to create a review')
-    }
-
     const response = await fetch(`${API_BASE_URL}/reviews`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify(reviewData)
     })
@@ -54,16 +48,10 @@ export async function createReview(reviewData) {
 
 export async function updateReview(reviewId, reviewData) {
   try {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      throw new Error('Please login to update a review')
-    }
-
     const response = await fetch(`${API_BASE_URL}/reviews/${reviewId}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify(reviewData)
     })
@@ -82,15 +70,9 @@ export async function updateReview(reviewId, reviewData) {
 
 export async function deleteReview(reviewId) {
   try {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      throw new Error('Please login to delete a review')
-    }
-
     const response = await fetch(`${API_BASE_URL}/reviews/${reviewId}`, {
       method: 'DELETE',
       headers: {
-        'Authorization': `Bearer ${token}`
       }
     })
     const data = await response.json()
@@ -108,15 +90,9 @@ export async function deleteReview(reviewId) {
 
 export async function likeReview(reviewId) {
   try {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      throw new Error('Please login to like a review')
-    }
-
     const response = await fetch(`${API_BASE_URL}/reviews/${reviewId}/like`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`
       }
     })
     const data = await response.json()
@@ -134,15 +110,9 @@ export async function likeReview(reviewId) {
 
 export async function dislikeReview(reviewId) {
   try {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      throw new Error('Please login to dislike a review')
-    }
-
     const response = await fetch(`${API_BASE_URL}/reviews/${reviewId}/dislike`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`
       }
     })
     const data = await response.json()
@@ -160,11 +130,6 @@ export async function dislikeReview(reviewId) {
 
 export async function addReply(reviewId, content, spoiler = false, parentReplyId = null) {
   try {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      throw new Error('Please login to add a reply')
-    }
-
     const payload = { content, spoiler }
     if (parentReplyId) {
       payload.parentReplyId = parentReplyId
@@ -174,7 +139,6 @@ export async function addReply(reviewId, content, spoiler = false, parentReplyId
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify(payload)
     })
@@ -193,15 +157,9 @@ export async function addReply(reviewId, content, spoiler = false, parentReplyId
 
 export async function likeReply(reviewId, replyId) {
   try {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      throw new Error('Please login to like a reply')
-    }
-
     const response = await fetch(`${API_BASE_URL}/reviews/${reviewId}/reply/${replyId}/like`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`
       }
     })
     const data = await response.json()
@@ -219,15 +177,9 @@ export async function likeReply(reviewId, replyId) {
 
 export async function dislikeReply(reviewId, replyId) {
   try {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      throw new Error('Please login to dislike a reply')
-    }
-
     const response = await fetch(`${API_BASE_URL}/reviews/${reviewId}/reply/${replyId}/dislike`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`
       }
     })
     const data = await response.json()
@@ -245,16 +197,10 @@ export async function dislikeReply(reviewId, replyId) {
 
 export async function getUserReviews(page = 1, limit = 10) {
   try {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      throw new Error('Please login to view your reviews')
-    }
-
     const response = await fetch(
       `${API_BASE_URL}/reviews/user/my-reviews?page=${page}&limit=${limit}`,
       {
         headers: {
-          'Authorization': `Bearer ${token}`
         }
       }
     )

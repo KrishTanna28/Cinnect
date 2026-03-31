@@ -20,17 +20,8 @@ export default function WatchlistPage() {
     try {
       setIsLoading(true)
       setError(null)
-      const token = localStorage.getItem("token")
-      if (!token) {
-        setError("Please log in to view your watchlist.")
-        setIsLoading(false)
-        return
-      }
-
       // Fetch watchlist IDs from the user's account
-      const res = await fetch("/api/users/me/watchlist", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const res = await fetch("/api/users/me/watchlist")
       const data = await res.json()
 
       if (!res.ok || !data.success) {
@@ -94,10 +85,8 @@ export default function WatchlistPage() {
 
   const removeFromWatchlist = async (movieId) => {
     try {
-      const token = localStorage.getItem("token")
       const res = await fetch(`/api/users/me/watchlist/${movieId}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) {
         setWatchlist((prev) => prev.filter((m) => m.id !== movieId))

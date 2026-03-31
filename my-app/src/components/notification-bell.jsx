@@ -40,13 +40,9 @@ export default function NotificationBell() {
 
   // Fetch notifications
   const fetchNotifications = useCallback(async () => {
-    const token = localStorage.getItem("token")
-    if (!token) return
     setLoading(true)
     try {
-      const res = await fetch("/api/notifications?limit=30", {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const res = await fetch("/api/notifications?limit=30")
       if (res.ok) {
         const json = await res.json()
         if (json.success) {
@@ -63,12 +59,9 @@ export default function NotificationBell() {
 
   // Generate entertainment notifications (once per session)
   const generateEntertainmentNotifications = useCallback(async () => {
-    const token = localStorage.getItem("token")
-    if (!token) return
     try {
       await fetch("/api/notifications/generate", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` }
       })
     } catch {
       // non-critical
@@ -113,9 +106,6 @@ export default function NotificationBell() {
 
   // ─── Mark non-request notifications as read when dropdown is opened ───
   const markNonRequestNotificationsRead = useCallback(async () => {
-    const token = localStorage.getItem("token")
-    if (!token) return
-
     // Get IDs of unread non-request notifications
     const nonRequestUnreadIds = notifications
       .filter(n => !n.read && !REQUEST_TYPES.has(n.type))
@@ -128,7 +118,6 @@ export default function NotificationBell() {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({ notificationIds: nonRequestUnreadIds })
       })
@@ -168,22 +157,18 @@ export default function NotificationBell() {
 
     // 1. Mark as read (only for non-request notifications)
     if (!notif.read && !isRequest) {
-      const token = localStorage.getItem("token")
-      if (token) {
-        setNotifications((prev) =>
-          prev.map((n) => (n._id === notif._id ? { ...n, read: true } : n))
-        )
-        setUnreadCount((prev) => Math.max(0, prev - 1))
+      setNotifications((prev) =>
+        prev.map((n) => (n._id === notif._id ? { ...n, read: true } : n))
+      )
+      setUnreadCount((prev) => Math.max(0, prev - 1))
 
-        fetch("/api/notifications", {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({ notificationIds: [notif._id] })
-        }).catch((err) => console.error("Failed to mark notification as read:", err))
-      }
+      fetch("/api/notifications", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ notificationIds: [notif._id] })
+      }).catch((err) => console.error("Failed to mark notification as read:", err))
     }
 
     setOpen(false)
@@ -220,9 +205,6 @@ export default function NotificationBell() {
 
   // Handle accept / reject actions — optimistic update
   const handleAction = async (notificationId, action) => {
-    const token = localStorage.getItem("token")
-    if (!token) return
-
     const prevNotifications = notifications
     const prevUnreadCount = unreadCount
 
@@ -240,7 +222,6 @@ export default function NotificationBell() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({ notificationId, action })
       })

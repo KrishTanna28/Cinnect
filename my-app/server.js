@@ -35,9 +35,17 @@ app.prepare().then(() => {
   // Store io instance globally so API routes can access it
   globalThis._io = io
 
+  const getTokenFromCookieHeader = (cookieHeader = '') => {
+    return cookieHeader
+      .split(';')
+      .map((part) => part.trim())
+      .find((part) => part.startsWith('auth_token='))
+      ?.split('=')[1] || null
+  }
+
   // Authentication middleware – verify JWT and join user-specific room
   io.use((socket, next) => {
-    const token = socket.handshake.auth?.token
+    const token = socket.handshake.auth?.token || getTokenFromCookieHeader(socket.handshake.headers?.cookie)
     if (!token) {
       return next(new Error('Authentication required'))
     }

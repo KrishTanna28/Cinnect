@@ -48,10 +48,7 @@ export default function CommunityMembersModal({
     else setLoadingMore(true)
 
     try {
-      const token = localStorage.getItem("token")
       const headers = {}
-      if (token) headers["Authorization"] = `Bearer ${token}`
-
       const params = new URLSearchParams({
         page: pageNum.toString(),
         limit: "20",
@@ -117,8 +114,7 @@ export default function CommunityMembersModal({
   }, [loadingMore, hasMore, page, searchQuery, fetchUsers])
 
   const handleFollowToggle = async (targetId, isCurrentlyFollowing) => {
-    const token = localStorage.getItem("token")
-    if (!token || !currentUser) return
+    if (!currentUser) return
 
     setUsers((prev) =>
       prev.map((u) =>
@@ -132,7 +128,6 @@ export default function CommunityMembersModal({
       const response = await fetch(`/api/users/${targetId}/follow`, {
         method: isCurrentlyFollowing ? "DELETE" : "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json"
         }
       })
@@ -162,9 +157,6 @@ export default function CommunityMembersModal({
   const handleRemoveMember = async () => {
     if (!memberToRemove) return
 
-    const token = localStorage.getItem("token")
-    if (!token) return
-
     setRemovingMemberId(memberToRemove._id)
 
     try {
@@ -173,7 +165,6 @@ export default function CommunityMembersModal({
         {
           method: "DELETE",
           headers: {
-            Authorization: `Bearer ${token}`
           }
         }
       )

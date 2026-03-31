@@ -284,10 +284,9 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
         // If we are viewing this chat and receive a message, immediately mark it as read
         if (data.message.sender._id !== user._id) {
           try {
-            const token = localStorage.getItem('token');
             await fetch(`/api/messages/${conversation._id}/read`, {
               method: 'PATCH',
-              headers: { Authorization: `Bearer ${token}` }
+              headers: {}
             });
             if (onUpdate) onUpdate(); // Update list to remove any unread counts immediately
           } catch (err) {
@@ -371,10 +370,9 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
     setIsMuting(true);
     
     try {
-      const token = localStorage.getItem('token');
       const res = await fetch(`/api/messages/${conversation._id}/mute`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
+        headers: {}
       });
       const data = await res.json();
       
@@ -411,10 +409,9 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
   const handleBlockUser = async () => {
     try {
       setIsBlocking(true);
-      const token = localStorage.getItem('token');
       const res = await fetch(`/api/users/${participant._id}/block`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
+        headers: {}
       });
       const data = await res.json();
       if (data.success) {
@@ -432,10 +429,9 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
   const handleDeleteChat = async () => {
     try {
       setIsDeleting(true);
-      const token = localStorage.getItem('token');
       const res = await fetch(`/api/messages/${conversation._id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        headers: {}
       });
       const data = await res.json();
       if (data.success) {
@@ -454,9 +450,8 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
   const fetchMessages = async (pageNum = 1, isInitial = false) => {
     try {
       if (!isInitial) setIsLoadingMore(true);
-      const token = localStorage.getItem('token');
       const res = await fetch(`/api/messages/${conversation._id}?page=${pageNum}&limit=50`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: {}
       });
       const data = await res.json();
 
@@ -534,12 +529,10 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
 
     // Send to server in background
     try {
-      const token = localStorage.getItem('token');
       const res = await fetch(`/api/messages/${conversation._id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({ content: contentToSend.trim(), type, fileData })
       });
@@ -611,12 +604,10 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
 
   const reactToMessage = async (messageId, emoji) => {
     try {
-      const token = localStorage.getItem('token');
       const res = await fetch(`/api/messages/${conversation._id}/${messageId}/react`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({ emoji })
       });
@@ -632,12 +623,10 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
 
   const handleAcceptRequest = async () => {
     try {
-      const token = localStorage.getItem('token');
       const res = await fetch(`/api/messages/conversations/${conversation._id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({ action: 'accept' })
       });
@@ -652,12 +641,10 @@ export default function MessageThread({ conversation, onBack, onUpdate }) {
 
   const handleDeclineRequest = async () => {
     try {
-      const token = localStorage.getItem('token');
       const res = await fetch(`/api/messages/conversations/${conversation._id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({ action: 'decline' })
       });

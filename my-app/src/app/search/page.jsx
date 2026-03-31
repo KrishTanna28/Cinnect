@@ -102,10 +102,7 @@ export default function SearchPage() {
 
     setIsLoadingUsers(true)
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const response = await fetch(`/api/users/search?q=${encodeURIComponent(searchTerm)}&limit=50`, {
-        headers,
         signal: usersAbortControllerRef.current.signal
       })
       const data = await response.json()

@@ -150,23 +150,54 @@ async function verifyToken(token) {
 }
 
 /**
- * Extract token from request
+ * Extract candidate auth tokens from request.
+ * Header token is checked first, but cookie token is preserved as fallback.
  */
-function getToken(request) {
-  // Try Authorization header first
+function getAuthTokens(request) {
+  const tokens = []
+
+  // Authorization header token
   const authHeader = request.headers.get('authorization')
   if (authHeader && authHeader.startsWith('Bearer ')) {
-    return authHeader.replace('Bearer ', '')
+    const headerToken = authHeader.replace('Bearer ', '').trim()
+    if (headerToken) tokens.push({ token: headerToken, source: 'header' })
   }
 
-  // Try cookie (for Google OAuth flow)
-  const cookies = request.cookies
-  const tokenCookie = cookies.get('auth_token')
-  if (tokenCookie) {
-    return tokenCookie.value
+  // Cookie auth token
+  const authCookie = request.cookies.get('auth_token')
+  if (authCookie?.value) {
+    const cookieToken = authCookie.value.trim()
+    if (cookieToken && !tokens.some(t => t.token === cookieToken)) {
+      tokens.push({ token: cookieToken, source: 'cookie' })
+    }
   }
 
-  return null
+  return tokens
+}
+
+/**
+ * Validate auth token candidates (header/cookie) and return first valid payload.
+ */
+async function getValidAuthPayload(request) {
+  const candidates = getAuthTokens(request)
+
+  for (const { token, source } of candidates) {
+    const result = await verifyToken(token)
+    if (result.valid) {
+      return { valid: true, payload: result.payload, source }
+    }
+  }
+
+  return { valid: false }
+}
+
+/**
+ * Validate refresh token cookie so expired access tokens do not force logout.
+ */
+async function getValidRefreshPayload(request) {
+  const refreshToken = request.cookies.get('refresh_token')?.value
+  if (!refreshToken) return { valid: false }
+  return verifyToken(refreshToken)
 }
 
 export async function middleware(request) {
@@ -188,13 +219,11 @@ export async function middleware(request) {
 
   // Prevent authenticated users from visiting auth pages.
   if (!isApiRoute && AUTH_PAGES.includes(pathname)) {
-    const token = getToken(request)
+    const authResult = await getValidAuthPayload(request)
+    const refreshResult = authResult.valid ? { valid: false } : await getValidRefreshPayload(request)
 
-    if (token) {
-      const { valid } = await verifyToken(token)
-      if (valid) {
-        return NextResponse.redirect(new URL('/', request.url))
-      }
+    if (authResult.valid || refreshResult.valid) {
+      return NextResponse.redirect(new URL('/', request.url))
     }
   }
 
@@ -204,9 +233,10 @@ export async function middleware(request) {
   }
 
   // Protected route - verify authentication
-  const token = getToken(request)
+  const authCandidates = getAuthTokens(request)
+  const hasRefreshCookie = !!request.cookies.get('refresh_token')?.value
 
-  if (!token) {
+  if (!authCandidates.length && !hasRefreshCookie) {
     if (isApiRoute) {
       return NextResponse.json(
         { success: false, message: 'Please log in to continue' },
@@ -220,10 +250,15 @@ export async function middleware(request) {
     }
   }
 
-  // Verify the token
-  const { valid, payload, error } = await verifyToken(token)
+  // Try header/cookie access token first
+  const authResult = await getValidAuthPayload(request)
 
-  if (!valid) {
+  // Fallback to refresh token for smoother session continuity
+  const refreshResult = authResult.valid ? { valid: false } : await getValidRefreshPayload(request)
+  const authPayload = authResult.valid ? authResult.payload : (refreshResult.valid ? refreshResult.payload : null)
+  const isValid = !!authPayload
+
+  if (!isValid) {
     // Clear invalid token from cookies
     const response = isApiRoute
       ? NextResponse.json(
@@ -232,15 +267,16 @@ export async function middleware(request) {
         )
       : NextResponse.redirect(new URL('/login', request.url))
 
-    // Clear the auth cookie if it exists
+    // Clear auth cookies if both access and refresh are invalid
     response.cookies.delete('auth_token')
+    response.cookies.delete('refresh_token')
 
     return response
   }
 
   // Token is valid - add user info to headers for downstream use
   const requestHeaders = new Headers(request.headers)
-  requestHeaders.set('x-user-id', payload.userId)
+  requestHeaders.set('x-user-id', authPayload.userId)
 
   return NextResponse.next({
     request: {

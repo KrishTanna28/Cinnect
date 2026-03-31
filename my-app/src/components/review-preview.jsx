@@ -68,11 +68,9 @@ export default function ReviewPreview({ mediaId, mediaType, mediaTitle }) {
     if (!user) return
 
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch(`${API_BASE_URL}/reviews/${reviewId}/like`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`
         }
       })
 
@@ -125,11 +123,9 @@ export default function ReviewPreview({ mediaId, mediaType, mediaTitle }) {
     if (!user) return
 
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch(`${API_BASE_URL}/reviews/${reviewId}/dislike`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`
         }
       })
 

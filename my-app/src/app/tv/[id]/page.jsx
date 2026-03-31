@@ -234,20 +234,17 @@ export default function TVDetailsPage({ params }) {
 
           // Track this view for notification personalization
           if (user) {
-            const token = localStorage.getItem('token')
-            if (token) {
-              fetch('/api/users/me/activity', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({
-                  type: 'view_media',
-                  mediaId: String(response.data.id),
-                  mediaType: 'tv',
-                  title: response.data.name || '',
-                  genres: (response.data.genres || []).map(g => g.name || g).filter(Boolean)
-                })
-              }).catch(() => {})
-            }
+            fetch('/api/users/me/activity', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                type: 'view_media',
+                mediaId: String(response.data.id),
+                mediaType: 'tv',
+                title: response.data.name || '',
+                genres: (response.data.genres || []).map(g => g.name || g).filter(Boolean)
+              })
+            }).catch(() => {})
           }
 
           // Fetch YouTube videos and news about the TV show
@@ -280,14 +277,11 @@ export default function TVDetailsPage({ params }) {
     }
 
     try {
-      const token = localStorage.getItem('token')
-
       if (liked) {
         // Remove from favorites
         const response = await fetch(`/api/users/me/favorites/${tvShow.id}`, {
           method: 'DELETE',
           headers: {
-            'Authorization': `Bearer ${token}`
           }
         })
 
@@ -308,7 +302,6 @@ export default function TVDetailsPage({ params }) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({ movieId: tvShow.id?.toString() })
         })
@@ -337,10 +330,8 @@ export default function TVDetailsPage({ params }) {
 
   const checkIfInWatchlist = async () => {
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch('/api/users/me/watchlist', {
         headers: {
-          'Authorization': `Bearer ${token}`
         }
       })
 
@@ -356,10 +347,8 @@ export default function TVDetailsPage({ params }) {
 
   const checkIfInFavorites = async () => {
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch('/api/users/me/favorites', {
         headers: {
-          'Authorization': `Bearer ${token}`
         }
       })
 
@@ -375,10 +364,8 @@ export default function TVDetailsPage({ params }) {
 
   const checkIfWatched = async () => {
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch('/api/users/me/watched', {
         headers: {
-          'Authorization': `Bearer ${token}`
         }
       })
 
@@ -398,8 +385,6 @@ export default function TVDetailsPage({ params }) {
     setIsUpdatingWatched(true)
 
     try {
-      const token = localStorage.getItem('token')
-
       const response = await fetch(
         isWatched
           ? `/api/users/me/watched/${tvShow.id}`
@@ -408,7 +393,6 @@ export default function TVDetailsPage({ params }) {
           method: isWatched ? 'DELETE' : 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
           },
           body: isWatched ? undefined : JSON.stringify({
             movieId: tvShow.id?.toString(),
@@ -485,14 +469,11 @@ export default function TVDetailsPage({ params }) {
     }
 
     try {
-      const token = localStorage.getItem('token')
-
       if (inWatchlist) {
         // Remove from watchlist
         const response = await fetch(`/api/users/me/watchlist/${tvShow.id}`, {
           method: 'DELETE',
           headers: {
-            'Authorization': `Bearer ${token}`
           }
         })
 
@@ -512,7 +493,6 @@ export default function TVDetailsPage({ params }) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({ movieId: tvShow.id?.toString() })
         })

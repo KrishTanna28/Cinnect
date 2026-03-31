@@ -127,12 +127,10 @@ export default function NewCommunityPage() {
 
     setSubmitting(true)
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch('/api/communities', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           name,

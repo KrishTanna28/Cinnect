@@ -340,10 +340,7 @@ export default function PublicProfilePage({ params }) {
   const fetchUserProfile = async () => {
     try {
       setLoading(true)
-      const token = localStorage.getItem('token')
       const headers = {}
-      if (token) headers['Authorization'] = `Bearer ${token}`
-
       const response = await fetch(`/api/users/${userId}`, { headers })
       const data = await response.json()
 
@@ -366,10 +363,7 @@ export default function PublicProfilePage({ params }) {
   const fetchReviews = async () => {
     setReviewsLoading(true)
     try {
-      const token = localStorage.getItem('token')
       const headers = {}
-      if (token) headers['Authorization'] = `Bearer ${token}`
-
       const response = await fetch(`/api/reviews/user/${userId}`, { headers })
       const data = await response.json()
       if (data.success) {
@@ -388,12 +382,10 @@ export default function PublicProfilePage({ params }) {
       return;
     }
     try {
-      const token = localStorage.getItem('token');
       const res = await fetch('/api/messages/conversations', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({ recipientId: profile._id })
       });
@@ -412,8 +404,7 @@ export default function PublicProfilePage({ params }) {
   }
 
   const handleFollowToggle = async () => {
-    const token = localStorage.getItem('token')
-    if (!token || !currentUser) {
+    if (!currentUser) {
       router.push('/login')
       return
     }
@@ -444,7 +435,6 @@ export default function PublicProfilePage({ params }) {
       const response = await fetch(`/api/users/${userId}/follow`, {
         method: isUnfollow ? 'DELETE' : 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       })

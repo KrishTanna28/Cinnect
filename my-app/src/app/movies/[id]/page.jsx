@@ -235,20 +235,17 @@ export default function DetailsPage({ params }) {
 
           // Track this view for notification personalization
           if (user) {
-            const token = localStorage.getItem('token')
-            if (token) {
-              fetch('/api/users/me/activity', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({
-                  type: 'view_media',
-                  mediaId: String(response.data.id),
-                  mediaType: 'movie',
-                  title: response.data.title || '',
-                  genres: (response.data.genres || []).map(g => g.name || g).filter(Boolean)
-                })
-              }).catch(() => {})
-            }
+            fetch('/api/users/me/activity', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                type: 'view_media',
+                mediaId: String(response.data.id),
+                mediaType: 'movie',
+                title: response.data.title || '',
+                genres: (response.data.genres || []).map(g => g.name || g).filter(Boolean)
+              })
+            }).catch(() => {})
           }
           
           // Fetch YouTube videos and news about the movie
@@ -280,8 +277,6 @@ export default function DetailsPage({ params }) {
   setIsUpdatingFavorites(true)
 
   try {
-    const token = localStorage.getItem('token')
-
     const response = await fetch(
       liked
         ? `/api/users/me/favorites/${movie.id}`
@@ -290,7 +285,6 @@ export default function DetailsPage({ params }) {
         method: liked ? 'DELETE' : 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: liked ? undefined : JSON.stringify({ movieId: movie.id?.toString() }),
       }
@@ -317,10 +311,8 @@ export default function DetailsPage({ params }) {
 
   const checkIfInWatchlist = async () => {
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch('/api/users/me/watchlist', {
         headers: {
-          'Authorization': `Bearer ${token}`
         }
       })
       
@@ -336,10 +328,8 @@ export default function DetailsPage({ params }) {
 
   const checkIfInFavorites = async () => {
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch('/api/users/me/favorites', {
         headers: {
-          'Authorization': `Bearer ${token}`
         }
       })
 
@@ -355,10 +345,8 @@ export default function DetailsPage({ params }) {
 
   const checkIfWatched = async () => {
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch('/api/users/me/watched', {
         headers: {
-          'Authorization': `Bearer ${token}`
         }
       })
 
@@ -378,8 +366,6 @@ export default function DetailsPage({ params }) {
     setIsUpdatingWatched(true)
 
     try {
-      const token = localStorage.getItem('token')
-
       const response = await fetch(
         isWatched
           ? `/api/users/me/watched/${movie.id}`
@@ -388,7 +374,6 @@ export default function DetailsPage({ params }) {
           method: isWatched ? 'DELETE' : 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
           },
           body: isWatched ? undefined : JSON.stringify({
             movieId: movie.id?.toString(),
@@ -464,8 +449,6 @@ export default function DetailsPage({ params }) {
   setIsUpdatingWatchlist(true)
 
   try {
-    const token = localStorage.getItem('token')
-
     const response = await fetch(
       inWatchlist
         ? `/api/users/me/watchlist/${movie.id}`
@@ -474,7 +457,6 @@ export default function DetailsPage({ params }) {
         method: inWatchlist ? 'DELETE' : 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: inWatchlist ? undefined : JSON.stringify({ movieId: movie.id?.toString() }),
       }

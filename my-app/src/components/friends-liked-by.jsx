@@ -38,10 +38,9 @@ export default function FriendsLikedBy({ contentId, mediaType = "movie" }) {
     const fetchPreview = async () => {
       setLoading(true)
       try {
-        const token = localStorage.getItem("token")
         const res = await fetch(
           `/api/content/${mediaType}/${contentId}/friends-reviewed?limit=3`,
-          { headers: { Authorization: `Bearer ${token}` } }
+          { headers: {} }
         )
         const data = await res.json()
         if (data.success) {
@@ -65,7 +64,6 @@ export default function FriendsLikedBy({ contentId, mediaType = "movie" }) {
       else setModalLoadingMore(true)
 
       try {
-        const token = localStorage.getItem("token")
         const params = new URLSearchParams({
           page: page.toString(),
           limit: "20",
@@ -74,7 +72,7 @@ export default function FriendsLikedBy({ contentId, mediaType = "movie" }) {
 
         const res = await fetch(
           `/api/content/${mediaType}/${contentId}/friends-reviewed?${params}`,
-          { headers: { Authorization: `Bearer ${token}` } }
+          { headers: {} }
         )
         const data = await res.json()
         if (data.success) {

@@ -177,12 +177,10 @@ export default function CommunityPage() {
   const handleSaveAbout = async () => {
     setSavingAbout(true)
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch(`/api/communities/${params.slug}/update`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ description: aboutText })
       })
@@ -206,12 +204,10 @@ export default function CommunityPage() {
   const handleSaveRules = async () => {
     setSavingRules(true)
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch(`/api/communities/${params.slug}/update`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ rules: rulesText })
       })
@@ -247,8 +243,7 @@ export default function CommunityPage() {
   const fetchCommunity = async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem('token')
-      const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
+      const headers = {}
 
       const response = await fetch(`/api/communities/${params.slug}`, { headers })
       const data = await response.json()
@@ -286,8 +281,7 @@ export default function CommunityPage() {
     }
 
     try {
-      const token = localStorage.getItem('token')
-      const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
+      const headers = {}
 
       const response = await fetch(`/api/communities/${params.slug}/posts?page=${pageNum}&limit=10`, { headers })
       const data = await response.json()
@@ -330,9 +324,6 @@ export default function CommunityPage() {
       router.push('/login')
       return
     }
-
-    const token = localStorage.getItem('token')
-
     // Handle cancel request
     if (hasPendingRequest) {
       // Snapshot for rollback
@@ -344,7 +335,7 @@ export default function CommunityPage() {
       try {
         const response = await fetch(`/api/communities/${params.slug}/requests`, {
           method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: {}
         })
         const data = await response.json()
         
@@ -391,7 +382,7 @@ export default function CommunityPage() {
       try {
         const response = await fetch(`/api/communities/${params.slug}`, {
           method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: {}
         })
         const data = await response.json()
         
@@ -457,7 +448,7 @@ export default function CommunityPage() {
     try {
       const response = await fetch(`/api/communities/${params.slug}`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: {}
       })
 
       const data = await response.json()
@@ -522,12 +513,10 @@ export default function CommunityPage() {
   const handleJoinRequest = async (userId, action) => {
     setProcessingRequest(userId)
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch(`/api/communities/${params.slug}/requests`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ userId, action })
       })
@@ -567,10 +556,9 @@ export default function CommunityPage() {
 
     setDeleting(true)
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch(`/api/communities/${params.slug}/delete`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: {}
       })
 
       const data = await response.json()

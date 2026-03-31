@@ -102,8 +102,7 @@ export default function UserListModal({
 
   // Follow / Unfollow — optimistic update
   const handleFollowToggle = async (targetId, isCurrentlyFollowing) => {
-    const token = localStorage.getItem("token")
-    if (!token || !currentUser) return
+    if (!currentUser) return
 
     // Optimistic: immediately toggle in UI
     // We need to update via a parent callback or local derived state.
@@ -117,7 +116,6 @@ export default function UserListModal({
       const response = await fetch(`/api/users/${targetId}/follow`, {
         method: isCurrentlyFollowing ? "DELETE" : "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
       })
