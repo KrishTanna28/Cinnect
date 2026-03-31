@@ -17,7 +17,7 @@ const searchTabs = [
   { id: "celebrities", label: "Celebrities", icon: Star },
   { id: "communities", label: "Communities", icon: Users },
   { id: "posts", label: "Posts", icon: Image },
-  { id: "people", label: "People", icon: User },
+  { id: "people", label: "Users", icon: User },
 ]
 
 const validTabs = new Set(searchTabs.map((tab) => tab.id))
