@@ -31,7 +31,7 @@ const searchCategories = [
   { id: 'celebrity', label: 'Celebrity' },
   { id: 'communities', label: 'Communities' },
   { id: 'posts', label: 'Posts' },
-  { id: 'people', label: 'People' },
+  { id: 'people', label: 'Users' },
 ]
 
 export default function Navigation() {
@@ -197,9 +197,9 @@ export default function Navigation() {
       } else if (activeSearchCategory === 'celebrity') {
         router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}&tab=celebrities`)
       } else if (activeSearchCategory === 'communities') {
-        router.push(`/communities?search=${encodeURIComponent(searchQuery.trim())}`)
+        router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}&tab=communities`)
       } else if (activeSearchCategory === 'posts') {
-        router.push(`/communities?search=${encodeURIComponent(searchQuery.trim())}&tab=posts`)
+        router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}&tab=posts`)
       } else if (activeSearchCategory === 'people') {
         router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}&tab=people`)
       }
