@@ -44,6 +44,7 @@ export async function POST(request) {
       const response = NextResponse.json({
         success: true,
         message: 'Tokens refreshed successfully',
+        accessToken: newAccessToken, // Include access token for Socket.IO
         data: {
           user: {
             id: user._id?.toString(),
