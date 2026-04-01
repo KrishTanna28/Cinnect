@@ -37,6 +37,16 @@ export function SocketProvider({ children }) {
     console.log("[SOCKET] Connecting to:", socketUrl || window.location.origin)
     console.log("[SOCKET] External server:", isExternal)
 
+    // Extract auth token from cookies to pass explicitly to Socket.IO
+    const getAuthToken = () => {
+      const cookies = document.cookie.split(';')
+      const authCookie = cookies.find(c => c.trim().startsWith('auth_token='))
+      return authCookie ? authCookie.split('=')[1] : null
+    }
+
+    const token = getAuthToken()
+    console.log("[SOCKET] Auth token found:", !!token)
+
     const socket = ioClient(socketUrl || window.location.origin, {
       path: isExternal ? "/socket.io" : "/api/socketio",
       transports: ["websocket", "polling"],
@@ -45,6 +55,9 @@ export function SocketProvider({ children }) {
       reconnectionDelay: 2000,
       reconnectionDelayMax: 10000,
       withCredentials: true,
+      auth: {
+        token: token
+      }
     })
 
     socket.on("connect", () => {
