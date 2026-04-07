@@ -1,69 +1,205 @@
 import connectDB from '@/lib/config/database';
 import Review from '@/lib/models/Review';
 import User from '@/lib/models/User';
-import AIPointsCalculator from '@/lib/utils/aiPointsCalculator';
-import { success, error, handleError } from '@/lib/utils/apiResponse.js';
+import {
+  calculateReviewQuality,
+  ensureProgressionState,
+  evaluateBadgeUnlocks,
+  getLevelFromXp
+} from '@/lib/utils/gamification.js';
+import { refreshAllRankingSnapshots } from '@/lib/utils/ranking.js';
+import { success, handleError } from '@/lib/utils/apiResponse.js';
 import { withCronAuth } from '@/lib/middleware/withAuth.js';
+
+const REVIEW_BATCH_SIZE = 200;
+const USER_BATCH_SIZE = 100;
+
+async function syncReviewQuality() {
+  let processed = 0;
+  let updated = 0;
+  let lastId = null;
+
+  while (true) {
+    const query = lastId ? { _id: { $gt: lastId } } : {};
+    const reviews = await Review.find(query)
+      .sort({ _id: 1 })
+      .limit(REVIEW_BATCH_SIZE)
+      .select('_id title content rating flagCount isFlagged moderation gamification');
+
+    if (!reviews.length) break;
+
+    const updates = [];
+
+    for (const review of reviews) {
+      processed += 1;
+
+      const quality = calculateReviewQuality(review);
+      const currentScore = review?.gamification?.qualityScore ?? null;
+      const currentDetails = review?.gamification?.qualityDetails || {};
+      const currentMilestone = review?.gamification?.awardedLikeMilestone || 0;
+      const detailsChanged = JSON.stringify(currentDetails) !== JSON.stringify(quality.details);
+
+      if (currentScore !== quality.score || detailsChanged || review?.gamification?.awardedLikeMilestone === undefined) {
+        updates.push({
+          updateOne: {
+            filter: { _id: review._id },
+            update: {
+              $set: {
+                'gamification.qualityScore': quality.score,
+                'gamification.qualityDetails': quality.details,
+                'gamification.awardedLikeMilestone': currentMilestone
+              }
+            }
+          }
+        });
+        updated += 1;
+      }
+    }
+
+    if (updates.length > 0) {
+      await Review.bulkWrite(updates);
+    }
+
+    lastId = reviews[reviews.length - 1]._id;
+  }
+
+  return { processed, updated };
+}
+
+async function syncUserGamificationState() {
+  let processed = 0;
+  let updated = 0;
+  let lastId = null;
+
+  while (true) {
+    const query = lastId ? { _id: { $gt: lastId } } : {};
+    const users = await User.find(query)
+      .sort({ _id: 1 })
+      .limit(USER_BATCH_SIZE)
+      .select('_id points level progression badges achievements streaks averageReviewLength helpfulnessRatio reviewedFormats reviewedGenres');
+
+    if (!users.length) break;
+
+    const userIds = users.map(user => user._id);
+    const reviewStats = await Review.aggregate([
+      {
+        $match: {
+          user: { $in: userIds },
+          isRemoved: { $ne: true }
+        }
+      },
+      {
+        $project: {
+          user: 1,
+          mediaType: 1,
+          contentLength: { $strLenCP: { $ifNull: ['$content', ''] } },
+          likesCount: { $size: { $ifNull: ['$likes', []] } },
+          dislikesCount: { $size: { $ifNull: ['$dislikes', []] } },
+          repliesCount: { $size: { $ifNull: ['$replies', []] } }
+        }
+      },
+      {
+        $group: {
+          _id: '$user',
+          reviewsWritten: { $sum: 1 },
+          ratingsGiven: { $sum: 1 },
+          totalLikes: { $sum: '$likesCount' },
+          totalDislikes: { $sum: '$dislikesCount' },
+          totalReplies: { $sum: '$repliesCount' },
+          averageReviewLength: { $avg: '$contentLength' },
+          reviewedFormats: { $addToSet: '$mediaType' }
+        }
+      }
+    ]);
+
+    const statsByUserId = new Map(reviewStats.map(stats => [String(stats._id), stats]));
+
+    for (const user of users) {
+      processed += 1;
+
+      const stats = statsByUserId.get(String(user._id));
+      const reviewsWritten = stats?.reviewsWritten || 0;
+      const ratingsGiven = stats?.ratingsGiven || 0;
+      const totalLikes = stats?.totalLikes || 0;
+      const totalDislikes = stats?.totalDislikes || 0;
+      const totalReplies = stats?.totalReplies || 0;
+      const averageReviewLength = Math.round(stats?.averageReviewLength || 0);
+      const helpfulnessRatio = totalLikes + totalDislikes > 0
+        ? Number((totalLikes / (totalLikes + totalDislikes)).toFixed(2))
+        : 0;
+      const reviewedFormats = [...(stats?.reviewedFormats || [])].sort();
+
+      ensureProgressionState(user);
+
+      const nextLevel = getLevelFromXp(user.points?.total || 0).level;
+      const currentReviewedFormats = [...(user.reviewedFormats || [])].sort();
+      const nextAchievements = {
+        ...(user.achievements?.toObject?.() || user.achievements || {}),
+        reviewsWritten,
+        ratingsGiven,
+        totalLikes,
+        totalReplies
+      };
+
+      user.achievements = nextAchievements;
+      user.averageReviewLength = averageReviewLength;
+      user.helpfulnessRatio = helpfulnessRatio;
+      user.reviewedFormats = reviewedFormats;
+      user.level = nextLevel;
+
+      const unlockedBadges = evaluateBadgeUnlocks(user, {});
+
+      if (unlockedBadges.length > 0) {
+        user.markModified('badges');
+        user.markModified('progression');
+      }
+
+      const didChange =
+        user.isModified('progression') ||
+        user.isModified('level') ||
+        user.isModified('achievements') ||
+        user.isModified('averageReviewLength') ||
+        user.isModified('helpfulnessRatio') ||
+        user.isModified('reviewedFormats') ||
+        currentReviewedFormats.join('|') !== reviewedFormats.join('|');
+
+      if (didChange) {
+        await user.save();
+        updated += 1;
+      }
+    }
+
+    lastId = users[users.length - 1]._id;
+  }
+
+  return { processed, updated };
+}
 
 // This route should be triggered by a daily cron job (e.g., Vercel Cron) at 12:00 AM
 async function handler(request) {
   try {
     await connectDB();
-    console.log('[Cron] Starting daily points recalculation...');
+    console.log('[Cron] Starting gamification maintenance sync...');
 
-    // 1. Recalculate user credibility
-    const activeUsers = await User.find({ lastActiveAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } });
-    let usersProcessed = 0;
+    const [reviews, users] = await Promise.all([
+      syncReviewQuality(),
+      syncUserGamificationState()
+    ]);
+    const ranking = await refreshAllRankingSnapshots();
 
-    for (const user of activeUsers) {
-      try {
-        const credibility = AIPointsCalculator.calculateCredibility(user);
-        user.credibilityScore = credibility.score;
-        await user.save();
-        usersProcessed++;
-      } catch (userError) {
-        console.error(`[Cron] Error processing user ${user._id}:`, userError);
-      }
-    }
+    console.log(
+      `[Cron] Completed maintenance sync: ${reviews.updated}/${reviews.processed} reviews updated, ` +
+      `${users.updated}/${users.processed} users updated, ${ranking.processedUsers} rankings refreshed.`
+    );
 
-    // 2. Recompute engagement-based points and apply time decay for recent reviews
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    // Batch processing
-    const BATCH_SIZE = 100;
-    let skip = 0;
-    let reviewsProcessed = 0;
-    let reviews = await Review.find({ createdAt: { $gte: thirtyDaysAgo } }).populate('user').skip(skip).limit(BATCH_SIZE);
-
-    while (reviews.length > 0) {
-      for (const review of reviews) {
-        if (!review.user) continue;
-
-        try {
-          const context = {
-            replies: review.replies || [],
-            globalAvgLikes: 10 // Replace with actual global aggregate if available
-          };
-
-          const reevaluated = await AIPointsCalculator.reevaluateReview(review, review.user, context);
-
-          // Update review points
-          review.points = reevaluated.total;
-          review.pointBreakdown = reevaluated.breakdown;
-          await review.save();
-          reviewsProcessed++;
-        } catch (reviewError) {
-          console.error(`[Cron] Error processing review ${review._id}:`, reviewError);
-        }
-      }
-
-      skip += BATCH_SIZE;
-      reviews = await Review.find({ createdAt: { $gte: thirtyDaysAgo } }).populate('user').skip(skip).limit(BATCH_SIZE);
-    }
-
-    console.log(`[Cron] Completed: ${usersProcessed} users, ${reviewsProcessed} reviews processed.`);
-    return success({ usersProcessed, reviewsProcessed }, 'Cron job completed successfully');
+    return success(
+      {
+        reviews,
+        users,
+        ranking
+      },
+      'Gamification maintenance completed successfully'
+    );
   } catch (err) {
     return handleError(err, 'Cron points');
   }

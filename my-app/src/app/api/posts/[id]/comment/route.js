@@ -67,23 +67,26 @@ export const POST = withAuth(async (request, { user, params }) => {
 
     const addedComment = post.comments[post.comments.length - 1];
     const addedCommentId = addedComment._id;
+    const isOwnPostAction = post.user?.toString() === user._id?.toString()
 
     // Send notifications
-    try {
-      const { notifyNewReply } = await import('@/lib/services/notification.service.js')
-      await notifyNewReply({
-        actor: user,
-        ownerId: post.user,
-        url: post.community 
-          ? `/communities/${post.community._id || post.community}/post/${post._id}#${addedCommentId}`
-          : `/post/${post._id}#${addedCommentId}`,
-        mediaTitle: post.title,
-        isPost: true,
-        referenceId: post._id,
-        parentId: addedCommentId
-      })
-    } catch (notifErr) {
-      console.error('Failed to notify about post comment:', notifErr)
+    if (!isOwnPostAction) {
+      try {
+        const { notifyNewReply } = await import('@/lib/services/notification.service.js')
+        await notifyNewReply({
+          actor: user,
+          ownerId: post.user,
+          url: post.community 
+            ? `/communities/${post.community._id || post.community}/post/${post._id}#${addedCommentId}`
+            : `/post/${post._id}#${addedCommentId}`,
+          mediaTitle: post.title,
+          isPost: true,
+          referenceId: post._id,
+          parentId: addedCommentId
+        })
+      } catch (notifErr) {
+        console.error('Failed to notify about post comment:', notifErr)
+      }
     }
 
     const xpEvent = applyXpEvent(user, {
@@ -196,6 +199,132 @@ export const PATCH = withAuth(async (request, { user, params }) => {
       {
         success: false,
         message: error.message || 'Failed to vote on comment'
+      },
+      { status: 500 }
+    )
+  }
+})
+
+// PUT /api/posts/[id]/comment - Edit comment
+export const PUT = withAuth(async (request, { user, params }) => {
+  try {
+    const { id } = await params
+    const { commentId, content, spoiler } = await request.json()
+
+    if (!commentId || !content || !content.trim()) {
+      return NextResponse.json(
+        { success: false, message: 'Comment ID and content are required' },
+        { status: 400 }
+      )
+    }
+
+    const post = await Post.findById(id).populate('community')
+    if (!post) {
+      return NextResponse.json(
+        { success: false, message: 'Post not found' },
+        { status: 404 }
+      )
+    }
+
+    const comment = post.comments.id(commentId)
+    if (!comment) {
+      return NextResponse.json(
+        { success: false, message: 'Comment not found' },
+        { status: 404 }
+      )
+    }
+
+    if (comment.user?.toString() !== user._id?.toString()) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 403 }
+      )
+    }
+
+    comment.content = content.trim()
+    if (spoiler !== undefined) {
+      comment.spoiler = Boolean(spoiler)
+    }
+    comment.updatedAt = new Date()
+
+    await post.save()
+    await post.populate('user', 'username avatar fullName')
+    await post.populate('comments.user', 'username avatar fullName')
+    await post.populate('comments.replies.user', 'username avatar fullName')
+
+    return NextResponse.json({
+      success: true,
+      message: 'Comment updated successfully',
+      data: post
+    })
+  } catch (error) {
+    console.error('Edit comment error:', error)
+    return NextResponse.json(
+      {
+        success: false,
+        message: error.message || 'Failed to edit comment'
+      },
+      { status: 500 }
+    )
+  }
+})
+
+// DELETE /api/posts/[id]/comment - Delete comment
+export const DELETE = withAuth(async (request, { user, params }) => {
+  try {
+    const { id } = await params
+    const { commentId } = await request.json()
+
+    if (!commentId) {
+      return NextResponse.json(
+        { success: false, message: 'Comment ID is required' },
+        { status: 400 }
+      )
+    }
+
+    const post = await Post.findById(id).populate('community')
+    if (!post) {
+      return NextResponse.json(
+        { success: false, message: 'Post not found' },
+        { status: 404 }
+      )
+    }
+
+    const comment = post.comments.id(commentId)
+    if (!comment) {
+      return NextResponse.json(
+        { success: false, message: 'Comment not found' },
+        { status: 404 }
+      )
+    }
+
+    const isOwner = comment.user?.toString() === user._id?.toString()
+    const isModerator = post.community?.isModerator?.(user._id)
+
+    if (!isOwner && !isModerator) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 403 }
+      )
+    }
+
+    comment.deleteOne()
+    await post.save()
+    await post.populate('user', 'username avatar fullName')
+    await post.populate('comments.user', 'username avatar fullName')
+    await post.populate('comments.replies.user', 'username avatar fullName')
+
+    return NextResponse.json({
+      success: true,
+      message: 'Comment deleted successfully',
+      data: post
+    })
+  } catch (error) {
+    console.error('Delete comment error:', error)
+    return NextResponse.json(
+      {
+        success: false,
+        message: error.message || 'Failed to delete comment'
       },
       { status: 500 }
     )

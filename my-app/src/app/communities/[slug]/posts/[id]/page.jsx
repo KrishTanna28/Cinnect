@@ -29,6 +29,15 @@ export default function PostDetailPage() {
   const [mentionUser, setMentionUser] = useState(null)
   const [showReplies, setShowReplies] = useState(new Set())
   const [isSubmittingComment, setIsSubmittingComment] = useState(false)
+  const [editingCommentId, setEditingCommentId] = useState(null)
+  const [editingCommentContent, setEditingCommentContent] = useState("")
+  const [editingCommentSpoiler, setEditingCommentSpoiler] = useState(false)
+  const [editingReplyTarget, setEditingReplyTarget] = useState(null)
+  const [editingReplyContent, setEditingReplyContent] = useState("")
+  const [editingReplySpoiler, setEditingReplySpoiler] = useState(false)
+  const [isSavingEdit, setIsSavingEdit] = useState(false)
+  const [deletingItemId, setDeletingItemId] = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [commentSpoiler, setCommentSpoiler] = useState(false)
@@ -479,6 +488,7 @@ export default function PostDetailPage() {
       comments: [...(prev.comments || []), tempComment],
       commentCount: (prev.commentCount || 0) + 1
     }))
+    setAllComments(prev => [...prev, tempComment])
 
     // Clear form immediately
     setCommentText("")
@@ -497,6 +507,7 @@ export default function PostDetailPage() {
 
       if (data.success) {
         setPost(data.data) // Update with actual server data
+        setAllComments(data.data.comments || [])
       } else {
         // Revert optimistic update on error
         setPost(prev => ({
@@ -504,6 +515,7 @@ export default function PostDetailPage() {
           comments: prev.comments.filter(c => c._id !== tempComment._id),
           commentCount: Math.max(0, (prev.commentCount || 1) - 1)
         }))
+        setAllComments(prev => prev.filter(c => c._id !== tempComment._id))
         toast({
           title: "Error",
           description: data.message || "Failed to add comment",
@@ -518,6 +530,7 @@ export default function PostDetailPage() {
         comments: prev.comments.filter(c => c._id !== tempComment._id),
         commentCount: Math.max(0, (prev.commentCount || 1) - 1)
       }))
+      setAllComments(prev => prev.filter(c => c._id !== tempComment._id))
       toast({
         title: "Error",
         description: "Failed to add comment",
@@ -840,6 +853,327 @@ export default function PostDetailPage() {
     }
   }
 
+  const startEditComment = (comment) => {
+    setEditingCommentId(comment._id)
+    setEditingCommentContent(comment.content || "")
+    setEditingCommentSpoiler(Boolean(comment.spoiler))
+  }
+
+  const cancelEditComment = () => {
+    setEditingCommentId(null)
+    setEditingCommentContent("")
+    setEditingCommentSpoiler(false)
+  }
+
+  const handleSaveCommentEdit = async (commentId) => {
+    if (!editingCommentContent.trim() || isSavingEdit) return
+
+    const prevAllComments = allComments
+    const prevPostComments = post?.comments || []
+    const prevCommentCount = post?.commentCount || 0
+
+    setIsSavingEdit(true)
+
+    const nextContent = editingCommentContent.trim()
+    const nextSpoiler = editingCommentSpoiler
+
+    setAllComments(prev => prev.map(c => c._id === commentId
+      ? { ...c, content: nextContent, spoiler: nextSpoiler, updatedAt: new Date().toISOString() }
+      : c
+    ))
+    setPost(prev => ({
+      ...prev,
+      comments: (prev.comments || []).map(c => c._id === commentId
+        ? { ...c, content: nextContent, spoiler: nextSpoiler, updatedAt: new Date().toISOString() }
+        : c
+      )
+    }))
+
+    cancelEditComment()
+
+    try {
+      const response = await fetch(`/api/posts/${params.id}/comment`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ commentId, content: nextContent, spoiler: nextSpoiler })
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setPost(data.data)
+        setAllComments(data.data.comments || [])
+      } else {
+        setAllComments(prevAllComments)
+        setPost(prev => ({
+          ...prev,
+          comments: prevPostComments,
+          commentCount: prevCommentCount
+        }))
+        toast({
+          title: "Error",
+          description: data.message || "Failed to edit comment",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      console.error('Failed to edit comment:', error)
+      setAllComments(prevAllComments)
+      setPost(prev => ({
+        ...prev,
+        comments: prevPostComments,
+        commentCount: prevCommentCount
+      }))
+      toast({
+        title: "Error",
+        description: "Failed to edit comment",
+        variant: "destructive"
+      })
+    } finally {
+      setIsSavingEdit(false)
+    }
+  }
+
+  const handleDeleteComment = (commentId) => {
+    setDeleteTarget({ type: 'comment', commentId })
+  }
+
+  const confirmDeleteComment = async (commentId) => {
+    const prevAllComments = allComments
+    const prevPostComments = post?.comments || []
+    const prevCommentCount = post?.commentCount || 0
+
+    setDeletingItemId(commentId)
+
+    setAllComments(prev => prev.filter(c => c._id !== commentId))
+    setPost(prev => ({
+      ...prev,
+      comments: (prev.comments || []).filter(c => c._id !== commentId),
+      commentCount: Math.max(0, (prev.commentCount || 0) - 1)
+    }))
+
+    try {
+      const response = await fetch(`/api/posts/${params.id}/comment`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ commentId })
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setPost(data.data)
+        setAllComments(data.data.comments || [])
+      } else {
+        setAllComments(prevAllComments)
+        setPost(prev => ({
+          ...prev,
+          comments: prevPostComments,
+          commentCount: prevCommentCount
+        }))
+        toast({
+          title: "Error",
+          description: data.message || "Failed to delete comment",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      console.error('Failed to delete comment:', error)
+      setAllComments(prevAllComments)
+      setPost(prev => ({
+        ...prev,
+        comments: prevPostComments,
+        commentCount: prevCommentCount
+      }))
+      toast({
+        title: "Error",
+        description: "Failed to delete comment",
+        variant: "destructive"
+      })
+    } finally {
+      setDeletingItemId(null)
+    }
+  }
+
+  const startEditReply = (commentId, reply) => {
+    setEditingReplyTarget({ commentId, replyId: reply._id })
+    setEditingReplyContent(reply.content || "")
+    setEditingReplySpoiler(Boolean(reply.spoiler))
+  }
+
+  const cancelEditReply = () => {
+    setEditingReplyTarget(null)
+    setEditingReplyContent("")
+    setEditingReplySpoiler(false)
+  }
+
+  const handleSaveReplyEdit = async (commentId, replyId) => {
+    if (!editingReplyContent.trim() || isSavingEdit) return
+
+    const prevAllComments = allComments
+    const prevPostComments = post?.comments || []
+
+    setIsSavingEdit(true)
+
+    const nextContent = editingReplyContent.trim()
+    const nextSpoiler = editingReplySpoiler
+
+    setAllComments(prev => prev.map(c => {
+      if (c._id !== commentId) return c
+      return {
+        ...c,
+        replies: (c.replies || []).map(r => r._id === replyId
+          ? { ...r, content: nextContent, spoiler: nextSpoiler, updatedAt: new Date().toISOString() }
+          : r
+        )
+      }
+    }))
+    setPost(prev => ({
+      ...prev,
+      comments: (prev.comments || []).map(c => {
+        if (c._id !== commentId) return c
+        return {
+          ...c,
+          replies: (c.replies || []).map(r => r._id === replyId
+            ? { ...r, content: nextContent, spoiler: nextSpoiler, updatedAt: new Date().toISOString() }
+            : r
+          )
+        }
+      })
+    }))
+
+    cancelEditReply()
+
+    try {
+      const response = await fetch(`/api/posts/${params.id}/comment/${commentId}/reply`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ replyId, content: nextContent, spoiler: nextSpoiler })
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setPost(data.data)
+        setAllComments(data.data.comments || [])
+      } else {
+        setAllComments(prevAllComments)
+        setPost(prev => ({
+          ...prev,
+          comments: prevPostComments
+        }))
+        toast({
+          title: "Error",
+          description: data.message || "Failed to edit reply",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      console.error('Failed to edit reply:', error)
+      setAllComments(prevAllComments)
+      setPost(prev => ({
+        ...prev,
+        comments: prevPostComments
+      }))
+      toast({
+        title: "Error",
+        description: "Failed to edit reply",
+        variant: "destructive"
+      })
+    } finally {
+      setIsSavingEdit(false)
+    }
+  }
+
+  const handleDeleteReply = (commentId, replyId) => {
+    setDeleteTarget({ type: 'reply', commentId, replyId })
+  }
+
+  const confirmDeleteReply = async (commentId, replyId) => {
+    const prevAllComments = allComments
+    const prevPostComments = post?.comments || []
+
+    setDeletingItemId(replyId)
+
+    setAllComments(prev => prev.map(c => {
+      if (c._id !== commentId) return c
+      return {
+        ...c,
+        replies: (c.replies || []).filter(r => r._id !== replyId)
+      }
+    }))
+    setPost(prev => ({
+      ...prev,
+      comments: (prev.comments || []).map(c => {
+        if (c._id !== commentId) return c
+        return {
+          ...c,
+          replies: (c.replies || []).filter(r => r._id !== replyId)
+        }
+      })
+    }))
+
+    try {
+      const response = await fetch(`/api/posts/${params.id}/comment/${commentId}/reply`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ replyId })
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setPost(data.data)
+        setAllComments(data.data.comments || [])
+      } else {
+        setAllComments(prevAllComments)
+        setPost(prev => ({
+          ...prev,
+          comments: prevPostComments
+        }))
+        toast({
+          title: "Error",
+          description: data.message || "Failed to delete reply",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      console.error('Failed to delete reply:', error)
+      setAllComments(prevAllComments)
+      setPost(prev => ({
+        ...prev,
+        comments: prevPostComments
+      }))
+      toast({
+        title: "Error",
+        description: "Failed to delete reply",
+        variant: "destructive"
+      })
+    } finally {
+      setDeletingItemId(null)
+    }
+  }
+
+  const handleConfirmDeleteTarget = async () => {
+    if (!deleteTarget) return
+
+    const target = deleteTarget
+    setDeleteTarget(null)
+
+    if (target.type === 'comment') {
+      await confirmDeleteComment(target.commentId)
+      return
+    }
+
+    if (target.type === 'reply') {
+      await confirmDeleteReply(target.commentId, target.replyId)
+    }
+  }
+
   const handleUserNameClick = (e, userId) => {
     if (e) {
       e.preventDefault()
@@ -1074,11 +1408,89 @@ export default function PostDetailPage() {
                 18+
               </span>
             )}
+
+            {isOwnReply && (
+              <div className="ml-auto">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="cursor-pointer p-1 transition-all active:scale-90 hover:text-primary">
+                      <MoreVertical className="w-3.5 h-3.5" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onSelect={(e) => {
+                        e.preventDefault()
+                        startEditReply(commentId, replyNode)
+                      }}
+                    >
+                      <Pencil className="w-4 h-4" />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onSelect={(e) => {
+                        e.preventDefault()
+                        handleDeleteReply(commentId, replyNode._id)
+                      }}
+                      disabled={deletingItemId === replyNode._id}
+                    >
+                      {deletingItemId === replyNode._id ? (
+                        <div className="w-4 h-4 border-2 border-border border-t-transparent rounded-full animate-spin"></div>
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                      {deletingItemId === replyNode._id ? "Deleting..." : "Delete"}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
           </div>
 
           {!isCollapsed && (
             <div className="flex flex-col gap-2">
-              {isMinor && replyNode.adult_content ? (
+              {editingReplyTarget?.replyId === replyNode._id && editingReplyTarget?.commentId === commentId ? (
+                <div className="mt-2 pl-2 border-l-2 border-primary/20">
+                  <div className="flex gap-2">
+                    <Textarea
+                      autoFocus
+                      value={editingReplyContent}
+                      onChange={(e) => setEditingReplyContent(e.target.value)}
+                      rows={2}
+                      className="flex-1 text-xs min-h-[60px]"
+                      style={{ borderColor: 'var(--border)' }}
+                    />
+                    <div className="flex flex-col items-center gap-2">
+                      <Button
+                        onClick={() => handleSaveReplyEdit(commentId, replyNode._id)}
+                        size="sm"
+                        disabled={!editingReplyContent.trim() || isSavingEdit}
+                      >
+                        {isSavingEdit ? (
+                          <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                          <Send className="w-4 h-4" />
+                        )}
+                      </Button>
+                      <X className="w-5 h-5 text-muted-foreground hover:text-destructive cursor-pointer transition-all active:scale-90" onClick={cancelEditReply} />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <input
+                      type="checkbox"
+                      id={`edit-reply-spoiler-${replyNode._id}`}
+                      checked={editingReplySpoiler}
+                      onChange={(e) => setEditingReplySpoiler(e.target.checked)}
+                      className="w-3 h-3"
+                    />
+                    <label htmlFor={`edit-reply-spoiler-${replyNode._id}`} className="text-[10px] text-muted-foreground cursor-pointer">
+                      Contains Spoilers
+                    </label>
+                  </div>
+                </div>
+              ) : isMinor && replyNode.adult_content ? (
                 <p className="text-xs text-muted-foreground italic mb-1">This reply contains age-restricted content.</p>
               ) : (
                 <div className="relative">
@@ -1569,9 +1981,89 @@ export default function PostDetailPage() {
                             18+
                           </span>
                         )}
+
+                        {isOwnComment && (
+                          <div className="ml-auto">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className="cursor-pointer p-1 transition-all active:scale-90 hover:text-primary">
+                                  <MoreVertical className="w-4 h-4" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  className="cursor-pointer"
+                                  onSelect={(e) => {
+                                    e.preventDefault()
+                                    startEditComment(comment)
+                                  }}
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="cursor-pointer"
+                                  onSelect={(e) => {
+                                    e.preventDefault()
+                                    handleDeleteComment(comment._id)
+                                  }}
+                                  disabled={deletingItemId === comment._id}
+                                >
+                                  {deletingItemId === comment._id ? (
+                                    <div className="w-4 h-4 border-2 border-border border-t-transparent rounded-full animate-spin"></div>
+                                  ) : (
+                                    <Trash2 className="w-4 h-4" />
+                                  )}
+                                  {deletingItemId === comment._id ? "Deleting..." : "Delete"}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        )}
                       </div>
 
-                      {isMinor && comment.adult_content ? (
+                      {editingCommentId === comment._id ? (
+                        <div className="mt-2">
+                          <div className="flex gap-2">
+                            <Textarea
+                              autoFocus
+                              value={editingCommentContent}
+                              onChange={(e) => setEditingCommentContent(e.target.value)}
+                              rows={3}
+                              className="flex-1"
+                              style={{
+                                borderColor: 'var(--border)',
+                              }}
+                            />
+                            <div className="flex flex-col items-center gap-2">
+                              <Button
+                                onClick={() => handleSaveCommentEdit(comment._id)}
+                                size="sm"
+                                disabled={!editingCommentContent.trim() || isSavingEdit}
+                              >
+                                {isSavingEdit ? (
+                                  <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin"></div>
+                                ) : (
+                                  <Send className="w-4 h-4" />
+                                )}
+                              </Button>
+                              <X className="w-6 h-6 text-muted-foreground hover:text-destructive cursor-pointer transition-all active:scale-90" onClick={cancelEditComment} />
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 mt-2">
+                            <input
+                              type="checkbox"
+                              id={`edit-comment-spoiler-${comment._id}`}
+                              checked={editingCommentSpoiler}
+                              onChange={(e) => setEditingCommentSpoiler(e.target.checked)}
+                              className="w-3.5 h-3.5"
+                            />
+                            <label htmlFor={`edit-comment-spoiler-${comment._id}`} className="text-xs text-muted-foreground cursor-pointer">
+                              Contains Spoilers
+                            </label>
+                          </div>
+                        </div>
+                      ) : isMinor && comment.adult_content ? (
                         <p className="text-xs text-muted-foreground italic mb-2">This comment contains age-restricted content.</p>
                       ) : (
                         <div className="relative">
@@ -1792,6 +2284,28 @@ export default function PostDetailPage() {
             <Button variant="outline" onClick={() => setShowDeleteModal(false)} disabled={deleting}>Cancel</Button>
             <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
               {deleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Comment/Reply Dialog */}
+      <Dialog open={Boolean(deleteTarget)} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
+        <DialogContent className="sm:max-w-md w-[95vw] rounded-xl bg-background border-border">
+          <DialogHeader>
+            <DialogTitle>{deleteTarget?.type === 'reply' ? 'Delete Reply' : 'Delete Comment'}</DialogTitle>
+            <DialogDescription>
+              {deleteTarget?.type === 'reply'
+                ? 'Are you sure you want to delete this reply? This action cannot be undone.'
+                : 'Are you sure you want to delete this comment? This action cannot be undone.'}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex space-x-2 pt-4 justify-end">
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={Boolean(deletingItemId)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDeleteTarget} disabled={Boolean(deletingItemId)}>
+              {Boolean(deletingItemId) ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>

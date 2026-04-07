@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Plus, Users, Film, Tv, User, FileText, Filter, ChevronDown, ChevronUp, Heart, MessageCircle, Eye, Clock, AlertTriangle, ShieldAlert, EyeOff, ThumbsUp, ThumbsDown, Video, Play, Share2 } from "lucide-react"

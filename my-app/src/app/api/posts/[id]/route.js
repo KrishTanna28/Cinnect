@@ -106,6 +106,7 @@ export const POST = withAuth(async (request, { user, params }) => {
     }
 
     const userId = user._id?.toString()
+    const isOwnPostAction = post.user?.toString() === userId
     const likeIndex = post.likes.findIndex(id => id?.toString() === userId)
     const dislikeIndex = post.dislikes.findIndex(id => id?.toString() === userId)
 
@@ -122,19 +123,21 @@ export const POST = withAuth(async (request, { user, params }) => {
       } else {
         post.likes.push(user._id)
         
-        // Notify owner about the like
-        try {
-          const { notifyNewLike } = await import('@/lib/services/notification.service.js')
-          await notifyNewLike({
-            actor: user,
-            ownerId: post.user,
-            url: `/communities/${post.community}/post/${post._id}`, // Assuming community URL structure
-            mediaTitle: post.title || 'post',
-            isPost: true,
-            referenceId: post._id
-          })
-        } catch (err) {
-          console.error('Failed to notify about post like:', err)
+        if (!isOwnPostAction) {
+          // Notify owner about the like
+          try {
+            const { notifyNewLike } = await import('@/lib/services/notification.service.js')
+            await notifyNewLike({
+              actor: user,
+              ownerId: post.user,
+              url: `/communities/${post.community}/post/${post._id}`, // Assuming community URL structure
+              mediaTitle: post.title || 'post',
+              isPost: true,
+              referenceId: post._id
+            })
+          } catch (err) {
+            console.error('Failed to notify about post like:', err)
+          }
         }
       }
     } else if (action === 'dislike') {

@@ -12,20 +12,25 @@ export const GET = withAuth(async (request, { user }) => {
   try {
     await connectDB();
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page')) || 1;
-    const limit = parseInt(searchParams.get('limit')) || 30;
+    const rawPage = Number.parseInt(searchParams.get('page') || '1', 10);
+    const rawLimit = Number.parseInt(searchParams.get('limit') || '30', 10);
+    const page = Number.isNaN(rawPage) ? 1 : Math.max(1, rawPage);
+    const limit = Number.isNaN(rawLimit) ? 30 : Math.min(50, Math.max(1, rawLimit));
     const skip = (page - 1) * limit;
 
-    // Sync follow requests into Notification collection (so they show up)
-    await syncFollowRequestNotifications(user);
+    // Sync only for first page to avoid repeating expensive sync work during infinite-scroll pagination
+    if (page === 1) {
+      // Sync follow requests into Notification collection (so they show up)
+      await syncFollowRequestNotifications(user);
 
-    // Sync community join requests for communities the user admins
-    await syncCommunityJoinRequestNotifications(user);
+      // Sync community join requests for communities the user admins
+      await syncCommunityJoinRequestNotifications(user);
+    }
 
     // Fetch notifications
     const [notifications, totalCount, unreadCount] = await Promise.all([
       Notification.find({ recipient: user._id })
-        .sort({ createdAt: -1 })
+        .sort({ createdAt: -1, _id: -1 })
         .skip(skip)
         .limit(limit)
         .populate('fromUser', 'username fullName avatar level')
@@ -36,6 +41,9 @@ export const GET = withAuth(async (request, { user }) => {
       Notification.countDocuments({ recipient: user._id, read: false })
     ]);
 
+    const totalPages = Math.max(1, Math.ceil(totalCount / limit));
+    const hasMore = page < totalPages;
+
     return NextResponse.json({
       success: true,
       data: {
@@ -43,7 +51,10 @@ export const GET = withAuth(async (request, { user }) => {
         unreadCount,
         total: totalCount,
         page,
-        hasMore: skip + limit < totalCount
+        limit,
+        totalPages,
+        hasMore,
+        nextPage: hasMore ? page + 1 : null
       }
     });
   } catch (error) {

@@ -5,7 +5,6 @@ import { Bell, Check, X, UserPlus, UserMinus, UserCheck as UserCheckIcon, Users,
 import { useUser } from "@/contexts/UserContext"
 import { useSocket } from "@/contexts/SocketContext"
 import { useToast } from "@/hooks/use-toast"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 // Entertainment notification types that can link externally
@@ -23,7 +22,12 @@ export default function NotificationBell() {
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(false)
   const dropdownRef = useRef(null)
+  const scrollBodyRef = useRef(null)
+  const loadMoreRef = useRef(null)
   const hasFetchedEntertainment = useRef(false)
   const shownToastIds = useRef(new Set())
 
@@ -39,23 +43,64 @@ export default function NotificationBell() {
   }, [])
 
   // Fetch notifications
-  const fetchNotifications = useCallback(async () => {
-    setLoading(true)
+  const fetchNotifications = useCallback(async (nextPage = 1, append = false) => {
+    if (append) {
+      setLoadingMore(true)
+    } else {
+      setLoading(true)
+    }
+
     try {
-      const res = await fetch("/api/notifications?limit=30")
+      const res = await fetch(`/api/notifications?page=${nextPage}&limit=20`)
       if (res.ok) {
         const json = await res.json()
         if (json.success) {
-          setNotifications(json.data.notifications)
+          setNotifications((prev) =>
+            append ? [...prev, ...(json.data.notifications || [])] : (json.data.notifications || [])
+          )
           setUnreadCount(json.data.unreadCount)
+          setPage(json.data.page || nextPage)
+          setHasMore(Boolean(json.data.hasMore))
         }
       }
     } catch (err) {
       console.error("Failed to fetch notifications:", err)
     } finally {
-      setLoading(false)
+      if (append) {
+        setLoadingMore(false)
+      } else {
+        setLoading(false)
+      }
     }
   }, [])
+
+  const loadMoreNotifications = useCallback(() => {
+    if (loading || loadingMore || !hasMore) return
+    fetchNotifications(page + 1, true)
+  }, [fetchNotifications, hasMore, loading, loadingMore, page])
+
+  // Infinite load inside dropdown body
+  useEffect(() => {
+    if (!open || !scrollBodyRef.current || !loadMoreRef.current) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries
+        if (entry.isIntersecting) {
+          loadMoreNotifications()
+        }
+      },
+      {
+        root: scrollBodyRef.current,
+        rootMargin: "120px",
+        threshold: 0.01,
+      }
+    )
+
+    observer.observe(loadMoreRef.current)
+
+    return () => observer.disconnect()
+  }, [open, loadMoreNotifications, notifications.length])
 
   // Generate entertainment notifications (once per session)
   const generateEntertainmentNotifications = useCallback(async () => {
@@ -141,7 +186,7 @@ export default function NotificationBell() {
     const next = !open
     setOpen(next)
     if (next) {
-      fetchNotifications().then(() => {
+      fetchNotifications(1, false).then(() => {
         // After fetching, mark non-request notifications as seen
         setTimeout(() => markNonRequestNotificationsRead(), 100)
       })
@@ -328,7 +373,7 @@ export default function NotificationBell() {
           </div>
 
           {/* Body */}
-          <div className="overflow-y-auto max-h-[calc(70vh-52px)]">
+          <div ref={scrollBodyRef} className="overflow-y-auto max-h-[calc(70vh-52px)]">
             {loading && notifications.length === 0 ? (
               <div className="flex items-center justify-center py-10">
                 <Loader2 className="w-5 h-5 text-primary animate-spin" />
@@ -339,7 +384,8 @@ export default function NotificationBell() {
                 <p className="text-sm text-muted-foreground">No notifications yet</p>
               </div>
             ) : (
-              notifications.map((notif) => {
+              <>
+              {notifications.map((notif) => {
                 const isEntertainment = ENTERTAINMENT_TYPES.has(notif.type)
                 const targetLink = isEntertainment && notif.externalLink ? notif.externalLink : notif.link
                 const isExternal = isEntertainment && notif.externalLink
@@ -453,6 +499,23 @@ export default function NotificationBell() {
                   </RowTag>
                 )
               })
+              }
+
+              {/* Pagination */}
+              <div ref={loadMoreRef} className="px-4 py-3 border-t border-border/50">
+                {loadingMore ? (
+                  <div className="p-4 flex items-center justify-center">
+                      <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                ) : hasMore ? (
+                  <div className="p-4 flex items-center justify-center">
+                      <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                ) : notifications.length > 0 ? (
+                  <p className="text-center text-[11px] text-muted-foreground">You are all caught up</p>
+                ) : null}
+              </div>
+              </>
             )}
           </div>
         </div>

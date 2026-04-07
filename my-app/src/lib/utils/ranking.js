@@ -251,6 +251,37 @@ export async function getLeaderboardPage({ page = 1, limit = 20 } = {}) {
   }
 }
 
+export async function refreshAllRankingSnapshots({ batchSize = 250 } = {}) {
+  const safeBatchSize = Math.max(1, Math.min(Number(batchSize) || 250, 1000))
+  const totalUsers = await User.countDocuments({ isActive: { $ne: false } })
+
+  if (totalUsers === 0) {
+    return {
+      totalUsers: 0,
+      processedUsers: 0,
+      batches: 0
+    }
+  }
+
+  let processedUsers = 0
+  let batches = 0
+
+  for (let skip = 0; skip < totalUsers; skip += safeBatchSize) {
+    const docs = await User.aggregate(buildProjectedPagePipeline({ skip, limit: safeBatchSize }))
+    const entries = docs.map((doc, index) => formatRankingDoc(doc, skip + index + 1, totalUsers))
+
+    await persistRankingSnapshots(entries)
+    processedUsers += entries.length
+    batches += 1
+  }
+
+  return {
+    totalUsers,
+    processedUsers,
+    batches
+  }
+}
+
 export async function getUserRankingSnapshot(userId) {
   try {
     const objectId = typeof userId === 'string' ? new mongoose.Types.ObjectId(userId) : userId

@@ -65,6 +65,7 @@ const PUBLIC_ROUTES = {
     '/api/movies/discover',
     '/api/movies/search',
     '/api/spoiler-detect',
+    '/api/news',
   ],
   // API patterns for dynamic public routes
   apiPatterns: [

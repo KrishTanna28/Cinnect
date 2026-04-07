@@ -100,68 +100,71 @@ export const POST = withAuth(async (request, { user, params }) => {
     }
 
     // Send notifications (non-blocking)
-    try {
-      const notificationsToSend = []
-      const community = await Community.findById(post.community)
+    const isOwnPostAction = post.user?.toString() === user._id?.toString()
+    if (!isOwnPostAction) {
+      try {
+        const notificationsToSend = []
+        const community = await Community.findById(post.community)
 
-      // 1. Notify comment author (if replying directly to comment, not a nested reply)
-      const addedReplyId = comment.replies[comment.replies.length - 1]._id;
-      const baseLink = `/communities/${community.slug}/posts/${post._id}#${addedReplyId}`;
+        // 1. Notify comment author (if replying directly to comment, not a nested reply)
+        const addedReplyId = comment.replies[comment.replies.length - 1]._id;
+        const baseLink = `/communities/${community.slug}/posts/${post._id}#${addedReplyId}`;
 
-      if (!parentReplyId && comment.user.toString() !== user._id.toString()) {
-        notificationsToSend.push({
-          recipient: comment.user,
-          type: 'comment_reply',
-          title: 'New Reply',
-          message: `${user.username} replied to your comment`,
-          link: baseLink,
-          referenceId: post._id,
-          parentId: addedReplyId,
-          fromUser: user._id
-        })
-      }
-
-      // 2. Notify parent reply author (if replying to a reply)
-      if (parentReplyId && parentReply.user.toString() !== user._id.toString()) {
-        notificationsToSend.push({
-          recipient: parentReply.user,
-          type: 'reply_to_reply',
-          title: 'New Reply',
-          message: `${user.username} replied to your reply`,
-          link: baseLink,
-          referenceId: post._id,
-          parentId: addedReplyId,
-          fromUser: user._id
-        })
-      }
-
-      // 3. Notify mentioned users
-      for (const mention of mentionedUsers) {
-        if (mention.userId.toString() !== user._id.toString()) {
+        if (!parentReplyId && comment.user.toString() !== user._id.toString()) {
           notificationsToSend.push({
-            recipient: mention.userId,
-            type: 'mention',
-            title: 'You were mentioned',
-            message: `${user.username} mentioned you in a reply`,
+            recipient: comment.user,
+            type: 'comment_reply',
+            title: 'New Reply',
+            message: `${user.username} replied to your comment`,
             link: baseLink,
             referenceId: post._id,
             parentId: addedReplyId,
             fromUser: user._id
           })
         }
-      }
 
-      // Create and emit all notifications
-      for (const notifData of notificationsToSend) {
-        const notification = await Notification.create({
-          ...notifData,
-          read: false
-        })
-        await emitNotification(notifData.recipient.toString(), notification)
+        // 2. Notify parent reply author (if replying to a reply)
+        if (parentReplyId && parentReply.user.toString() !== user._id.toString()) {
+          notificationsToSend.push({
+            recipient: parentReply.user,
+            type: 'reply_to_reply',
+            title: 'New Reply',
+            message: `${user.username} replied to your reply`,
+            link: baseLink,
+            referenceId: post._id,
+            parentId: addedReplyId,
+            fromUser: user._id
+          })
+        }
+
+        // 3. Notify mentioned users
+        for (const mention of mentionedUsers) {
+          if (mention.userId.toString() !== user._id.toString()) {
+            notificationsToSend.push({
+              recipient: mention.userId,
+              type: 'mention',
+              title: 'You were mentioned',
+              message: `${user.username} mentioned you in a reply`,
+              link: baseLink,
+              referenceId: post._id,
+              parentId: addedReplyId,
+              fromUser: user._id
+            })
+          }
+        }
+
+        // Create and emit all notifications
+        for (const notifData of notificationsToSend) {
+          const notification = await Notification.create({
+            ...notifData,
+            read: false
+          })
+          await emitNotification(notifData.recipient.toString(), notification)
+        }
+      } catch (notifError) {
+        console.error('Notification error:', notifError)
+        // Don't fail the request if notifications fail
       }
-    } catch (notifError) {
-      console.error('Notification error:', notifError)
-      // Don't fail the request if notifications fail
     }
 
     await post.populate('comments.user', 'username avatar fullName')
@@ -278,6 +281,146 @@ export const PATCH = withAuth(async (request, { user, params }) => {
       {
         success: false,
         message: error.message || 'Failed to vote on reply'
+      },
+      { status: 500 }
+    )
+  }
+})
+
+// PUT /api/posts/[id]/comment/[commentId]/reply - Edit reply
+export const PUT = withAuth(async (request, { user, params }) => {
+  try {
+    const { id, commentId } = await params
+    const { replyId, content, spoiler } = await request.json()
+
+    if (!replyId || !content || !content.trim()) {
+      return NextResponse.json(
+        { success: false, message: 'Reply ID and content are required' },
+        { status: 400 }
+      )
+    }
+
+    const post = await Post.findById(id)
+    if (!post) {
+      return NextResponse.json(
+        { success: false, message: 'Post not found' },
+        { status: 404 }
+      )
+    }
+
+    const comment = post.comments.id(commentId)
+    if (!comment) {
+      return NextResponse.json(
+        { success: false, message: 'Comment not found' },
+        { status: 404 }
+      )
+    }
+
+    const reply = comment.replies.id(replyId)
+    if (!reply) {
+      return NextResponse.json(
+        { success: false, message: 'Reply not found' },
+        { status: 404 }
+      )
+    }
+
+    if (reply.user?.toString() !== user._id?.toString()) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 403 }
+      )
+    }
+
+    reply.content = content.trim()
+    if (spoiler !== undefined) {
+      reply.spoiler = Boolean(spoiler)
+    }
+    reply.updatedAt = new Date()
+
+    await post.save()
+    await post.populate('comments.user', 'username avatar fullName')
+    await post.populate('comments.replies.user', 'username avatar fullName')
+
+    return NextResponse.json({
+      success: true,
+      message: 'Reply updated successfully',
+      data: post
+    })
+  } catch (error) {
+    console.error('Edit reply error:', error)
+    return NextResponse.json(
+      {
+        success: false,
+        message: error.message || 'Failed to edit reply'
+      },
+      { status: 500 }
+    )
+  }
+})
+
+// DELETE /api/posts/[id]/comment/[commentId]/reply - Delete reply
+export const DELETE = withAuth(async (request, { user, params }) => {
+  try {
+    const { id, commentId } = await params
+    const { replyId } = await request.json()
+
+    if (!replyId) {
+      return NextResponse.json(
+        { success: false, message: 'Reply ID is required' },
+        { status: 400 }
+      )
+    }
+
+    const post = await Post.findById(id).populate('community')
+    if (!post) {
+      return NextResponse.json(
+        { success: false, message: 'Post not found' },
+        { status: 404 }
+      )
+    }
+
+    const comment = post.comments.id(commentId)
+    if (!comment) {
+      return NextResponse.json(
+        { success: false, message: 'Comment not found' },
+        { status: 404 }
+      )
+    }
+
+    const reply = comment.replies.id(replyId)
+    if (!reply) {
+      return NextResponse.json(
+        { success: false, message: 'Reply not found' },
+        { status: 404 }
+      )
+    }
+
+    const isOwner = reply.user?.toString() === user._id?.toString()
+    const isModerator = post.community?.isModerator?.(user._id)
+
+    if (!isOwner && !isModerator) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 403 }
+      )
+    }
+
+    reply.deleteOne()
+    await post.save()
+    await post.populate('comments.user', 'username avatar fullName')
+    await post.populate('comments.replies.user', 'username avatar fullName')
+
+    return NextResponse.json({
+      success: true,
+      message: 'Reply deleted successfully',
+      data: post
+    })
+  } catch (error) {
+    console.error('Delete reply error:', error)
+    return NextResponse.json(
+      {
+        success: false,
+        message: error.message || 'Failed to delete reply'
       },
       { status: 500 }
     )
