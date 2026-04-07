@@ -83,7 +83,11 @@ export default function LandingPage({
   const activeHero = heroItems[activeIndex] || null
 
   const formatCount = (value = 0) => new Intl.NumberFormat("en-IN").format(value)
-  const toTenScale = (rating = 0) => Math.max(0, Math.min(10, Number(rating || 0))).toFixed(1)
+  const toTenScale = (rating = 0) => {
+    const normalized = Math.max(0, Math.min(10, Number(rating || 0)))
+    const rounded = Math.round(normalized * 10) / 10
+    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
+  }
 
   const getStoryPreview = (article) => {
     const description = (article?.description || "").trim()
@@ -192,7 +196,7 @@ export default function LandingPage({
       </section>
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-14">
-        <div className="grid grid-cols-1 xl:grid-cols-[1.6fr_1fr] gap-5">
+        <div className="grid grid-cols-1 xl:grid-cols-[1.6fr_1fr] gap-5 items-start">
           <div className="rounded-2xl border border-border/60 bg-card/70 p-3.5 sm:p-4">
             <div className="flex items-center justify-between gap-3 mb-3">
               <h2 className="text-lg sm:text-xl font-bold tracking-tight">Top Reviews</h2>
