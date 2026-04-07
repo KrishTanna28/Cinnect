@@ -257,7 +257,7 @@ export default function LandingPage({
           <aside className="space-y-3">
             <div className="rounded-2xl border border-border/60 bg-card/70 p-3.5 sm:p-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs tracking-[0.2em] uppercase text-muted-foreground font-semibold">Popular Lists</h3>
+              <h2 className="text-lg sm:text-xl font-bold tracking-tight">Popular Lists</h2>
               </div>
 
               <div className="space-y-3">
@@ -306,7 +306,7 @@ export default function LandingPage({
 
             <div className="rounded-2xl border border-border/60 bg-card/70 p-3.5 sm:p-4">
               <div className="flex items-center justify-between mb-2.5">
-                <h3 className="text-xs tracking-[0.2em] uppercase text-muted-foreground font-semibold">Popular Reviewers</h3>
+              <h2 className="text-lg sm:text-xl font-bold tracking-tight">Popular Reviewers</h2>
               </div>
 
               <div className="space-y-2.5">
