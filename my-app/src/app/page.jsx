@@ -64,6 +64,11 @@ function hasValidSession(authToken, refreshToken) {
   return false
 }
 
+function hasPlaceholderMediaTitle(title) {
+  const normalized = String(title || "").trim().toLowerCase()
+  return !normalized || ["movie title", "moive title", "tv title", "show title", "series title"].includes(normalized)
+}
+
 function createMediaLookup(items = []) {
   const lookup = new Map()
   items.forEach((item) => {
@@ -129,7 +134,7 @@ async function getLandingCommunityData(mediaLookup) {
           _id: id,
           mediaId: doc.mediaId,
           mediaType: doc.mediaType,
-          mediaTitle: doc.mediaTitle,
+          mediaTitle: String(doc.mediaTitle || "").trim(),
           rating: doc.rating,
           excerpt: `${(doc.content || "").slice(0, 140)}${(doc.content || "").length > 140 ? "..." : ""}`,
           likesCount: likesById.get(id) || 0,
@@ -141,26 +146,31 @@ async function getLandingCommunityData(mediaLookup) {
       })
       .filter(Boolean)
 
-    // Fallback poster lookup for reviews whose media is not in the preloaded lists.
+    // Fallback metadata lookup for reviews with missing posters or placeholder titles.
     const enrichedCommunityReviews = await Promise.all(
       communityReviews.map(async (review) => {
-        if (review.poster || !review.mediaId) {
+        const needsTitleLookup = hasPlaceholderMediaTitle(review.mediaTitle)
+        if ((review.poster && !needsTitleLookup) || !review.mediaId) {
           return review
         }
 
         try {
           if (review.mediaType === "tv") {
             const tv = await getTVDetails(review.mediaId)
+            const resolvedTitle = tv?.title || tv?.name || review.mediaTitle
             return {
               ...review,
+              mediaTitle: needsTitleLookup ? resolvedTitle : review.mediaTitle,
               poster: tv?.poster || review.poster,
               releaseYear: review.releaseYear || (tv?.firstAirDate ? String(tv.firstAirDate).split("-")[0] : null),
             }
           }
 
           const movie = await getMovieDetails(review.mediaId)
+          const resolvedTitle = movie?.title || movie?.name || review.mediaTitle
           return {
             ...review,
+            mediaTitle: needsTitleLookup ? resolvedTitle : review.mediaTitle,
             poster: movie?.poster || review.poster,
             releaseYear: review.releaseYear || (movie?.releaseDate ? String(movie.releaseDate).split("-")[0] : null),
           }

@@ -129,6 +129,57 @@ export default function LandingPage({
     }
   }
 
+  const popularListRow = useMemo(() => {
+    const expandCarouselItems = (items = [], minCount = 8, maxCount = 14) => {
+      const cleanItems = items.filter((item) => item?.poster)
+      if (cleanItems.length === 0) return []
+      if (cleanItems.length >= minCount) return cleanItems.slice(0, maxCount)
+
+      const expanded = []
+      while (expanded.length < minCount) {
+        expanded.push(...cleanItems)
+      }
+
+      return expanded.slice(0, minCount)
+    }
+
+    const normalizeItem = (item, fallbackKey, index) => ({
+      id: item?.id || item?._id || `${fallbackKey}-${index}`,
+      title: item?.title || item?.name || "Untitled",
+      poster: item?.poster || item?.posterPath || item?.image || "",
+    })
+
+    const findListByTitle = (pattern) => {
+      return curatedLists.find((list) => pattern.test((list?.title || "").toLowerCase())) || null
+    }
+
+    const itemsFromList = (list, key) => {
+      const mapped = (list?.items || []).map((item, index) => normalizeItem(item, key, index))
+      return expandCarouselItems(mapped)
+    }
+
+    const itemsFromFeatured = (filterFn, key) => {
+      const mapped = featuredItems
+        .filter(filterFn)
+        .map((item, index) => normalizeItem(item, key, index))
+      return expandCarouselItems(mapped)
+    }
+
+    const trendingList =
+      findListByTitle(/trend|trending|hot|now|popular|top/) ||
+      curatedLists.find((list) => Array.isArray(list?.items) && list.items.length > 0) ||
+      null
+
+    const trendingItems = itemsFromList(trendingList, "trending-list")
+
+    return {
+      items:
+        trendingItems.length > 0
+          ? trendingItems
+          : itemsFromFeatured((item) => Boolean(item?.poster || item?.posterPath), "trending-featured"),
+    }
+  }, [curatedLists, featuredItems])
+
   return (
     <main className="min-h-screen bg-background text-foreground">
       <section className="relative -mt-16 min-h-[92vh] sm:min-h-[105vh] flex items-center overflow-hidden">
@@ -258,51 +309,65 @@ export default function LandingPage({
             </div>
           </div>
 
-          <aside className="space-y-3">
+          <aside className="space-y-3 min-w-0">
             <div className="rounded-2xl border border-border/60 bg-card/70 p-3.5 sm:p-4">
               <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg sm:text-xl font-bold tracking-tight">Popular Lists</h2>
               </div>
 
               <div className="space-y-3">
-                {curatedLists.slice(0, 3).map((list, index) => {
-                  const visibleItems = list.items?.slice(0, 12) || []
+                <Link
+                  key={popularListRow.key}
+                  href="/login"
+                  className="group block rounded-lg border border-border/60 bg-card/40 px-3 py-2 hover:border-primary/40 transition-colors"
+                >
+                  <div className="relative h-[90px] w-full overflow-hidden rounded-md border border-border/60 bg-secondary/35 landing-carousel-hover">
+                    {popularListRow.items.length > 0 ? (
+                      <div
+                        className={`landing-carousel-marquee ${popularListRow.items.length > 1 ? "landing-carousel-running" : ""}`}
+                        style={{ "--carousel-duration": "22s" }}
+                      >
+                        <div className="landing-carousel-segment">
+                          {popularListRow.items.map((item, index) => (
+                            <div
+                              key={`${popularListRow.key}-${item.id}-${index}`}
+                              className="relative h-[86px] min-w-[68px] rounded-md overflow-hidden border border-border/60 bg-card"
+                            >
+                              <img
+                                src={item.poster}
+                                alt={item.title}
+                                className="w-full h-full object-cover"
+                                loading="lazy"
+                              />
+                            </div>
+                          ))}
+                        </div>
 
-                  return (
-                    <Link
-                      key={`${list.title}-${index}`}
-                      href="/login"
-                      className="group block rounded-lg border border-border/60 bg-card/40 px-3 py-2 hover:border-primary/40 transition-colors"
-                    >
-                      <div className="flex items-center w-full overflow-hidden py-1">
-  {visibleItems.slice(0, 10).map((item, i) => (
-    <div
-      key={`${list.title}-${item.id}`}
-      className="relative h-[90px] min-w-[70px] rounded-md overflow-hidden border border-border/60 bg-secondary transition-all duration-300"
-      style={{
-        marginLeft: i === 0 ? "0px" : "-32px",
-        zIndex: i,
-        boxShadow: "0 4px 10px rgba(0,0,0,0.25)",
-      }}
-    >
-      {item.poster ? (
-        <img
-          src={item.poster}
-          alt={item.title}
-          className="w-full h-full object-cover"
-          loading="lazy"
-        />
-      ) : (
-        <div className="w-full h-full bg-gradient-to-b from-slate-700 to-slate-900" />
-      )}
-    </div>
-  ))}
-</div>
-                    </Link>
-                  )
-                })}
+                        <div className="landing-carousel-segment" aria-hidden="true">
+                          {popularListRow.items.map((item, index) => (
+                            <div
+                              key={`${popularListRow.key}-clone-${item.id}-${index}`}
+                              className="relative h-[86px] min-w-[68px] rounded-md overflow-hidden border border-border/60 bg-card"
+                            >
+                              <img
+                                src={item.poster}
+                                alt=""
+                                className="w-full h-full object-cover"
+                                loading="lazy"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center">
+                        <p className="text-xs text-muted-foreground">No titles available right now.</p>
+                      </div>
+                    )}
+                  </div>
+                </Link>
 
-                {curatedLists.length === 0 && (
+                {popularListRow.items.length === 0 && (
                   <p className="text-sm text-muted-foreground">No lists available right now.</p>
                 )}
               </div>
@@ -410,6 +475,45 @@ export default function LandingPage({
           </div>
         </div>
       </section>
+
+      <style jsx>{`
+        .landing-carousel-marquee {
+          position: absolute;
+          inset: 0 auto 0 0;
+          display: flex;
+          width: max-content;
+          min-width: 100%;
+          align-items: center;
+          height: 100%;
+        }
+
+        .landing-carousel-segment {
+          display: flex;
+          align-items: flex-end;
+          gap: 0.45rem;
+          height: 100%;
+          padding: 0.2rem 0.45rem;
+        }
+
+        .landing-carousel-running {
+          animation: landing-carousel-scroll var(--carousel-duration, 24s) linear infinite;
+          will-change: transform;
+        }
+
+        .landing-carousel-hover:hover .landing-carousel-running {
+          animation-play-state: paused;
+        }
+
+        @keyframes landing-carousel-scroll {
+          from {
+            transform: translateX(0);
+          }
+
+          to {
+            transform: translateX(-50%);
+          }
+        }
+      `}</style>
     </main>
   )
 }
