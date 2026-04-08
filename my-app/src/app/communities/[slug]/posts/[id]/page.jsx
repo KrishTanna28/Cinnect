@@ -1398,7 +1398,7 @@ export default function PostDetailPage() {
                   title={replySpoilerRevealed ? "Hide spoiler" : "Contains spoilers"}
                 >
                   {replySpoilerRevealed ? <EyeOff className="w-2.5 h-2.5" /> : <AlertTriangle className="w-2.5 h-2.5" />}
-                  SPOILER {replySpoilerRevealed && <span className="opacity-70">(Revealed)</span>}
+                  SPOILER {replySpoilerRevealed && <span className="opacity-70"></span>}
                 </button>
               )
             )}
@@ -1750,7 +1750,7 @@ export default function PostDetailPage() {
                     title={postSpoilerRevealed ? "Hide spoiler" : "Contains spoilers"}
                   >
                     {postSpoilerRevealed ? <EyeOff className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
-                    SPOILER {postSpoilerRevealed && <span className="opacity-70">(Revealed)</span>}
+                    SPOILER {postSpoilerRevealed && <span className="opacity-70"></span>}
                   </button>
                 )
               )}
@@ -1971,7 +1971,7 @@ export default function PostDetailPage() {
                               title={commentSpoilerRevealed ? "Hide spoiler" : "Contains spoilers"}
                             >
                               {commentSpoilerRevealed ? <EyeOff className="w-2.5 h-2.5" /> : <AlertTriangle className="w-2.5 h-2.5" />}
-                              SPOILER {commentSpoilerRevealed && <span className="opacity-70">(Revealed)</span>}
+                              SPOILER {commentSpoilerRevealed && <span className="opacity-70"></span>}
                             </button>
                           )
                         )}

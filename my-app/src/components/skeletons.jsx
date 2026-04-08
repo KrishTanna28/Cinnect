@@ -52,6 +52,116 @@ export function HomeSkeleton() {
   )
 }
 
+/* ── Landing Page (guest home) ──────────────────────────── */
+
+export function LandingPageSkeleton() {
+  return (
+    <PageShell>
+      {/* Hero */}
+      <section className="relative -mt-16 min-h-[92vh] sm:min-h-[105vh] overflow-hidden">
+        <div className="absolute inset-0 animate-pulse bg-secondary/30" />
+        <div className="relative z-10 w-full px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
+          <div className="max-w-6xl mx-auto mt-8 sm:mt-10 grid gap-3 md:gap-3 md:grid-cols-[1fr_240px] items-center">
+            <div className="order-2 md:order-1 space-y-4">
+              <Bone className="h-12 sm:h-14 w-5/6 max-w-xl" />
+              <Bone className="h-5 w-full max-w-2xl" />
+              <Bone className="h-5 w-4/5 max-w-xl" />
+            </div>
+            <div className="order-1 md:order-2 flex justify-center md:justify-start mb-2 md:mb-0">
+              <Bone className="h-[260px] w-[176px] sm:h-[300px] sm:w-[205px] md:h-[340px] md:w-[230px] rounded-2xl" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Feature cards */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-16">
+        <Bone className="h-9 w-72 mb-8" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="rounded-2xl border border-border/70 bg-card/70 p-5 space-y-3 animate-pulse">
+              <Bone className="h-10 w-10 rounded-xl" />
+              <Bone className="h-6 w-3/4" />
+              <Bone className="h-4 w-full" />
+              <Bone className="h-4 w-5/6" />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Reviews + sidebar */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-14">
+        <div className="grid grid-cols-1 xl:grid-cols-[1.6fr_1fr] gap-5 items-start">
+          <div className="rounded-2xl border border-border/60 bg-card/70 p-3.5 sm:p-4">
+            <Bone className="h-8 w-40 mb-5" />
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="border-b border-border/40 pb-3 last:border-b-0 last:pb-0">
+                  <div className="flex gap-3">
+                    <Bone className="w-14 h-20 sm:w-16 sm:h-24 rounded-md flex-shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <Bone className="h-5 w-3/4" />
+                      <Bone className="h-4 w-1/2" />
+                      <Bone className="h-4 w-full" />
+                      <Bone className="h-4 w-2/3" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <aside className="space-y-3 min-w-0">
+            <div className="rounded-2xl border border-border/60 bg-card/70 p-3.5 sm:p-4 space-y-3">
+              <Bone className="h-7 w-36" />
+              <Bone className="h-24 w-full rounded-lg" />
+            </div>
+            <div className="rounded-2xl border border-border/60 bg-card/70 p-3.5 sm:p-4 space-y-3">
+              <Bone className="h-7 w-40" />
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-center gap-2.5 pb-2.5 border-b border-border/40 last:border-b-0 last:pb-0">
+                  <Bone className="w-10 h-10 rounded-full flex-shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <Bone className="h-4 w-3/4" />
+                    <Bone className="h-3 w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      {/* Stories */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-14">
+        <Bone className="h-9 w-56 mb-4" />
+        <div className="columns-1 md:columns-2 xl:columns-3 gap-3">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="mb-3 break-inside-avoid rounded-xl border border-border/60 bg-card/70 overflow-hidden animate-pulse">
+              <Bone className="w-full h-36" />
+              <div className="p-3 space-y-2">
+                <Bone className="h-4 w-full" />
+                <Bone className="h-4 w-5/6" />
+                <Bone className="h-3 w-20" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+        <div className="rounded-2xl border border-primary/20 bg-card/70 px-6 py-10 text-center space-y-4 animate-pulse">
+          <Bone className="h-9 w-80 max-w-full mx-auto" />
+          <Bone className="h-5 w-[32rem] max-w-full mx-auto" />
+          <Bone className="h-5 w-[26rem] max-w-full mx-auto" />
+          <Bone className="h-11 w-44 rounded-lg mx-auto" />
+        </div>
+      </section>
+    </PageShell>
+  )
+}
+
 /* ── Movie / TV Detail ───────────────────────────────────── */
 
 export function MovieDetailSkeleton() {
@@ -628,6 +738,34 @@ export function CardGridSkeleton({ count = 10, cols = "grid-cols-2 sm:grid-cols-
     <div className={`grid ${cols} gap-4`}>
       {[...Array(count)].map((_, i) => (
         <MovieCardSkeleton key={i} />
+      ))}
+    </div>
+  )
+}
+
+/* Communities card grid (profile communities tab) */
+export function CommunityCardsSkeleton({ count = 4 }) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {[...Array(count)].map((_, i) => (
+        <div key={i} className="animate-pulse bg-secondary/20 rounded-lg p-5 border border-border h-full">
+          <div className="flex items-start gap-3 mb-3">
+            <Bone className="w-12 h-12 rounded-full" />
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <Bone className="h-5 w-40" />
+                <Bone className="h-4 w-16 rounded-full" />
+                <Bone className="h-4 w-14 rounded-full" />
+              </div>
+              <Bone className="h-4 w-full mb-1" />
+              <Bone className="h-4 w-4/5 mb-3" />
+              <div className="flex items-center gap-4">
+                <Bone className="h-3 w-20" />
+                <Bone className="h-3 w-16" />
+              </div>
+            </div>
+          </div>
+        </div>
       ))}
     </div>
   )

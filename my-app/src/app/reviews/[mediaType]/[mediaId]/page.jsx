@@ -58,6 +58,8 @@ export default function ReviewsPage({ params }) {
 
   // Media title
   const [mediaTitle, setMediaTitle] = useState('')
+  const [isMediaReleased, setIsMediaReleased] = useState(true)
+  const [releaseBlockMessage, setReleaseBlockMessage] = useState('')
 
   // Delete confirmation
   const [deleteConfirmation, setDeleteConfirmation] = useState(null) // { type: 'review' | 'reply', id: string, reviewId?: string }
@@ -82,15 +84,37 @@ export default function ReviewsPage({ params }) {
   useEffect(() => {
     const fetchTitle = async () => {
       try {
+        let details = null
         if (unwrappedParams.mediaType === 'tv') {
           const data = await getTVDetails(unwrappedParams.mediaId)
-          setMediaTitle(data?.data?.name || data?.data?.title || '')
+          details = data?.data || null
+          setMediaTitle(details?.title || details?.name || '')
         } else {
           const data = await getMovieDetails(unwrappedParams.mediaId)
-          setMediaTitle(data?.data?.title || data?.data?.name || '')
+          details = data?.data || null
+          setMediaTitle(details?.title || details?.name || '')
         }
+
+        const releaseDateValue = unwrappedParams.mediaType === 'tv'
+          ? (details?.firstAirDate || details?.releaseDate || null)
+          : (details?.releaseDate || details?.firstAirDate || null)
+
+        if (releaseDateValue) {
+          const parsedReleaseDate = new Date(releaseDateValue)
+          if (!Number.isNaN(parsedReleaseDate.getTime()) && parsedReleaseDate.getTime() > Date.now()) {
+            const mediaLabel = unwrappedParams.mediaType === 'tv' ? 'show' : 'movie'
+            setIsMediaReleased(false)
+            setReleaseBlockMessage(`You cannot review this ${mediaLabel} as it has not been released yet.`)
+            return
+          }
+        }
+
+        setIsMediaReleased(true)
+        setReleaseBlockMessage('')
       } catch {
-        // ignore, mediaTitle stays empty
+        // Fail open on metadata errors to avoid blocking review flow unexpectedly.
+        setIsMediaReleased(true)
+        setReleaseBlockMessage('')
       }
     }
     fetchTitle()
@@ -350,6 +374,11 @@ export default function ReviewsPage({ params }) {
 
     if (!user) {
       router.push('/login')
+      return
+    }
+
+    if (!isMediaReleased) {
+      setError(releaseBlockMessage || 'You cannot review this title before release.')
       return
     }
 
@@ -1038,7 +1067,7 @@ export default function ReviewsPage({ params }) {
                   title={replySpoilerRevealed ? "Hide spoiler" : "Contains spoilers"}
                 >
                   {replySpoilerRevealed ? <EyeOff className="w-2.5 h-2.5" /> : <AlertTriangle className="w-2.5 h-2.5" />}
-                  SPOILER {replySpoilerRevealed && <span className="opacity-70">(Revealed)</span>}
+                  SPOILER {replySpoilerRevealed && <span className="opacity-70"></span>}
                 </button>
               )
             )}
@@ -1240,7 +1269,7 @@ export default function ReviewsPage({ params }) {
           </button>
           <div className="flex gap-3 sm:flex sm:items-center sm:gap-6 justify-between">
             <h1 className="text-3xl font-bold text-foreground">User Reviews</h1>
-            {!showWriteReview && !hasReviewed && (
+            {!showWriteReview && !hasReviewed && isMediaReleased && (
               <button
                 onClick={() => setShowWriteReview(!showWriteReview)}
                 className="flex items-center text-sm gap-2 hover:text-primary transition-all active:scale-95 cursor-pointer"
@@ -1248,6 +1277,9 @@ export default function ReviewsPage({ params }) {
                 <Plus className="w-5 h-5" />
                 Review
               </button>
+            )}
+            {!showWriteReview && !hasReviewed && !isMediaReleased && (
+              <p className="text-sm text-destructive">{releaseBlockMessage}</p>
             )}
             {!showWriteReview && hasReviewed && (
               <p className="text-sm text-muted-foreground">You have already reviewed this.</p>
@@ -1267,8 +1299,14 @@ export default function ReviewsPage({ params }) {
           </div>
         )}
 
+        {!isMediaReleased && (
+          <div className="bg-destructive/10 border border-destructive/40 text-destructive rounded-lg p-4 mb-6">
+            {releaseBlockMessage}
+          </div>
+        )}
+
         {/* Write Review Form */}
-        {showWriteReview && (
+        {showWriteReview && isMediaReleased && (
           <div className="bg-card rounded-lg p-6 mb-8">
             <h2 className="text-xl font-bold text-foreground mb-4">
               {editingReview ? 'Edit Your Review' : 'Write Your Review'}
@@ -1488,7 +1526,7 @@ export default function ReviewsPage({ params }) {
                               title={isSpoilerRevealed ? "Hide spoiler" : "Contains spoilers"}
                             >
                               {isSpoilerRevealed ? <EyeOff className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
-                              SPOILER {isSpoilerRevealed && <span className="opacity-70">(Revealed)</span>}
+                              SPOILER {isSpoilerRevealed && <span className="opacity-70"></span>}
                             </button>
                           )
                         )}
@@ -1732,7 +1770,7 @@ export default function ReviewsPage({ params }) {
           <p className="text-center text-muted-foreground py-8">No more reviews to load</p>
         )}
 
-        {reviews?.length === 0 && !loading && (
+        {isMediaReleased && reviews?.length === 0 && !loading && (
           <div className="text-center py-12">
             <p className="text-muted-foreground mb-4">No reviews yet. Be the first to review!</p>
             <Button onClick={() => setShowWriteReview(true)}>

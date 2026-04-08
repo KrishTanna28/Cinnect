@@ -57,6 +57,8 @@ const INTENT_PATTERNS = {
   ],
   [INTENTS.GUIDANCE]: [
     /\bhow\s+(do|can|to)\s+(i|you)\b/i,
+    /\bhow\s+to\s+(create|start|make|build)\s+(a\s+)?(community|group)\b/i,
+    /\b(create|start|make|build)\s+(a\s+)?(community|group)\b/i,
     /\bwhere\s+(is|can|do)\b/i,
     /\b(help|guide|explain|show)\s*(me)?\s*(how|where|the\s+way)\b/i,
     /\b(what|where)\s+is\s+(the|my)\s+(watchlist|profile|settings|leaderboard)\b/i,

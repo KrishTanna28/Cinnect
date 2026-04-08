@@ -3,15 +3,17 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Settings, LogOut, Trophy, Star, Users, Film, Heart, Award, Flame, Trash2, Pencil, MoreVertical, Lock, Globe, X, LayoutGrid, Bookmark, MessageSquare, ThumbsUp, MessageCircle, AlertTriangle, ScrollText, Eye, Coins, Network, Snowflake, MoonStar, Shield, Castle, Crown, Swords, Hand, Link as LinkIcon } from "lucide-react"
+import { Settings, LogOut, Trophy, Star, Users, Film, Heart, Award, Flame, Trash2, Pencil, MoreVertical, Lock, Globe, X, LayoutGrid, Bookmark, MessageSquare, ThumbsUp, MessageCircle, AlertTriangle, ScrollText, Eye, Coins, Network, Snowflake, MoonStar, Shield, Castle, Crown, Swords, Hand, Link as LinkIcon, ThumbsDown } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { useUser } from "@/contexts/UserContext"
 import * as movieAPI from "@/lib/movies"
-import { ProfileSkeleton, CardGridSkeleton, ReviewListSkeleton } from "@/components/skeletons"
+import { ProfileSkeleton, CardGridSkeleton, ReviewListSkeleton, CommunityCardsSkeleton } from "@/components/skeletons"
 import FollowersFollowingModal from "@/components/followers-following-modal"
+import ReviewDetailModal from "@/components/review-detail-modal"
 
 const BADGE_STYLES = {
   hand_of_the_king: "from-amber-500/20 to-yellow-400/10 border-amber-500/30",
@@ -267,12 +269,26 @@ export default function ProfilePage() {
   const [watchlist, setWatchlist] = useState([])
   const [favorites, setFavorites] = useState([])
   const [reviews, setReviews] = useState([])
+  const [communities, setCommunities] = useState([])
   const [watchlistLoading, setWatchlistLoading] = useState(false)
   const [favoritesLoading, setFavoritesLoading] = useState(false)
   const [reviewsLoading, setReviewsLoading] = useState(false)
+  const [communitiesLoading, setCommunitiesLoading] = useState(false)
   const [showFollowModal, setShowFollowModal] = useState(false)
   const [followModalTab, setFollowModalTab] = useState("followers")
   const [showAvatarLightbox, setShowAvatarLightbox] = useState(false)
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
+  const [selectedReview, setSelectedReview] = useState(null)
+  const [editingReview, setEditingReview] = useState(null)
+  const [editReviewForm, setEditReviewForm] = useState({
+    rating: 0,
+    title: "",
+    content: "",
+    spoiler: false
+  })
+  const [isSavingReviewEdit, setIsSavingReviewEdit] = useState(false)
+  const [reviewToDelete, setReviewToDelete] = useState(null)
+  const [isDeletingReview, setIsDeletingReview] = useState(false)
   const router = useRouter()
   const { user, isLoading, logout } = useUser()
 
@@ -295,6 +311,8 @@ export default function ProfilePage() {
       fetchFavorites()
     } else if (activeTab === 'reviews' && reviews.length === 0) {
       fetchReviews()
+    } else if (activeTab === 'communities' && communities.length === 0) {
+      fetchCommunities()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab])
@@ -415,12 +433,65 @@ export default function ProfilePage() {
 
       const data = await response.json()
       if (data.success) {
-        setReviews(data.data)
+        const placeholderTitles = ['movie title', 'moive title', 'tv title', 'show title', 'series title']
+        const enrichedReviews = await Promise.all(
+          (data.data || []).map(async (review) => {
+            const isPlaceholderTitle = placeholderTitles.includes(String(review.mediaTitle || '').trim().toLowerCase())
+            if (review.mediaPoster && review.releaseYear && !isPlaceholderTitle) return review
+
+            try {
+              const detailsResponse = review.mediaType === 'tv'
+                ? await movieAPI.getTVDetails(review.mediaId)
+                : await movieAPI.getMovieDetails(review.mediaId)
+
+              const mediaData = detailsResponse?.success ? detailsResponse.data : detailsResponse
+              const releaseYear = review.releaseYear
+                || mediaData?.releaseDate?.split?.('-')?.[0]
+                || mediaData?.firstAirDate?.split?.('-')?.[0]
+                || null
+
+              return {
+                ...review,
+                mediaPoster: review.mediaPoster || mediaData?.poster || null,
+                releaseYear,
+                mediaTitle: isPlaceholderTitle
+                  ? (mediaData?.title || mediaData?.name || review.mediaTitle)
+                  : (review.mediaTitle || mediaData?.title || mediaData?.name || review.mediaTitle)
+              }
+            } catch {
+              return review
+            }
+          })
+        )
+
+        setReviews(enrichedReviews)
       }
     } catch (error) {
       console.error('Error fetching reviews:', error)
     } finally {
       setReviewsLoading(false)
+    }
+  }
+
+  const fetchCommunities = async () => {
+    setCommunitiesLoading(true)
+    try {
+      const response = await fetch('/api/users/me/communities?limit=60', {
+        headers: {
+        }
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setCommunities(data.data || [])
+      } else {
+        setCommunities([])
+      }
+    } catch (error) {
+      console.error('Error fetching communities:', error)
+      setCommunities([])
+    } finally {
+      setCommunitiesLoading(false)
     }
   }
 
@@ -462,6 +533,180 @@ export default function ProfilePage() {
     logout()
   }
 
+  const handleOpenReviewModal = (review) => {
+    setSelectedReview(review)
+    setIsReviewModalOpen(true)
+  }
+
+  const handleCloseReviewModal = () => {
+    setIsReviewModalOpen(false)
+    setSelectedReview(null)
+  }
+
+  const syncReviewEngagement = (reviewId, engagementData) => {
+    const currentUserId = user?._id?.toString()
+    const applyUpdate = (reviewItem) => {
+      if (!reviewItem || reviewItem._id !== reviewId) return reviewItem
+
+      const baseLikes = (reviewItem.likes || []).filter(id => id?.toString() !== currentUserId)
+      const baseDislikes = (reviewItem.dislikes || []).filter(id => id?.toString() !== currentUserId)
+
+      return {
+        ...reviewItem,
+        likeCount: engagementData.likes,
+        dislikeCount: engagementData.dislikes,
+        likes: engagementData.userLiked ? [...baseLikes, user._id] : baseLikes,
+        dislikes: engagementData.userDisliked ? [...baseDislikes, user._id] : baseDislikes
+      }
+    }
+
+    setReviews(prev => prev.map(applyUpdate))
+    setSelectedReview(prev => applyUpdate(prev))
+  }
+
+  const handleLikeReview = async (reviewId) => {
+    try {
+      const response = await fetch(`/api/reviews/${reviewId}/like`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        syncReviewEngagement(reviewId, data.data)
+      }
+    } catch (error) {
+      console.error('Error liking review:', error)
+    }
+  }
+
+  const handleDislikeReview = async (reviewId) => {
+    try {
+      const response = await fetch(`/api/reviews/${reviewId}/dislike`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        syncReviewEngagement(reviewId, data.data)
+      }
+    } catch (error) {
+      console.error('Error disliking review:', error)
+    }
+  }
+
+  const handleEditReview = (review) => {
+    setEditingReview(review)
+    setEditReviewForm({
+      rating: Number(review.rating || 0),
+      title: review.title || "",
+      content: review.content || "",
+      spoiler: Boolean(review.spoiler)
+    })
+  }
+
+  const handleCloseEditReview = () => {
+    setEditingReview(null)
+    setEditReviewForm({ rating: 0, title: "", content: "", spoiler: false })
+    setIsSavingReviewEdit(false)
+  }
+
+  const handleSaveReviewEdit = async () => {
+    if (!editingReview?._id) return
+
+    const nextRating = Number(editReviewForm.rating)
+    const nextTitle = String(editReviewForm.title || "").trim()
+    const nextContent = String(editReviewForm.content || "").trim()
+
+    if (!nextTitle || !nextContent) {
+      return
+    }
+
+    if (Number.isNaN(nextRating) || nextRating < 0 || nextRating > 10) {
+      return
+    }
+
+    setIsSavingReviewEdit(true)
+    try {
+      const response = await fetch(`/api/reviews/${editingReview._id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          rating: nextRating,
+          title: nextTitle,
+          content: nextContent,
+          spoiler: Boolean(editReviewForm.spoiler)
+        })
+      })
+
+      const data = await response.json()
+      if (data.success && data.data) {
+        setReviews(prev => prev.map(review =>
+          review._id === editingReview._id
+            ? {
+                ...review,
+                ...data.data,
+                mediaPoster: review.mediaPoster,
+                releaseYear: review.releaseYear
+              }
+            : review
+        ))
+
+        setSelectedReview(prev => {
+          if (!prev || prev._id !== editingReview._id) return prev
+          return {
+            ...prev,
+            ...data.data,
+            mediaPoster: prev.mediaPoster,
+            releaseYear: prev.releaseYear
+          }
+        })
+
+        handleCloseEditReview()
+      }
+    } catch (error) {
+      console.error('Error editing review:', error)
+    } finally {
+      setIsSavingReviewEdit(false)
+    }
+  }
+
+  const handleDeleteReview = async () => {
+    if (!reviewToDelete?._id) return
+
+    setIsDeletingReview(true)
+
+    try {
+      const response = await fetch(`/api/reviews/${reviewToDelete._id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setReviews(prev => prev.filter(review => review._id !== reviewToDelete._id))
+        setSelectedReview(prev => (prev?._id === reviewToDelete._id ? null : prev))
+        if (selectedReview?._id === reviewToDelete._id) {
+          setIsReviewModalOpen(false)
+        }
+        setReviewToDelete(null)
+      }
+    } catch (error) {
+      console.error('Error deleting review:', error)
+    } finally {
+      setIsDeletingReview(false)
+    }
+  }
+
   if (isLoading || statsLoading || !user) {
     return <ProfileSkeleton />
   }
@@ -496,7 +741,6 @@ export default function ProfilePage() {
                     )}
                   </div>
                   <p className="text-base text-primary font-semibold mb-3">@{user.username}</p>
-
                   {/* Stats row */}
                   <div className="flex items-center gap-5 mb-3">
                     <div className="text-center">
@@ -677,6 +921,7 @@ export default function ProfilePage() {
             { id: "watchlist", label: "Watchlist", icon: Bookmark },
             { id: "favorites", label: "Favorites", icon: Heart },
             { id: "reviews", label: "Reviews", icon: MessageSquare },
+            { id: "communities", label: "Communities", icon: Users },
           ].map((tab) => {
             const Icon = tab.icon
             return (
@@ -864,8 +1109,50 @@ export default function ProfilePage() {
             ) : (
               <div className="space-y-4">
                 {reviews.map((review, index) => (
-                  <Link key={review._id || `review-${index}`} href={`/reviews/${review.mediaType}/${review.mediaId}`}>
-                    <div className="bg-secondary/20 rounded-lg p-6 border border-border hover:border-primary transition-colors cursor-pointer mb-4">
+                  <div
+                    key={review._id || `review-${index}`}
+                    className="mb-4 relative bg-secondary/20 rounded-lg p-6 border border-border hover:border-primary transition-colors cursor-pointer"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleOpenReviewModal(review)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        handleOpenReviewModal(review)
+                      }
+                    }}
+                  >
+                    <div className="absolute top-4 right-4 z-10" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="cursor-pointer p-1 transition-all active:scale-90 hover:text-primary">
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleEditReview(review)
+                            }}
+                          >
+                            <Pencil className="w-4 h-4" />
+                            Edit Review
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setReviewToDelete(review)
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Delete Review
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    <div className="pr-10">
                       <div className="flex items-start justify-between mb-3">
                         <div>
                           <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -889,9 +1176,77 @@ export default function ProfilePage() {
                       </div>
                       <p className="text-foreground line-clamp-3">{review.content}</p>
                       <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
-                        <span><ThumbsUp className="w-3.5 h-3.5 inline mr-1" />{review.likeCount == 1 ? '1 like' : `${review.likeCount} likes`}</span>
-                        <span><MessageCircle className="w-3.5 h-3.5 inline mr-1" />{review.replyCount == 1 ? '1 reply' : `${review.replyCount} replies`}</span>
+                        <span><ThumbsUp className="w-3.5 h-3.5 inline mr-1" />{review.likeCount}</span>
+                        <span><ThumbsDown className="w-3.5 h-3.5 inline mr-1" />{review.dislikeCount}</span>
                         {review.hasSpoilers && <span className="text-red-500"><AlertTriangle className="w-3.5 h-3.5 inline mr-1" />Contains spoilers</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "communities" && (
+          <div>
+            <h3 className="text-xl font-bold text-foreground mb-6">Your Communities {communities.length == 0 ? "" : `(${communities.length})`}</h3>
+            {communitiesLoading ? (
+              <CommunityCardsSkeleton count={4} />
+            ) : communities.length === 0 ? (
+              <div className="text-center py-12">
+                <Users className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground mb-4">You haven't joined any communities yet</p>
+                <Link href="/communities">
+                  <Button>Explore Communities</Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {communities.map((community, index) => (
+                  <Link key={community._id || `${community.slug}-${index}`} href={`/communities/${community.slug}`}>
+                    <div className="bg-secondary/20 rounded-lg p-5 border border-border hover:border-primary transition-colors cursor-pointer h-full">
+                      <div className="flex items-start gap-3 mb-3">
+                        {community.icon ? (
+                          <img
+                            src={community.icon}
+                            alt={community.name}
+                            className="w-12 h-12 rounded-full object-cover border border-border"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center border border-primary/20">
+                            {community.name?.charAt(0)?.toUpperCase() || 'C'}
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <h4 className="font-bold text-foreground truncate">{community.name}</h4>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-secondary text-muted-foreground uppercase tracking-wide">
+                              {community.category || 'general'}
+                            </span>
+                            {community.isPrivate ? (
+                              <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                                <Lock className="w-3 h-3" />
+                                Private
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                                <Globe className="w-3 h-3" />
+                                Public
+                              </span>
+                            )}
+                            {community.isCreator && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary/15 text-primary border border-primary/20">
+                                Creator
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{community.description}</p>
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <span><Users className="w-3.5 h-3.5 inline mr-1" />{community.memberCount || 0} members</span>
+                            <span><MessageCircle className="w-3.5 h-3.5 inline mr-1" />{community.postCount || 0} posts</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </Link>
@@ -901,6 +1256,118 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
+
+      {editingReview && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+          onClick={handleCloseEditReview}
+        >
+          <div
+            className="w-full max-w-xl mx-4 rounded-xl border border-border bg-background p-5 sm:p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-foreground mb-4">Edit Review</h3>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm text-muted-foreground">Rating (0-10)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="10"
+                  step="0.1"
+                  value={editReviewForm.rating}
+                  onChange={(e) => setEditReviewForm(prev => ({ ...prev, rating: e.target.value }))}
+                  className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-foreground"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-muted-foreground">Title</label>
+                <input
+                  type="text"
+                  value={editReviewForm.title}
+                  onChange={(e) => setEditReviewForm(prev => ({ ...prev, title: e.target.value }))}
+                  className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-foreground"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-muted-foreground">Review</label>
+                <textarea
+                  rows={6}
+                  value={editReviewForm.content}
+                  onChange={(e) => setEditReviewForm(prev => ({ ...prev, content: e.target.value }))}
+                  className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-foreground resize-y"
+                />
+              </div>
+
+              <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editReviewForm.spoiler}
+                  onChange={(e) => setEditReviewForm(prev => ({ ...prev, spoiler: e.target.checked }))}
+                />
+                Mark as spoiler
+              </label>
+            </div>
+
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <Button variant="outline" onClick={handleCloseEditReview}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveReviewEdit} disabled={isSavingReviewEdit}>
+                {isSavingReviewEdit ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Dialog
+        open={Boolean(reviewToDelete)}
+        onOpenChange={(open) => {
+          if (!open && !isDeletingReview) {
+            setReviewToDelete(null)
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Review</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. Are you sure you want to delete this review?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setReviewToDelete(null)}
+              disabled={isDeletingReview}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteReview}
+              disabled={isDeletingReview}
+            >
+              {isDeletingReview ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <ReviewDetailModal
+        isOpen={isReviewModalOpen}
+        onClose={handleCloseReviewModal}
+        review={selectedReview}
+        onLike={handleLikeReview}
+        onDislike={handleDislikeReview}
+        mediaType={selectedReview?.mediaType}
+        mediaId={selectedReview?.mediaId}
+        showMediaHeader
+      />
     </main>
   )
 }

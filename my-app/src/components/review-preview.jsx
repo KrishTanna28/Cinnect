@@ -324,7 +324,7 @@ export default function ReviewPreview({ mediaId, mediaType, mediaTitle }) {
                           title={isSpoilerRevealed ? "Hide spoiler" : "Contains spoilers"}
                         >
                           {isSpoilerRevealed ? <EyeOff className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
-                          SPOILER {isSpoilerRevealed && <span className="opacity-70">(Revealed)</span>}
+                          SPOILER {isSpoilerRevealed && <span className="opacity-70"></span>}
                         </button>
                       )
                     )}

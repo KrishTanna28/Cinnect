@@ -375,7 +375,7 @@ export default function LandingPage({
 
             <div className="rounded-2xl border border-border/60 bg-card/70 p-3.5 sm:p-4">
               <div className="flex items-center justify-between mb-2.5">
-              <h2 className="text-lg sm:text-xl font-bold tracking-tight mb-5">Popular Reviewers</h2>
+              <h2 className="text-lg sm:text-xl font-bold tracking-tight mb-5">Top Reviewers</h2>
               </div>
 
               <div className="space-y-2.5">

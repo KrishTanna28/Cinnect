@@ -8,6 +8,7 @@ import { applyXpEvent, calculateReviewQuality, getProgressionSnapshot } from '@/
 import connectDB from '@/lib/config/database.js'
 import { success, error, handleError } from '@/lib/utils/apiResponse.js'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/utils/rateLimit.js'
+import { getMovieDetails, getTVDetails } from '@/lib/services/tmdb.service.js'
 
 // GET /api/reviews - Get reviews with optional filters
 export async function GET(request) {
@@ -207,6 +208,27 @@ export const POST = withAuth(async (request, { user }) => {
     }
     if (!title || !content) {
       return error('Review title and content are required', 400)
+    }
+
+    // Prevent reviews for unreleased titles.
+    try {
+      const mediaDetails = mediaType === 'tv'
+        ? await getTVDetails(mediaId)
+        : await getMovieDetails(mediaId)
+
+      const releaseDateValue = mediaType === 'tv'
+        ? (mediaDetails?.firstAirDate || mediaDetails?.releaseDate || null)
+        : (mediaDetails?.releaseDate || mediaDetails?.firstAirDate || null)
+
+      if (releaseDateValue) {
+        const releaseDate = new Date(releaseDateValue)
+        if (!Number.isNaN(releaseDate.getTime()) && releaseDate.getTime() > Date.now()) {
+          const mediaLabel = mediaType === 'tv' ? 'show' : 'movie'
+          return error(`You cannot review this ${mediaLabel} as it has not been released yet.`, 400)
+        }
+      }
+    } catch (releaseCheckError) {
+      console.error('Release check failed for review creation:', releaseCheckError)
     }
 
     // Validate content length

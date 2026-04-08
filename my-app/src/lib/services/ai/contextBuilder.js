@@ -316,7 +316,7 @@ async function fetchExplanationContext(message) {
 function getPlatformContext() {
   return {
     features: ['Communities', 'Watchlist', 'Favorites', 'Reviews', 'Leaderboard', 'Recommendations'],
-    actions: ['Add to watchlist', 'Rate movies', 'Write reviews', 'Join communities', 'Follow users']
+    actions: ['Add to watchlist', 'Rate movies', 'Write reviews', 'Create communities', 'Join communities', 'Follow users']
   };
 }
 
@@ -344,6 +344,7 @@ function getDetailedPlatformContext() {
     howTo: {
       writeReview: '1. Go to movie/show page → 2. Scroll to Reviews → 3. Click "Write Review" → 4. Rate & write → 5. Submit',
       joinCommunity: '1. Go to Communities → 2. Browse/search → 3. Open community → 4. Click "Join"',
+      createCommunity: '1. Log in → 2. Open Communities from the main navigation → 3. Click "Create Community" (top-right) → 4. Fill name, description, category, and optional media/person link → 5. Submit to publish',
       createPost: '1. Join a community → 2. Open it → 3. Click "Create Post" → 4. Write content → 5. Submit',
       addToWatchlist: '1. Go to any movie/show page → 2. Click "Add to Watchlist" button'
     }

@@ -13,6 +13,7 @@ import {
   Award,
   ArrowLeft,
   Lock,
+  Globe,
   UserPlus,
   UserCheck,
   Loader2,
@@ -23,6 +24,7 @@ import {
   MoreVertical,
   X,
   ThumbsUp,
+  ThumbsDown,
   MessageCircle,
   AlertTriangle,
   ScrollText,
@@ -42,10 +44,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { ProfileSkeleton, CardGridSkeleton, ReviewListSkeleton } from "@/components/skeletons"
+import { ProfileSkeleton, CardGridSkeleton, ReviewListSkeleton, CommunityCardsSkeleton } from "@/components/skeletons"
 import { useUser } from "@/contexts/UserContext"
 import * as movieAPI from "@/lib/movies"
 import FollowersFollowingModal from "@/components/followers-following-modal"
+import ReviewDetailModal from "@/components/review-detail-modal"
 
 const BADGE_STYLES = {
   hand_of_the_king: "from-amber-500/20 to-yellow-400/10 border-amber-500/30",
@@ -319,6 +322,10 @@ export default function PublicProfilePage({ params }) {
   const [watchlistLoading, setWatchlistLoading] = useState(false)
   const [favorites, setFavorites] = useState([])
   const [favoritesLoading, setFavoritesLoading] = useState(false)
+  const [communities, setCommunities] = useState([])
+  const [communitiesLoading, setCommunitiesLoading] = useState(false)
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
+  const [selectedReview, setSelectedReview] = useState(null)
 
   useEffect(() => {
     if (userId) {
@@ -334,6 +341,9 @@ export default function PublicProfilePage({ params }) {
     if (!profile || profile.isProfileLocked) return
     if (activeTab === 'reviews' && reviews.length === 0) {
       fetchReviews()
+    }
+    if (activeTab === 'communities' && communities.length === 0) {
+      fetchCommunities()
     }
   }, [activeTab, profile])
 
@@ -367,12 +377,63 @@ export default function PublicProfilePage({ params }) {
       const response = await fetch(`/api/reviews/user/${userId}`, { headers })
       const data = await response.json()
       if (data.success) {
-        setReviews(data.data)
+        const placeholderTitles = ['movie title', 'moive title', 'tv title', 'show title', 'series title']
+        const enrichedReviews = await Promise.all(
+          (data.data || []).map(async (review) => {
+            const isPlaceholderTitle = placeholderTitles.includes(String(review.mediaTitle || '').trim().toLowerCase())
+            if (review.mediaPoster && review.releaseYear && !isPlaceholderTitle) return review
+
+            try {
+              const detailsResponse = review.mediaType === 'tv'
+                ? await movieAPI.getTVDetails(review.mediaId)
+                : await movieAPI.getMovieDetails(review.mediaId)
+
+              const mediaData = detailsResponse?.success ? detailsResponse.data : detailsResponse
+              const releaseYear = review.releaseYear
+                || mediaData?.releaseDate?.split?.('-')?.[0]
+                || mediaData?.firstAirDate?.split?.('-')?.[0]
+                || null
+
+              return {
+                ...review,
+                mediaPoster: review.mediaPoster || mediaData?.poster || null,
+                releaseYear,
+                mediaTitle: isPlaceholderTitle
+                  ? (mediaData?.title || mediaData?.name || review.mediaTitle)
+                  : (review.mediaTitle || mediaData?.title || mediaData?.name || review.mediaTitle)
+              }
+            } catch {
+              return review
+            }
+          })
+        )
+
+        setReviews(enrichedReviews)
       }
     } catch (error) {
       console.error('Error fetching reviews:', error)
     } finally {
       setReviewsLoading(false)
+    }
+  }
+
+  const fetchCommunities = async () => {
+    setCommunitiesLoading(true)
+    try {
+      const headers = {}
+      const response = await fetch(`/api/users/${userId}/communities?limit=60`, { headers })
+      const data = await response.json()
+
+      if (data.success) {
+        setCommunities(data.data || [])
+      } else {
+        setCommunities([])
+      }
+    } catch (error) {
+      console.error('Error fetching communities:', error)
+      setCommunities([])
+    } finally {
+      setCommunitiesLoading(false)
     }
   }
 
@@ -457,6 +518,83 @@ export default function PublicProfilePage({ params }) {
       // Revert on network error
       setFollowStatus(prevStatus)
       setFollowersCount(prevCount)
+    }
+  }
+
+  const handleOpenReviewModal = (review) => {
+    setSelectedReview(review)
+    setIsReviewModalOpen(true)
+  }
+
+  const handleCloseReviewModal = () => {
+    setIsReviewModalOpen(false)
+    setSelectedReview(null)
+  }
+
+  const syncReviewEngagement = (reviewId, engagementData) => {
+    const currentUserId = currentUser?._id?.toString()
+    const applyUpdate = (reviewItem) => {
+      if (!reviewItem || reviewItem._id !== reviewId) return reviewItem
+
+      const baseLikes = (reviewItem.likes || []).filter(id => id?.toString() !== currentUserId)
+      const baseDislikes = (reviewItem.dislikes || []).filter(id => id?.toString() !== currentUserId)
+
+      return {
+        ...reviewItem,
+        likeCount: engagementData.likes,
+        dislikeCount: engagementData.dislikes,
+        likes: engagementData.userLiked && currentUser ? [...baseLikes, currentUser._id] : baseLikes,
+        dislikes: engagementData.userDisliked && currentUser ? [...baseDislikes, currentUser._id] : baseDislikes
+      }
+    }
+
+    setReviews(prev => prev.map(applyUpdate))
+    setSelectedReview(prev => applyUpdate(prev))
+  }
+
+  const handleLikeReview = async (reviewId) => {
+    if (!currentUser) {
+      router.push('/login')
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/reviews/${reviewId}/like`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        syncReviewEngagement(reviewId, data.data)
+      }
+    } catch (error) {
+      console.error('Error liking review:', error)
+    }
+  }
+
+  const handleDislikeReview = async (reviewId) => {
+    if (!currentUser) {
+      router.push('/login')
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/reviews/${reviewId}/dislike`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        syncReviewEngagement(reviewId, data.data)
+      }
+    } catch (error) {
+      console.error('Error disliking review:', error)
     }
   }
 
@@ -902,7 +1040,7 @@ export default function PublicProfilePage({ params }) {
           {/* Tabs */}
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="flex gap-4 mb-8 border-b border-border">
-              {["overview", "reviews"].map((tab) => (
+              {["overview", "reviews", "communities"].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -963,7 +1101,7 @@ export default function PublicProfilePage({ params }) {
 
             {activeTab === "reviews" && (
               <div>
-                <h3 className="text-xl font-bold text-foreground mb-6">Reviews ({reviews.length})</h3>
+                <h3 className="text-xl font-bold text-foreground mb-6">Reviews {reviews.length > 0 && `(${reviews.length})`}</h3>
                 {reviewsLoading ? (
                   <ReviewListSkeleton count={3} />
                 ) : reviews.length === 0 ? (
@@ -974,8 +1112,12 @@ export default function PublicProfilePage({ params }) {
                 ) : (
                   <div className="space-y-4">
                     {reviews.map((review, index) => (
-                      <Link key={review._id || `review-${index}`} href={`/reviews/${review.mediaType}/${review.mediaId}`}>
-                        <div className="bg-secondary/20 rounded-lg p-6 border border-border hover:border-primary transition-colors cursor-pointer">
+                      <div key={review._id || `review-${index}`}>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenReviewModal(review)}
+                          className="w-full text-left bg-secondary/20 rounded-lg p-6 border border-border hover:border-primary transition-colors cursor-pointer"
+                        >
                           <div className="flex items-start justify-between mb-3">
                             <div>
                               <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -999,9 +1141,74 @@ export default function PublicProfilePage({ params }) {
                           </div>
                           <p className="text-foreground line-clamp-3">{review.content}</p>
                           <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
-                            <span><ThumbsUp className="w-3.5 h-3.5 inline mr-1" />{review.likeCount || 0} likes</span>
-                            <span><MessageCircle className="w-3.5 h-3.5 inline mr-1" />{review.replyCount || 0} replies</span>
+                            <span><ThumbsUp className="w-3.5 h-3.5 inline mr-1" />{review.likeCount}</span>
+                            <span><ThumbsDown className="w-3.5 h-3.5 inline mr-1" />{review.dislikeCount}</span>
                             {review.hasSpoilers && <span className="text-red-500"><AlertTriangle className="w-3.5 h-3.5 inline mr-1" />Contains spoilers</span>}
+                          </div>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === "communities" && (
+              <div>
+                <h3 className="text-xl font-bold text-foreground mb-6">Communities {communities.length == 0 ? "" : `(${communities.length})`}</h3>
+                {communitiesLoading ? (
+                  <CommunityCardsSkeleton count={4} />
+                ) : communities.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Users className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground mb-4">No communities to show yet</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {communities.map((community, index) => (
+                      <Link key={community._id || `${community.slug}-${index}`} href={`/communities/${community.slug}`}>
+                        <div className="bg-secondary/20 rounded-lg p-5 border border-border hover:border-primary transition-colors cursor-pointer h-full">
+                          <div className="flex items-start gap-3 mb-3">
+                            {community.icon ? (
+                              <img
+                                src={community.icon}
+                                alt={community.name}
+                                className="w-12 h-12 rounded-full object-cover border border-border"
+                              />
+                            ) : (
+                              <div className="w-12 h-12 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center border border-primary/20">
+                                {community.name?.charAt(0)?.toUpperCase() || 'C'}
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-wrap items-center gap-2 mb-1">
+                                <h4 className="font-bold text-foreground truncate">{community.name}</h4>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-secondary text-muted-foreground uppercase tracking-wide">
+                                  {community.category || 'general'}
+                                </span>
+                                {community.isPrivate ? (
+                                  <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                                    <Lock className="w-3 h-3" />
+                                    Private
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                                    <Globe className="w-3 h-3" />
+                                    Public
+                                  </span>
+                                )}
+                                {community.isCreator && (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary/15 text-primary border border-primary/20">
+                                    Creator
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{community.description}</p>
+                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                <span><Users className="w-3.5 h-3.5 inline mr-1" />{community.memberCount || 0} members</span>
+                                <span><MessageCircle className="w-3.5 h-3.5 inline mr-1" />{community.postCount || 0} posts</span>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </Link>
@@ -1013,6 +1220,17 @@ export default function PublicProfilePage({ params }) {
           </div>
         </>
       )}
+
+      <ReviewDetailModal
+        isOpen={isReviewModalOpen}
+        onClose={handleCloseReviewModal}
+        review={selectedReview}
+        onLike={handleLikeReview}
+        onDislike={handleDislikeReview}
+        mediaType={selectedReview?.mediaType}
+        mediaId={selectedReview?.mediaId}
+        showMediaHeader
+      />
     </main>
   )
 }

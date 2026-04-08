@@ -41,7 +41,7 @@ export default function SpoilerOverlay({
             title={revealed ? "Hide spoiler" : "Contains spoilers"}
           >
             {revealed ? <EyeOff className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
-            {label} {revealed && <span className="opacity-70">(Revealed)</span>}
+            {label} {revealed && <span className="opacity-70"></span>}
           </button>
         )
       )}
