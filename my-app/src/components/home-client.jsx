@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
 import RecommendationCarousel from "@/components/recommendation-carousel"
 import Top10Carousel from "@/components/top10-carousel"
@@ -166,7 +165,7 @@ export default function HomeClient({ initialData }) {
     basedOnTrueStory: true,
   })
 
-  const { user } = useUser()
+  const { user, isLoading } = useUser()
   const isAuthenticated = !!user
   const featuredItem = featuredItems[currentFeaturedIndex] || null
 
@@ -182,8 +181,8 @@ export default function HomeClient({ initialData }) {
   })
   const [personalizedLoaded, setPersonalizedLoaded] = useState(false)
 
-  // For authenticated users, show content only after recommendations load
-  const showContent = !isAuthenticated || personalizedLoaded
+  // Home client is authenticated-only; wait for personalized rows before rendering.
+  const showContent = personalizedLoaded
 
   // Fetch personalized recommendations when user is authenticated
   useEffect(() => {
@@ -471,8 +470,8 @@ export default function HomeClient({ initialData }) {
     return () => clearInterval(interval)
   }, [featuredItems.length])
 
-  // Show loading state while waiting for recommendations
-  if (isAuthenticated && !showContent) {
+  // Keep skeleton visible while auth state or personalized data is resolving.
+  if (isLoading || !isAuthenticated || !showContent) {
     return <HomeSkeleton />
   }
 
@@ -546,7 +545,7 @@ export default function HomeClient({ initialData }) {
       {/* Content Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* ===== Personalized Carousels (Top of the list for authenticated users) ===== */}
-        {isAuthenticated && personalizedLoaded && (
+        {personalizedLoaded && (
           <>
             {/* 1. Recommendations For You */}
             {personalizedRecs.recommended.length > 0 && (
@@ -638,8 +637,7 @@ export default function HomeClient({ initialData }) {
         )}
 
         {/* Authenticated user sections - Netflix style personalized rows */}
-        {isAuthenticated && (
-          <>
+        <>
             {/* Now Playing in Theaters */}
             {nowPlaying.length > 0 && (
               <RecommendationCarousel
@@ -904,29 +902,7 @@ export default function HomeClient({ initialData }) {
               />
             )}
 
-          </>
-        )}
-
-        {/* Call to action for non-authenticated users */}
-        {!isAuthenticated && (
-          <div className="mt-16 text-center py-12 bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 rounded-2xl">
-            <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-4">
-              Explore More Movies & Shows
-            </h2>
-            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-              Sign in to access the full collection of movies and TV shows.
-            </p>
-            <Link
-              href="/login"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-colors"
-            >
-              Sign In to Explore More
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </Link>
-          </div>
-        )}
+        </>
       </div>
     </main>
   )

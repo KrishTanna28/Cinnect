@@ -141,7 +141,6 @@ export default function FriendsLikedBy({ contentId, mediaType = "movie" }) {
 
         {/* Text */}
         <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
-          <MessageCircle className="w-3.5 h-3.5 inline text-primary mr-1 -mt-0.5" />
           Reviewed by{" "}
           <span className="font-semibold text-foreground">
             {firstFriend.username}

@@ -385,10 +385,6 @@ export default function DetailsPage({ params }) {
       const data = await response.json()
       if (data.success) {
         setIsWatched(!isWatched)
-        toast({
-          title: isWatched ? "Removed from watched" : "Marked as watched",
-          description: isWatched ? "Movie removed from your watch history" : "Movie added to your watch history",
-        })
       } else {
         toast({
           title: "Error",
