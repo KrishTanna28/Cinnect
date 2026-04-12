@@ -86,7 +86,7 @@ export default function SignupPage() {
           toast({
             variant: "success",
             title: "Registration Complete!",
-            description: "Welcome to Cinnect! Check your email for more details.",
+            description: "Welcome to Cinnect!",
             duration: 5000,
           })
         }, 3000)
