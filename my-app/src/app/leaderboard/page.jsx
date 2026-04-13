@@ -176,9 +176,6 @@ export default function LeaderboardPage() {
             <p className="text-muted-foreground text-sm italic font-medium tracking-wide">
               "Power resides where men believe it resides."
             </p>
-            <p className="text-muted-foreground/70 text-xs mt-1">
-              - Lord Varys
-            </p>
           </div>
 
           {currentUserEntry && (
