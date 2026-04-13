@@ -78,12 +78,12 @@ const userSchema = new mongoose.Schema({
   points: {
     total: {
       type: Number,
-      default: 50, // 50 welcome points for new users
+      default: 0,
       min: 0
     },
     available: {
       type: Number,
-      default: 50, // 50 welcome points for new users
+      default: 0,
       min: 0
     },
     redeemed: {

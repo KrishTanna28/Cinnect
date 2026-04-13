@@ -194,28 +194,6 @@ const getBaseStyles = () => `
     color: #b3b3b3;
     font-size: 13px;
   }
-  /* Points box */
-  .points-box {
-    background-color: #262626;
-    border: 1px solid #d4a520;
-    border-radius: 8px;
-    padding: 24px;
-    text-align: center;
-    margin: 24px 0;
-  }
-  .points-number {
-    font-size: 48px;
-    font-weight: 700;
-    color: #d4a520;
-    line-height: 1;
-  }
-  .points-label {
-    font-size: 12px;
-    color: #b3b3b3;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-top: 8px;
-  }
   /* Divider */
   .divider {
     border: none;
@@ -311,7 +289,7 @@ export const sendOTPEmail = async (email, otp, userName = 'User') => {
               <div class="email-wrapper">
                 <!-- Logo Section -->
                 <div class="logo-section">
-                  <div class="logo-title">Verification Code</div>
+                  <div class="logo-title" style="color: #141414;">Verification Code</div>
                   <div class="logo-subtitle">Verify your email to continue to Cinnect</div>
                 </div>
 
@@ -336,7 +314,6 @@ export const sendOTPEmail = async (email, otp, userName = 'User') => {
                     <div class="alert-title">Security Notice</div>
                     <ul>
                       <li>Never share this code with anyone</li>
-                      <li>Cinnect will never ask for your code</li>
                       <li>This code expires in 10 minutes</li>
                     </ul>
                   </div>
@@ -378,124 +355,6 @@ export const sendOTPEmail = async (email, otp, userName = 'User') => {
 
   } catch (error) {
     console.error('Email Service Error:', error);
-    return false;
-  }
-};
-
-/**
- * Send welcome email after successful registration
- * @param {string} email - Email address
- * @param {string} userName - User's name
- * @returns {Promise<boolean>} - Success status
- */
-export const sendWelcomeEmail = async (email, userName) => {
-  try {
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
-      return true;
-    }
-
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD
-      }
-    });
-
-    const appUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
-
-    const mailOptions = {
-      from: `"Cinnect" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: 'Welcome to Cinnect - 50 Points Bonus!',
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <style>${getBaseStyles()}</style>
-        </head>
-        <body>
-          <div class="email-wrapper">
-            <!-- Logo Section -->
-            <div class="logo-section">
-              <div class="logo-title">Welcome to Cinnect!</div>
-              <div class="logo-subtitle">Your movie community awaits</div>
-            </div>
-
-            <!-- Main Card -->
-            <div class="card">
-              <div class="text">
-                Hello <strong style="color: #f2f2f2;">${userName}</strong>,
-              </div>
-              <div class="text">
-                Your account has been successfully created. We're thrilled to have you join the Cinnect community!
-              </div>
-
-              <!-- Points Box -->
-              <div class="points-box">
-                <div class="points-label" style="margin-bottom: 8px;">Welcome Bonus</div>
-                <div class="points-number">50</div>
-                <div class="points-label">POINTS CREDITED</div>
-              </div>
-
-              <div class="text" style="margin-bottom: 16px;">
-                <strong style="color: #f2f2f2;">What you can do now:</strong>
-              </div>
-
-              <!-- Feature Items -->
-              <div class="feature-item">
-                <div class="feature-title">Discover Movies</div>
-                <div class="feature-desc">Browse thousands of movies and find your next favorite</div>
-              </div>
-
-              <div class="feature-item">
-                <div class="feature-title">Write Reviews</div>
-                <div class="feature-desc">Share your thoughts and earn more points</div>
-              </div>
-
-              <div class="feature-item">
-                <div class="feature-title">Create Watchlists</div>
-                <div class="feature-desc">Keep track of movies you want to watch</div>
-              </div>
-
-              <div class="feature-item">
-                <div class="feature-title">Earn Points & Level Up</div>
-                <div class="feature-desc">Get rewarded for your contributions</div>
-              </div>
-
-              <!-- CTA Button -->
-              <div style="text-align: center; margin-top: 32px;">
-                <a href="${appUrl}" class="btn-primary btn-primary-lg">
-                  Start Exploring
-                </a>
-              </div>
-
-              <!-- Signature -->
-              <div class="signature">
-                <div class="signature-text">Happy watching!</div>
-                <div class="signature-name">The Cinnect Team</div>
-              </div>
-            </div>
-
-            <!-- Footer -->
-            <div class="footer">
-              <div class="footer-text">© ${new Date().getFullYear()} Cinnect. All rights reserved.</div>
-              <div class="footer-text">This is an automated message, please do not reply.</div>
-            </div>
-          </div>
-        </body>
-        </html>
-      `
-    };
-
-    await transporter.sendMail(mailOptions);
-    console.log(`[OK] Welcome email sent to ${email}`);
-    return true;
-
-  } catch (error) {
-    console.error('Welcome email error:', error);
     return false;
   }
 };
@@ -569,7 +428,6 @@ export const sendPasswordResetEmail = async (email, resetToken, userName = 'User
                     <ul>
                       <li>If you didn't request this, ignore this email</li>
                       <li>Never share this link with anyone</li>
-                      <li>Cinnect will never ask for your password</li>
                     </ul>
                   </div>
 

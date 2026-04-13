@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Eye, EyeOff, Mail, Lock, User, UserCircle, Film, Gift, Phone } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock, User, UserCircle, Film, Phone } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -70,16 +70,6 @@ export default function SignupPage() {
       if (data.success) {
         // Save token and user data using context
         login(data.data.token, data.data.user)
-        
-        // Show welcome bonus notification
-        if (data.data.welcomeBonus) {
-          toast({
-            variant: "success",
-            title: "Welcome Bonus!",
-            description: `You received ${data.data.welcomeBonus.points} points as a welcome gift!`,
-            duration: 5000,
-          })
-        }
         
         // Show success message
         setTimeout(() => {
