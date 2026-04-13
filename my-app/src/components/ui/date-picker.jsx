@@ -237,7 +237,8 @@ export function DatePicker({ value, onChange, max, required, id, error, placehol
             <button
               type="button"
               onClick={() => {
-                const today = new Date()
+                const now = new Date()
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
                 if (maxDate && today > maxDate) return
                 setViewYear(today.getFullYear())
                 setViewMonth(today.getMonth())
