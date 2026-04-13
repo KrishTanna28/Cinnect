@@ -10,6 +10,7 @@ import * as movieAPI from "@/lib/movies"
 
 const PERSONALIZED_INITIAL_VISIBLE = 20
 const PERSONALIZED_LOAD_STEP = 10
+const PERSONALIZED_MIN_LOADING_MS = 250
 
 export default function HomeClient({ initialData }) {
   // Basic categories - with state setters for load more
@@ -477,6 +478,8 @@ export default function HomeClient({ initialData }) {
 
     setPersonalizedLoadingMore(prev => ({ ...prev, [key]: true }))
     try {
+      // Keep loader visible long enough to avoid a same-frame toggle.
+      await new Promise(resolve => setTimeout(resolve, PERSONALIZED_MIN_LOADING_MS))
       setPersonalizedVisibleCounts(prev => ({
         ...prev,
         [key]: Math.min(prev[key] + PERSONALIZED_LOAD_STEP, totalCount),
