@@ -56,10 +56,6 @@ function TopThreeCard({ entry, rank, isCurrentUser }) {
         </p>
         <p className="text-xs text-muted-foreground mb-2 break-all">@{entry.username}</p>
 
-        {isCurrentUser && (
-          <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary mb-2">You</span>
-        )}
-
         <div className="flex items-center gap-1 text-primary font-bold text-lg sm:text-xl">
           <Trophy className="h-4 w-4" />
           <span>{Math.round(entry.ranking?.score || 0)}</span>
