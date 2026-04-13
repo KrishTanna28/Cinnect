@@ -10,7 +10,6 @@ import UserActivity from '@/lib/models/UserActivity.js';
 import User from '@/lib/models/User.js';
 import { searchVideos } from '@/lib/youtube.service.js';
 import { searchNews } from '@/lib/news.service.js';
-import * as tmdbService from '@/lib/services/tmdb.service.js';
 import { emitNotification } from '@/lib/socketServer.js';
 
 // Official YouTube channels to search within
@@ -240,12 +239,26 @@ export async function generateForUser(userId) {
     // ── Build queries & fetch candidates ──
     const queries = await buildUserQueries(userId);
 
-    const [ytCandidates, newsCandidates] = await Promise.all([
-      fetchYouTubeNotifications(queries.youtube),
-      fetchNewsNotifications(queries.news)
-    ]);
+    const selectedSource = Math.random() < 0.5 ? 'youtube' : 'news';
+    console.log(`[EntertainmentNotif] User ${userId} selected source: ${selectedSource}`);
 
-    let allCandidates = shuffleArray([...ytCandidates, ...newsCandidates]);
+    let allCandidates = [];
+
+    if (selectedSource === 'youtube') {
+      allCandidates = await fetchYouTubeNotifications(queries.youtube);
+      if (allCandidates.length === 0) {
+        console.log(`[EntertainmentNotif] No YouTube candidates for user ${userId}, falling back to news`);
+        allCandidates = await fetchNewsNotifications(queries.news);
+      }
+    } else {
+      allCandidates = await fetchNewsNotifications(queries.news);
+      if (allCandidates.length === 0) {
+        console.log(`[EntertainmentNotif] No News candidates for user ${userId}, falling back to YouTube`);
+        allCandidates = await fetchYouTubeNotifications(queries.youtube);
+      }
+    }
+
+    allCandidates = shuffleArray(allCandidates);
 
     // ── Deduplicate by externalId against DB ──
     const candidateExternalIds = allCandidates.map(c => c.externalId).filter(Boolean);
