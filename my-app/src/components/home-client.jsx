@@ -8,6 +8,9 @@ import { HomeSkeleton } from "@/components/skeletons"
 import { useUser } from "@/contexts/UserContext"
 import * as movieAPI from "@/lib/movies"
 
+const PERSONALIZED_INITIAL_VISIBLE = 20
+const PERSONALIZED_LOAD_STEP = 10
+
 export default function HomeClient({ initialData }) {
   // Basic categories - with state setters for load more
   const [popularMovies, setPopularMovies] = useState(initialData.popularMovies)
@@ -180,6 +183,16 @@ export default function HomeClient({ initialData }) {
     countryName: 'Worldwide',
   })
   const [personalizedLoaded, setPersonalizedLoaded] = useState(false)
+  const [personalizedVisibleCounts, setPersonalizedVisibleCounts] = useState({
+    recommended: PERSONALIZED_INITIAL_VISIBLE,
+    becauseYouLiked: PERSONALIZED_INITIAL_VISIBLE,
+    trendingInCircles: PERSONALIZED_INITIAL_VISIBLE,
+  })
+  const [personalizedLoadingMore, setPersonalizedLoadingMore] = useState({
+    recommended: false,
+    becauseYouLiked: false,
+    trendingInCircles: false,
+  })
 
   // Home client is authenticated-only; wait for personalized rows before rendering.
   const showContent = personalizedLoaded
@@ -456,6 +469,36 @@ export default function HomeClient({ initialData }) {
   const loadMoreCrimeDramas = createLoadMore('crimeDramas', movieAPI.getCrimeDramas, setCrimeDramas)
   const loadMoreBasedOnTrueStory = createLoadMore('basedOnTrueStory', movieAPI.getBasedOnTrueStory, setBasedOnTrueStory)
 
+  const createPersonalizedLoadMore = (key, getTotalCount) => async () => {
+    if (personalizedLoadingMore[key]) return
+
+    const totalCount = getTotalCount()
+    if (personalizedVisibleCounts[key] >= totalCount) return
+
+    setPersonalizedLoadingMore(prev => ({ ...prev, [key]: true }))
+    try {
+      setPersonalizedVisibleCounts(prev => ({
+        ...prev,
+        [key]: Math.min(prev[key] + PERSONALIZED_LOAD_STEP, totalCount),
+      }))
+    } finally {
+      setPersonalizedLoadingMore(prev => ({ ...prev, [key]: false }))
+    }
+  }
+
+  const loadMoreRecommended = createPersonalizedLoadMore(
+    'recommended',
+    () => personalizedRecs.recommended.length
+  )
+  const loadMoreBecauseYouLiked = createPersonalizedLoadMore(
+    'becauseYouLiked',
+    () => personalizedRecs.becauseYouLiked?.items?.length || 0
+  )
+  const loadMoreTrendingInCircles = createPersonalizedLoadMore(
+    'trendingInCircles',
+    () => personalizedRecs.trendingInCircles.length
+  )
+
 
   // Auto-rotate featured content every 5 seconds
   useEffect(() => {
@@ -474,6 +517,11 @@ export default function HomeClient({ initialData }) {
   if (isLoading || !isAuthenticated || !showContent) {
     return <HomeSkeleton />
   }
+
+  const visibleRecommended = personalizedRecs.recommended.slice(0, personalizedVisibleCounts.recommended)
+  const becauseYouLikedItems = personalizedRecs.becauseYouLiked?.items || []
+  const visibleBecauseYouLiked = becauseYouLikedItems.slice(0, personalizedVisibleCounts.becauseYouLiked)
+  const visibleTrendingInCircles = personalizedRecs.trendingInCircles.slice(0, personalizedVisibleCounts.trendingInCircles)
 
   return (
     <main className="min-h-screen bg-background">
@@ -551,7 +599,10 @@ export default function HomeClient({ initialData }) {
             {personalizedRecs.recommended.length > 0 && (
               <RecommendationCarousel
                 title="Recommendations For You"
-                movies={personalizedRecs.recommended}
+                movies={visibleRecommended}
+                onLoadMore={loadMoreRecommended}
+                hasMore={personalizedRecs.recommended.length > personalizedVisibleCounts.recommended}
+                isLoadingMore={personalizedLoadingMore.recommended}
               />
             )}
 
@@ -559,7 +610,10 @@ export default function HomeClient({ initialData }) {
             {personalizedRecs.becauseYouLiked && personalizedRecs.becauseYouLiked.items?.length > 0 && (
               <RecommendationCarousel
                 title={`Because You Liked ${personalizedRecs.becauseYouLiked.anchorTitle}`}
-                movies={personalizedRecs.becauseYouLiked.items}
+                movies={visibleBecauseYouLiked}
+                onLoadMore={loadMoreBecauseYouLiked}
+                hasMore={becauseYouLikedItems.length > personalizedVisibleCounts.becauseYouLiked}
+                isLoadingMore={personalizedLoadingMore.becauseYouLiked}
               />
             )}
 
@@ -567,7 +621,10 @@ export default function HomeClient({ initialData }) {
             {personalizedRecs.trendingInCircles.length > 0 && (
               <RecommendationCarousel
                 title="Trending In Your Circle"
-                movies={personalizedRecs.trendingInCircles}
+                movies={visibleTrendingInCircles}
+                onLoadMore={loadMoreTrendingInCircles}
+                hasMore={personalizedRecs.trendingInCircles.length > personalizedVisibleCounts.trendingInCircles}
+                isLoadingMore={personalizedLoadingMore.trendingInCircles}
               />
             )}
 

@@ -28,6 +28,7 @@ let lastRequestTime = 0;
 const MIN_REQUEST_INTERVAL = 50; // Reduced from 100ms
 const RECOMMENDATIONS_CACHE_TTL = 300;
 const TMDB_METADATA_CACHE_TTL = 3600;
+const UNBOUNDED_RESULT_LIMIT = Number.MAX_SAFE_INTEGER;
 
 async function rateLimitedRequest(requestFn) {
   const now = Date.now();
@@ -283,7 +284,7 @@ async function getCandidateRecommendations(sourceId, type = 'movie') {
 }
 
 // Deduplicate and cap results, optionally filtering adult content
-function dedup(items, max = 20, filterAdult = false) {
+function dedup(items, max = UNBOUNDED_RESULT_LIMIT, filterAdult = false) {
   const seen = new Set();
   const result = [];
   for (const item of items) {
@@ -357,7 +358,6 @@ export const GET = withAuth(async (request, { user }) => {
         Promise.resolve(user.watchHistory || []),
         Review.find({ user: user._id })
           .sort({ createdAt: -1 })
-          .limit(20)
           .select('mediaId mediaType mediaTitle rating')
           .lean()
           .catch(() => []),
@@ -431,7 +431,7 @@ export const GET = withAuth(async (request, { user }) => {
           );
           candidateSources.push(...tmdbRecResults.flat());
 
-          (trendingMoviesRegion.results || []).slice(0, 20).forEach(item => {
+          (trendingMoviesRegion.results || []).forEach(item => {
             candidateSources.push({
               id: item.id,
               mediaType: 'movie',
@@ -440,7 +440,7 @@ export const GET = withAuth(async (request, { user }) => {
             });
           });
 
-          (trendingTVRegion.results || []).slice(0, 20).forEach(item => {
+          (trendingTVRegion.results || []).forEach(item => {
             candidateSources.push({
               id: item.id,
               mediaType: 'tv',
@@ -449,7 +449,7 @@ export const GET = withAuth(async (request, { user }) => {
             });
           });
 
-          const uniqueCandidates = dedup(candidateSources, 40, false);
+          const uniqueCandidates = dedup(candidateSources, UNBOUNDED_RESULT_LIMIT, false);
           const candidateMetadata = await fetchMetadataBatch(uniqueCandidates, 5);
 
           const scoredCandidates = candidateMetadata.map(candidate => {
@@ -474,7 +474,6 @@ export const GET = withAuth(async (request, { user }) => {
           recommended = scoredCandidates
             .filter(item => !filterAdult || !item.adult)
             .filter(item => !watchedIds.has(`${item.mediaType}-${item.id}`))
-            .slice(0, 20)
             .map(item => ({
               id: item.id,
               title: item.title,
@@ -515,7 +514,7 @@ export const GET = withAuth(async (request, { user }) => {
 
           if (anchorMetadata) {
             const candidates = await getCandidateRecommendations(anchor.id, anchor.type);
-            const uniqueCandidates = dedup(candidates, 25, false);
+            const uniqueCandidates = dedup(candidates, UNBOUNDED_RESULT_LIMIT, false);
             const candidateMetadata = await fetchMetadataBatch(uniqueCandidates, 5);
 
             const becauseItems = candidateMetadata
@@ -526,7 +525,6 @@ export const GET = withAuth(async (request, { user }) => {
               .sort((a, b) => b.score - a.score)
               .filter(item => !filterAdult || !item.adult)
               .filter(item => !watchedIds.has(`${item.mediaType}-${item.id}`))
-              .slice(0, 20)
               .map(item => ({
                 id: item.id,
                 title: item.title,
@@ -590,7 +588,7 @@ export const GET = withAuth(async (request, { user }) => {
           });
 
           // Friends' watch history (medium weight)
-          (circleUser.watchHistory || []).slice(0, 20).forEach(watch => {
+          (circleUser.watchHistory || []).forEach(watch => {
             const key = `${watch.mediaType || 'movie'}-${watch.movieId}`;
             if (!activityMap.has(key)) {
               activityMap.set(key, { id: watch.movieId, type: watch.mediaType || 'movie', score: 0, count: 0 });
@@ -601,7 +599,7 @@ export const GET = withAuth(async (request, { user }) => {
           });
 
           // Friends' watchlist (lower weight - they want to watch but haven't yet)
-          (circleUser.watchlist || []).slice(0, 10).forEach(wl => {
+          (circleUser.watchlist || []).forEach(wl => {
             const key = `movie-${wl.movieId}`;
             if (!activityMap.has(key)) {
               activityMap.set(key, { id: wl.movieId, type: 'movie', score: 0, count: 0 });
@@ -663,13 +661,13 @@ export const GET = withAuth(async (request, { user }) => {
           // Combine and deduplicate
           const allCandidates = [...friendsItems];
           if (circleCandidates.length > 0) {
-            const uniqueCircleCandidates = dedup(circleCandidates, 15, false);
+            const uniqueCircleCandidates = dedup(circleCandidates, UNBOUNDED_RESULT_LIMIT, false);
             const circleCandidateMetadata = await fetchMetadataBatch(uniqueCircleCandidates, 5);
             allCandidates.push(...circleCandidateMetadata);
           }
 
           // Score and sort
-          trendingInCircles = dedup(allCandidates, 40, false)
+          trendingInCircles = dedup(allCandidates, UNBOUNDED_RESULT_LIMIT, false)
             .map(candidate => {
               let score = 0;
 
@@ -695,7 +693,6 @@ export const GET = withAuth(async (request, { user }) => {
             .sort((a, b) => b.score - a.score)
             .filter(item => !filterAdult || !item.adult)
             .filter(item => !watchedIds.has(`${item.mediaType}-${item.id}`))
-            .slice(0, 20)
             .map(item => ({
               id: item.id,
               title: item.title,
@@ -731,7 +728,7 @@ export const GET = withAuth(async (request, { user }) => {
           });
         }));
 
-        trendingInCircles = dedup(searchResults.flat(), 20, filterAdult);
+        trendingInCircles = dedup(searchResults.flat(), UNBOUNDED_RESULT_LIMIT, filterAdult);
       }
 
       return {
