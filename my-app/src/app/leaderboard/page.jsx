@@ -104,9 +104,6 @@ function LeaderboardRow({ entry, isCurrentUser }) {
           <p className="font-semibold text-foreground text-sm group-hover:text-primary transition-colors break-words leading-tight">
             {entry.fullName || entry.username}
           </p>
-          {isCurrentUser && (
-            <span className="rounded-full bg-primary/20 px-1.5 py-0.5 text-[9px] font-bold text-primary">You</span>
-          )}
         </div>
         <p className="text-xs text-muted-foreground break-all">@{entry.username}</p>
       </div>
