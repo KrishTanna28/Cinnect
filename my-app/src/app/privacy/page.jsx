@@ -84,8 +84,6 @@ export default function PrivacyPolicyPage() {
               <li>Calculate and display achievements, rankings, and gamification features</li>
               <li>Send notifications about activity relevant to you</li>
               <li>Improve and optimize our Service</li>
-              <li>Detect, prevent, and address security issues or abuse</li>
-              <li>Communicate with you about updates, support, or promotional offers</li>
               <li>Comply with legal obligations</li>
             </ul>
           </section>
@@ -131,8 +129,8 @@ export default function PrivacyPolicyPage() {
               We implement appropriate security measures to protect your personal information, including:
             </p>
             <ul className="list-disc list-inside text-muted-foreground mt-4 space-y-2">
-              <li>Encryption of data in transit (HTTPS)</li>
-              <li>Secure password hashing (bcrypt)</li>
+              <li>Encryption of data in transit</li>
+              <li>Secure password hashing</li>
               <li>JWT-based authentication tokens</li>
               <li>Rate limiting to prevent abuse</li>
               <li>Regular security reviews and updates</li>
@@ -186,24 +184,14 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-foreground mb-4">9. Children's Privacy</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              Our Service is not intended for children under 13 years of age. We do not knowingly collect personal information from children under 13. If you are a parent or guardian and believe your child has provided us with personal information, please contact us.
-            </p>
-            <p className="text-muted-foreground leading-relaxed mt-4">
-              Users between 13 and 18 may use the Service with parental consent and may have restricted access to adult content.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-foreground mb-4">10. International Data Transfers</h2>
+            <h2 className="text-2xl font-semibold text-foreground mb-4">9. International Data Transfers</h2>
             <p className="text-muted-foreground leading-relaxed">
               Your information may be transferred to and processed in countries other than your own. These countries may have different data protection laws. By using our Service, you consent to such transfers.
             </p>
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-foreground mb-4">11. Changes to This Policy</h2>
+            <h2 className="text-2xl font-semibold text-foreground mb-4">10. Changes to This Policy</h2>
             <p className="text-muted-foreground leading-relaxed">
               We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last updated" date. You are advised to review this Privacy Policy periodically.
             </p>
@@ -215,8 +203,7 @@ export default function PrivacyPolicyPage() {
               If you have questions or concerns about this Privacy Policy or our data practices, please contact us at:
             </p>
             <div className="mt-4 space-y-2">
-              <p className="text-primary">Email: privacy@cinnect.com</p>
-              <p className="text-primary">Support: support@cinnect.com</p>
+              <p className="text-primary">Email: teamcinnect@gmail.com</p>
             </div>
           </section> */}
         </div>
