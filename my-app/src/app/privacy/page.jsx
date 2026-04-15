@@ -197,7 +197,7 @@ export default function PrivacyPolicyPage() {
             </p>
           </section>
 
-          {/* <section>
+          <section>
             <h2 className="text-2xl font-semibold text-foreground mb-4">12. Contact Us</h2>
             <p className="text-muted-foreground leading-relaxed">
               If you have questions or concerns about this Privacy Policy or our data practices, please contact us at:
@@ -205,7 +205,7 @@ export default function PrivacyPolicyPage() {
             <div className="mt-4 space-y-2">
               <p className="text-primary">Email: teamcinnect@gmail.com</p>
             </div>
-          </section> */}
+          </section>
         </div>
 
         {/* Footer Links */}
