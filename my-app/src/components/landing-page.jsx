@@ -293,11 +293,6 @@ export default function LandingPage({
                       </div>
 
                       <p className="mt-1.5 text-sm text-foreground/90 line-clamp-2">{review.excerpt}</p>
-
-                      <div className="mt-1.5 inline-flex items-center gap-1.5 text-muted-foreground text-xs sm:text-sm">
-                        <ThumbsUp className="w-3.5 h-3.5" />
-                        {formatCount(review.likesCount) == 1 ? "1 like" : `${formatCount(review.likesCount)} likes`}
-                      </div>
                     </div>
                   </div>
                 </article>
