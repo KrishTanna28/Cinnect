@@ -27,7 +27,6 @@ function isPublicRoute(pathname) {
     /^\/tv\/[^/]+$/,
     /^\/tv\/[^/]+\/season\/[^/]+$/,
     /^\/actor\/[^/]+$/,
-    /^\/profile\/[^/]+$/,
     /^\/communities$/,
     /^\/communities\/[^/]+$/,
     /^\/communities\/[^/]+\/posts\/[^/]+$/,

@@ -29,7 +29,6 @@ const PUBLIC_ROUTES = {
     /^\/tv\/[^/]+$/,          // /tv/[id] - TV show details
     /^\/tv\/[^/]+\/season\/[^/]+$/, // /tv/[id]/season/[seasonNumber]
     /^\/actor\/[^/]+$/,       // /actor/[id] - actor details
-    /^\/profile\/[^/]+$/,     // /profile/[id] - public user profiles
     /^\/communities$/,        // Communities list
     /^\/communities\/[^/]+$/, // Community details
     /^\/communities\/[^/]+\/posts\/[^/]+$/, // Post details
