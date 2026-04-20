@@ -108,6 +108,8 @@ async function fetchUserContext(userId) {
 
     if (!user) return null;
 
+    const recentWatched = await resolveRecentWatchedTitles(user.watchHistory || []);
+
     return {
       username: user.username,
       level: user.level,
@@ -116,6 +118,8 @@ async function fetchUserContext(userId) {
       favoriteGenres: user.favoriteGenres || [],
       watchlistCount: user.watchlist?.length || 0,
       favoritesCount: user.favorites?.length || 0,
+      watchedCount: user.watchHistory?.length || 0,
+      recentWatched,
       recentRatings: recentReviews.map(r => ({
         title: r.mediaTitle,
         type: r.mediaType,
@@ -136,6 +140,58 @@ async function fetchUserContext(userId) {
     console.error('Error fetching user context:', error);
     return null;
   }
+}
+
+/**
+ * Resolve recent watched items to human-readable titles
+ */
+async function resolveRecentWatchedTitles(watchHistory, limit = 5) {
+  if (!Array.isArray(watchHistory) || watchHistory.length === 0) {
+    return [];
+  }
+
+  const recentItems = [...watchHistory]
+    .filter(item => item?.movieId || item?.mediaId)
+    .sort((a, b) => {
+      const aTime = a?.watchedAt ? new Date(a.watchedAt).getTime() : 0;
+      const bTime = b?.watchedAt ? new Date(b.watchedAt).getTime() : 0;
+      return bTime - aTime;
+    })
+    .slice(0, limit);
+
+  const resolved = await Promise.all(
+    recentItems.map(async (item) => {
+      const mediaId = String(item.movieId || item.mediaId);
+      const mediaType = item.mediaType === 'tv' ? 'tv' : 'movie';
+      const cacheKey = buildCacheKey('ai-context', 'watched-title', mediaType, mediaId);
+
+      const titleData = await remember(cacheKey, 24 * 60 * 60, async () => {
+        try {
+          if (mediaType === 'tv') {
+            const tv = await tmdbService.getTVDetails(mediaId).catch(() => null);
+            return tv
+              ? { title: tv.title, year: tv.firstAirDate?.split('-')[0] }
+              : null;
+          }
+
+          const movie = await tmdbService.getMovieDetails(mediaId).catch(() => null);
+          return movie
+            ? { title: movie.title, year: movie.releaseDate?.split('-')[0] }
+            : null;
+        } catch {
+          return null;
+        }
+      });
+
+      return {
+        title: titleData?.title || `${mediaType.toUpperCase()} #${mediaId}`,
+        year: titleData?.year || null,
+        mediaType
+      };
+    })
+  );
+
+  return resolved;
 }
 
 /**
@@ -427,9 +483,10 @@ function formatContextForLLM(context, classification) {
 Username: ${context.user.username}
 Level: ${context.user.level} | Points: ${context.user.points}
 Current Streak: ${context.user.streak} days
-Watchlist: ${context.user.watchlistCount} items | Favorites: ${context.user.favoritesCount} items
+Watchlist: ${context.user.watchlistCount} items | Favorites: ${context.user.favoritesCount} items | Watched: ${context.user.watchedCount} items
 ${context.user.favoriteGenres.length ? `Favorite Genres: ${context.user.favoriteGenres.join(', ')}` : ''}
 ${context.user.genrePreferences.length ? `Most Watched Genres: ${context.user.genrePreferences.join(', ')}` : ''}
+${context.user.recentWatched.length ? `Recently Watched:\n${context.user.recentWatched.map(w => `  - ${w.title}${w.year ? ` (${w.year})` : ''}`).join('\n')}` : ''}
 ${context.user.recentRatings.length ? `Recent Ratings:\n${context.user.recentRatings.map(r => `  - ${r.title}: ${r.rating}/10`).join('\n')}` : ''}`);
   }
 
