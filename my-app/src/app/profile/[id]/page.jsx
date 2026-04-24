@@ -175,7 +175,7 @@ function InlineBadgeRail({ badges }) {
   if (!badges?.length) return null
 
   return (
-    <div className="flex w-full items-center justify-center gap-2 overflow-x-auto whitespace-nowrap pl-0 sm:w-auto sm:justify-start sm:pl-2" aria-label="Earned badges">
+    <div className="flex w-full flex-wrap items-center justify-center gap-2 pl-0 sm:w-auto sm:max-w-[240px] sm:justify-start sm:pl-2" aria-label="Earned badges">
       {badges.map((badge, index) => (
         <BadgeToken key={`${badge.badgeId || badge.name}-${index}`} badge={badge} />
       ))}
@@ -204,7 +204,7 @@ function PublicProgressHeader({ profile }) {
   const progress = nextLevelXp ? Math.min(100, Math.round((xpIntoLevel / xpForLevel) * 100)) : 100
 
   return (
-    <div className="space-y-4 max-w-md">
+    <div className="space-y-4 w-full max-w-md lg:max-w-xl">
       <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start">
         <span
           title="Personal progression based on activity"
@@ -221,7 +221,7 @@ function PublicProgressHeader({ profile }) {
 
       {/* Level segments + inline badges */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-2 min-w-0 flex-1">
+        <div className="space-y-2 min-w-0 flex-1 sm:min-w-[240px]">
           <div className="flex gap-1">
             {Array.from({ length: MAX_LEVEL }, (_, i) => {
               const segmentLevel = i + 1
