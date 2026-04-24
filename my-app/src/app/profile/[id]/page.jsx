@@ -173,7 +173,7 @@ function InlineBadgeRail({ badges }) {
   if (!badges?.length) return null
 
   return (
-    <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap pl-0 sm:pl-2" aria-label="Earned badges">
+    <div className="flex w-full items-center justify-center gap-2 overflow-x-auto whitespace-nowrap pl-0 sm:justify-start sm:pl-2" aria-label="Earned badges">
       {badges.map((badge, index) => (
         <BadgeToken key={`${badge.badgeId || badge.name}-${index}`} badge={badge} />
       ))}
