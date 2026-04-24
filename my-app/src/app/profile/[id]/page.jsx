@@ -148,7 +148,9 @@ function BadgeToken({ badge }) {
         </button>
       </PopoverTrigger>
       <PopoverContent
-        align="end"
+        side="bottom"
+        align="center"
+        sideOffset={8}
         className="w-64"
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
