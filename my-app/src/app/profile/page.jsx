@@ -169,7 +169,7 @@ function ProgressHeader({ stats, bio }) {
   const progress = nextLevelXp ? Math.min(100, Math.round((xpIntoLevel / xpForLevel) * 100)) : 100
 
   return (
-    <div className="space-y-4 w-full max-w-md lg:max-w-none">
+    <div className="space-y-4 w-full max-w-md lg:max-w-[540px]">
       <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start">
         <span
           title="Your personal progression based on activity"
@@ -783,7 +783,7 @@ export default function ProfilePage() {
               <div className="w-px h-46 bg-border self-center shrink-0" />
 
               {/* XP Progress */}
-              <div className="flex-1 min-w-[360px]">
+              <div className="flex-1 min-w-[360px] max-w-[540px]">
                 <ProgressHeader stats={stats} bio={user.bio} onOpenLeaderboard={() => router.push("/leaderboard")} />
               </div>
             </div>
