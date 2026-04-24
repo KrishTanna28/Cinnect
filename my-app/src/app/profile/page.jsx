@@ -138,7 +138,7 @@ function InlineBadgeRail({ badges }) {
   if (!badges?.length) return null
 
   return (
-    <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap pl-2" aria-label="Earned badges">
+    <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap pl-0 sm:pl-2" aria-label="Earned badges">
       {badges.map((badge, index) => (
         <BadgeToken key={`${badge.badgeId || badge.name}-${index}`} badge={badge} />
       ))}
@@ -183,7 +183,7 @@ function ProgressHeader({ stats, bio }) {
       </div>
 
       {/* Level segments + inline badges */}
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-2 min-w-0 flex-1">
           <div className="flex gap-1">
             {Array.from({ length: MAX_LEVEL }, (_, i) => {
