@@ -204,7 +204,7 @@ function PublicProgressHeader({ profile }) {
   const progress = nextLevelXp ? Math.min(100, Math.round((xpIntoLevel / xpForLevel) * 100)) : 100
 
   return (
-    <div className="space-y-4 w-full max-w-md lg:max-w-xl">
+    <div className="space-y-4 w-full max-w-md lg:max-w-none">
       <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start">
         <span
           title="Personal progression based on activity"
@@ -716,9 +716,9 @@ export default function PublicProfilePage({ params }) {
           {/* Desktop Layout */}
           <div className="hidden lg:flex lg:items-start lg:justify-between">
             {/* Left side: User Info + XP Progress */}
-            <div className="flex items-start gap-8">
+            <div className="flex items-start gap-8 flex-1 min-w-0">
               {/* User Info */}
-              <div className="flex items-start gap-6">
+              <div className="flex items-start gap-6 shrink-0">
                 <button onClick={() => setShowAvatarLightbox(true)} className="cursor-pointer transition-all active:scale-95 flex-shrink-0">
                   <Avatar className="w-24 h-24 border-4 border-primary">
                     <AvatarImage src={profile.avatar} alt={profile.username} />
@@ -817,10 +817,12 @@ export default function PublicProfilePage({ params }) {
               </div>
 
               {/* Divider */}
-              <div className="w-px h-46 bg-border self-center" />
+              <div className="w-px h-46 bg-border self-center shrink-0" />
 
               {/* XP Progress */}
-              <PublicProgressHeader profile={profile} />
+              <div className="flex-1 min-w-[360px]">
+                <PublicProgressHeader profile={profile} />
+              </div>
             </div>
 
             {/* Right: Follow Button */}
