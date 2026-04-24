@@ -839,7 +839,7 @@ export default function PublicProfilePage({ params }) {
                 </Avatar>
               </button>
               <div className="text-center sm:text-left">
-                <div className="flex items-center gap-3 mb-2 justify-center sm:justify-start">
+                <div className="flex flex-col items-center justify-center gap-1 mb-2 sm:flex-row sm:items-center sm:justify-start sm:gap-3">
                   <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{profile.fullName || profile.username}</h1>
                   {profile.isPrivate && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-secondary/50 rounded-full text-xs text-muted-foreground">
