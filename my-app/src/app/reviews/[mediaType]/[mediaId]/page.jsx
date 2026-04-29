@@ -1691,7 +1691,7 @@ export default function ReviewsPage({ params }) {
                 </div>
 
                 {/* Reply Form - only for non-TMDB reviews */}
-                {replyingTo === review._id && !isTMDB && (
+                {replyingTo === review._id && (
                   <div className="mt-4 pl-0 sm:pl-16">
                     {mentionUser && (
                       <div className="mb-2 text-xs text-muted-foreground">
