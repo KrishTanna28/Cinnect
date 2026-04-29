@@ -1690,21 +1690,12 @@ export default function ReviewsPage({ params }) {
                   </div>
                 </div>
 
-                {/* Reply Form - only for non-TMDB reviews */}
+                {/* Reply Form */}
                 {replyingTo === review._id && (
                   <div className="mt-4 pl-0 sm:pl-16">
                     {mentionUser && (
                       <div className="mb-2 text-xs text-muted-foreground">
                         Replying to <span className="text-primary font-semibold">@{mentionUser}</span>
-                        <button
-                          onClick={() => {
-                            setReplyContent(prev => prev.replace(`@${mentionUser} `, '').replace(`@${mentionUser}`, ''))
-                            setMentionUser(null)
-                          }}
-                          className="ml-2 text-destructive hover:underline"
-                        >
-                          Cancel
-                        </button>
                       </div>
                     )}
                     <div className="flex gap-2">

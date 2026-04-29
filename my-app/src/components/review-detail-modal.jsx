@@ -282,7 +282,6 @@ export default function ReviewDetailModal({
         {/* Footer - Actions */}
         <div className="flex items-center justify-between p-4 sm:p-6 border-t border-border bg-secondary/10">
           <div className="flex items-center gap-4">
-              // User reviews - interactive actions
                 {/* Like */}
                 <button
                   onClick={() => onLike?.(review._id)}
